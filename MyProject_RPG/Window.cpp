@@ -3,8 +3,8 @@
 //=========================
 // ウィンドウネーム
 //=========================
-constexpr auto ClassName = TEXT("2026 GM31 ひな形");		// ウィンドウクラス名
-constexpr auto WindowName = TEXT("2026 GM31 ひな形");	// ウィンドウ名
+constexpr auto ClassName = TEXT("就職作品 タジマ");		// ウィンドウクラス名
+constexpr auto WindowName = TEXT("就職作品 タジマ");	// ウィンドウ名
 
 //=========================
 // ウィンドウ生成

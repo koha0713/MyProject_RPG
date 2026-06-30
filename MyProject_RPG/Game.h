@@ -54,13 +54,13 @@ protected:
 	 * @brief 更新
 	 * @details ゲームの更新処理を行う関数
 	 */
-	virtual void Update();
+	virtual void Update(uint64_t delta);
 
 	/**
 	 * @brief 描画
 	 * @details ゲームの描画処理を行う関数
 	 */
-	virtual void Draw();
+	virtual void Draw(uint64_t delta);
 
 protected:
 	//====================

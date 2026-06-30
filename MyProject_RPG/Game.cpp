@@ -1,6 +1,8 @@
 #include "Game.h"
 #include "Fpscontrol.h"
 
+#include "SceneManager.h"
+
 //==============================
 // ƒQ[ƒ€ÀsŠÖ”
 //==============================
@@ -33,10 +35,10 @@ int Game::Run()
 		delta_time = fpsrate.BeginFrame();
 
 		// ƒQ[ƒ€XV
-		Update();
+		Update(delta_time);
 
 		// ƒQ[ƒ€•`‰æ
-		Draw();
+		Draw(delta_time);
 
 		// ‹K’èŠÔ‚Ü‚Å‘Ò‚Â
 		fpsrate.EndFrame();
@@ -69,6 +71,10 @@ bool Game::Initialize()
 	// 
 	//=================
 
+
+	SceneManager::Initialize();
+	SceneManager::SetCurrentScene("TestScene");
+
 	return true;
 }
 
@@ -84,15 +90,15 @@ void Game::Finalize()
 //==============================
 // ƒQ[ƒ€XV
 //==============================
-void Game::Update()
+void Game::Update(uint64_t delta)
 {
-
+	SceneManager::Update(delta);
 }
 
 //==============================
 // ƒQ[ƒ€•`‰æ
 //==============================
-void Game::Draw()
+void Game::Draw(uint64_t delta)
 {
-
+	SceneManager::Draw(delta);
 }
