@@ -1,0 +1,45 @@
+#pragma once
+#include "NonCopyable.h"
+
+class GameObject;
+
+/**
+ * @brief 全てのComponentの基底クラス
+ */
+class Component : private NonCopyable
+{
+public:
+	Component() = default;
+	virtual ~Component() = default;
+
+	//====================
+	// ライフサイクル
+	//====================
+	virtual void Initialize() {}
+
+	virtual void Finalize() {}
+
+	virtual void Update() {}
+
+	virtual void Draw() {}
+
+	//====================
+	// Owner
+	//====================
+	GameObject* GetOwner() const
+	{
+		return m_Owner;
+	}
+
+private:
+	friend class GameObject;
+
+	void SetOwner(GameObject* owner)
+	{
+		m_Owner = owner;
+	}
+
+private:
+	GameObject* m_Owner = nullptr;
+
+};

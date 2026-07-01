@@ -5,6 +5,7 @@
 #include <array>
 #include "IScene.h"
 #include "SceneClassFactory.h"
+#include "GameObjectManager.h"
 
 class TestScene : public IScene
 {
@@ -22,6 +23,11 @@ public:
 	// デバッグ用関数(予定)
 	//====================
 
+
+	//====================
+	// メンバ変数
+	//====================
+	GameObjectManager m_gameObjectManager;
 };
 
 REGISTER_CLASS(TestScene)
