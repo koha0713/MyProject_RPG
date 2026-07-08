@@ -7,6 +7,14 @@ constexpr auto ClassName = TEXT("就職作品 タジマ");		// ウィンドウクラス名
 constexpr auto WindowName = TEXT("就職作品 タジマ");	// ウィンドウ名
 
 //=========================
+// メンバ変数初期化
+//=========================
+HWND Window::m_hWnd;
+HINSTANCE Window::m_hInstance;
+uint32_t Window::m_width;
+uint32_t Window::m_height;
+
+//=========================
 // ウィンドウ生成
 //=========================
 bool Window::Create(

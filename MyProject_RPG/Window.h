@@ -43,9 +43,10 @@ public:
 	//====================
 	// Getter関数
 	//====================
-	HWND GetHandle() const { return m_hWnd; }
-	int GetWidth() const { return m_width; }
-	int GetHeight() const { return m_height; }
+	static HWND GetHandle() { return m_hWnd; }
+	static HINSTANCE GetInstanceHandl() { return m_hInstance; }
+	static uint32_t GetWidth() { return m_width; }
+	static uint32_t GetHeight() { return m_height; }
 
 private:
 	//====================
@@ -68,9 +69,9 @@ private:
 	//====================
 	// メンバ変数
 	//====================
-	HWND m_hWnd = nullptr;	// ウィンドウハンドル
-	HINSTANCE m_hInstance = nullptr;	// インスタンスハンドル
-	int m_width = 1920;
-	int m_height = 1080;
+	static HWND m_hWnd;	// ウィンドウハンドル
+	static HINSTANCE m_hInstance;	// インスタンスハンドル
+	static uint32_t m_width;
+	static uint32_t m_height;
 
 };

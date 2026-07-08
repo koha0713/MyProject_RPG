@@ -1,6 +1,8 @@
 #include "Game.h"
 #include "Fpscontrol.h"
 
+#include "Renderer.h"
+#include "DebugUI.h"
 #include "SceneManager.h"
 
 //==============================
@@ -67,9 +69,12 @@ bool Game::Initialize()
 		return false;
 	}
 
+	Renderer::Init();
+
 	//=================
-	// 
-	//=================
+	// デバッグUIの初期化
+	DebugUI::Initialize(Renderer::GetDevice(),
+		Renderer::GetDeviceContext());
 
 
 	SceneManager::Initialize();
@@ -83,6 +88,10 @@ bool Game::Initialize()
 //==============================
 void Game::Finalize()
 {
+
+	DebugUI::Finalize();
+	SceneManager::Finalize();
+	Renderer::Dispose();
 	// ウィンドウ破棄
 	m_window.reset();
 }
@@ -100,5 +109,8 @@ void Game::Update(uint64_t delta)
 //==============================
 void Game::Draw(uint64_t delta)
 {
+	Renderer::Begin();
 	SceneManager::Draw(delta);
+	DebugUI::Render();
+	Renderer::End();
 }
