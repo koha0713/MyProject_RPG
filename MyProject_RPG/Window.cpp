@@ -1,4 +1,12 @@
 #include "Window.h"
+// ImGui用
+#include "imgui/imgui_impl_win32.h"
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
+	HWND hWnd,
+	UINT msg,
+	WPARAM wParam,
+	LPARAM lParam);
 
 //=========================
 // ウィンドウネーム
@@ -104,6 +112,23 @@ bool Window::Create(
 
 }
 
+//==============================
+// ウィンドウ破棄
+//==============================
+void Window::Finalize()
+{
+	if (m_hWnd)
+	{
+		DestroyWindow(m_hWnd);
+		m_hWnd = nullptr;
+	}
+
+	if (m_hInstance)
+	{
+		UnregisterClass(ClassName, m_hInstance);
+		m_hInstance = nullptr;
+	}
+}
 
 //==============================
 // メッセージ更新
@@ -138,6 +163,13 @@ LRESULT CALLBACK Window::WindowProc(
 	WPARAM wParam,
 	LPARAM lParam)
 {
+	// ImGuiのウィンドウプロシージャを呼び出す
+	if(ImGui_ImplWin32_WndProcHandler(
+		hWnd, uMsg, wParam, lParam))
+	{
+		return true;
+	}
+
 	switch (uMsg)
 	{
 	case WM_DESTROY:

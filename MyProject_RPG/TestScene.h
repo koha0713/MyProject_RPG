@@ -29,5 +29,5 @@ public:
 	//====================
 	GameObjectManager m_gameObjectManager;
 };
-
+// Scene“o˜^
 REGISTER_CLASS(TestScene)

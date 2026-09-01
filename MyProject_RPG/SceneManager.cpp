@@ -42,7 +42,7 @@ void SceneManager::Draw(uint64_t delta)
 void SceneManager::SetCurrentScene(std::string currentscenename)
 {
 	m_currentSceneName = currentscenename;
-	auto obj = SceneClassFactory::GetInstance().create(currentscenename);
+	auto obj = SceneClassFactory::GetInstance().Create(currentscenename);
 	obj->Initialize();
 	m_scenes[m_currentSceneName] = std::move(obj);
 }

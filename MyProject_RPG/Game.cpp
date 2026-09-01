@@ -31,7 +31,7 @@ int Game::Run()
 
 		// フレームの待ち時間を計算
 		uint64_t delta_time = 0;
-		static FPS fpsrate(65);
+		static FPS fpsrate(120);
 		
 		// 前回実行からの経過時間を計算
 		delta_time = fpsrate.BeginFrame();
@@ -110,7 +110,10 @@ void Game::Update(uint64_t delta)
 void Game::Draw(uint64_t delta)
 {
 	Renderer::Begin();
+
+	DebugUI::BeginFrame();
 	SceneManager::Draw(delta);
-	DebugUI::Render();
+	DebugUI::EndFrame();
+	
 	Renderer::End();
 }

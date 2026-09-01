@@ -5738,7 +5738,7 @@ static void ShowDemoWindowTables()
     if (ImGui::TreeNode("Vertical scrolling, with clipping"))
     {
         HelpMarker(
-            "Here we activate ScrollY, which will create a child window container to allow hosting scrollable contents.\n\n"
+            "Here we activate ScrollY, which will Create a child window container to allow hosting scrollable contents.\n\n"
             "We also demonstrate using ImGuiListClipper to virtualize the submission of many items.");
         static ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable;
 
@@ -9031,7 +9031,7 @@ static void ShowExampleAppAutoResize(bool* p_open)
     ImGui::TextUnformatted(
         "Window will resize every-frame to the size of its content.\n"
         "Note that you probably don't want to query the window size to\n"
-        "output your content because that would create a feedback loop.");
+        "output your content because that would Create a feedback loop.");
     ImGui::SliderInt("Number of lines", &lines, 1, 20);
     for (int i = 0; i < lines; i++)
         ImGui::Text("%*sThis is line %d", i * 4, "", i); // Pad with space to extend size horizontally

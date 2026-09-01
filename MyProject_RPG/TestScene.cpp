@@ -1,4 +1,5 @@
 #include "TestScene.h"
+#include "DebugUI.h"
 
 TestScene::TestScene()
 {
@@ -37,4 +38,13 @@ void TestScene::Draw(uint64_t delta)
 {
 	// GameObject‚Ì•`‰æ
 	m_gameObjectManager.Draw();
+
+	// ƒfƒoƒbƒOUI‚Ì•`‰æ
+	DebugUI::RegisterDebugFunction([this]()
+		{
+			ImGui::Begin("Test");
+			ImGui::Text("‚ ‚ ‚ ");
+			ImGui::End();
+		});
+
 }

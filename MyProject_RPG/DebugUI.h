@@ -24,22 +24,29 @@ public:
 	 * @param device Direct3D11デバイス
 	 * @param context Direct3D11デバイスコンテキスト
 	 */
-	static void Initialize(ID3D11Device* device, ID3D11DeviceContext* context);
+	static void Initialize(
+		ID3D11Device* device,
+		ID3D11DeviceContext* context);
 
 	/**
 	 * @brief デバッグUIの終了処理
 	 */
 	static void Finalize();
 
-	 /**
-	  * @brief デバッグUIの描画
-	  */
-	static void Render();
+	/**
+	 * @brief ImGuiフレーム開始
+	 */
+	static void BeginFrame();
+	/**
+	 * @brief ImGuiフレーム終了・描画
+	 */
+	static void EndFrame();
 
 	/**
 	 * @brief デバッグUI関数を登録
 	 * @param func 登録するデバッグUI関数
 	 */
-	static void RegisterDebugFunction(const std::function<void()>& func);
+	static void RegisterDebugFunction(
+		const std::function<void()>& func);
 
 };

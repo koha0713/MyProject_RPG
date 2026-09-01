@@ -59,7 +59,7 @@ void Renderer::Init()
     swapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
     swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
     swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDesc.OutputWindow = Window::GetHandle();
+    swapChainDesc.OutputWindow = Window::GetWindow();
     swapChainDesc.SampleDesc.Count = 1;
     swapChainDesc.SampleDesc.Quality = 0;
     swapChainDesc.Windowed = TRUE;
@@ -94,7 +94,7 @@ void Renderer::Init()
     textureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
     hr = m_Device->CreateTexture2D(&textureDesc, nullptr, depthStencil.GetAddressOf());
     if (FAILED(hr)) {
-        throw std::runtime_error("Failed to create depthStencil.");
+        throw std::runtime_error("Failed to Create depthStencil.");
     }
 
     D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc{};
@@ -102,7 +102,7 @@ void Renderer::Init()
     depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
     hr = m_Device->CreateDepthStencilView(depthStencil.Get(), &depthStencilViewDesc, m_DepthStencilView.GetAddressOf());
     if (FAILED(hr)) {
-        throw std::runtime_error("Failed to create depthStencilView.");
+        throw std::runtime_error("Failed to Create depthStencilView.");
     }
 
     m_DeviceContext->OMSetRenderTargets(1, m_RenderTargetView.GetAddressOf(), m_DepthStencilView.Get());

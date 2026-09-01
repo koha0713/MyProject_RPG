@@ -36,7 +36,7 @@ void DebugUI::Initialize(ID3D11Device* device, ID3D11DeviceContext* context)
 	io.Fonts->Build(); // フォントをビルド
 
 	// DirectX11用のImGuiバックエンドを初期化
-	ImGui_ImplWin32_Init(Window::GetHandle());
+	ImGui_ImplWin32_Init(Window::GetWindow());
 	ImGui_ImplDX11_Init(device, context);
 }
 
@@ -48,33 +48,48 @@ void DebugUI::Finalize()
 	ImGui::DestroyContext();
 }
 
-void DebugUI::Render()
+void DebugUI::BeginFrame()
 {
 	// ImGuiのフレーム開始
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
+}
 
-	// デバッグUIの描画
-	ImGui::Begin("Debug UI"); // デバッグUIウィンドウの開始
-	ImGuiIO& io = ImGui::GetIO();
+void DebugUI::EndFrame()
+{
+	ImGui::Begin("Debug UI"); // デバッグUIウィンドウの開
+
+	ImGuiIO& io = ImGui::GetIO();	// ImGuiのIO構造体を取得
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-		1000.0f / io.Framerate, io.Framerate);
+		1000.0f / io.Framerate,
+		io.Framerate);
+
 	ImGui::End(); // デバッグUIウィンドウの終了
 
 	// 登録されたデバッグUI関数を呼び出す
-	for (const auto& func : m_debugUIFunctions)
+	for(const auto& func : m_debugUIFunctions)
 	{
 		func();
 	}
 
-	// ImGuiの描画
+	// ImGui終了処理
 	ImGui::Render();
-	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
+	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
 void DebugUI::RegisterDebugFunction(const std::function<void()>& func)
 {
-	m_debugUIFunctions.push_back(std::move(func));
+	m_debugUIFunctions.push_back(func);
 }
+
+/*
+	// デバッグUIの描画(見本)
+	DebugUI::RegisterDebugFunction([this]()
+		{
+			ImGui::Begin("Test");
+			ImGui::Text("あああ");
+			ImGui::End();
+		});
+*/

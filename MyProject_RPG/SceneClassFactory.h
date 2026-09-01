@@ -45,7 +45,7 @@ public:
 	 * @param name 生成したいクラス名(RegisterClassで登録されたキー)
 	 * @return std::unique_ptr<IScene> 該当クラスのユニークポインタ(見つからなければnullptr)
 	 */
-	std::unique_ptr<IScene> create(const std::string& name) 
+	std::unique_ptr<IScene> Create(const std::string& name) 
 	{
 		auto it = m_registry.find(name);
 		if (it != m_registry.end()) {
