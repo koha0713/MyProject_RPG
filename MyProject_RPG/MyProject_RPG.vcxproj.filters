@@ -34,6 +34,9 @@
     <Filter Include="ソース ファイル\Renderer">
       <UniqueIdentifier>{8ae1c8e0-d55f-43d8-966a-7e38b6191f12}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\新規作成ファイル">
+      <UniqueIdentifier>{4258e661-fcfb-4fb0-8493-6de21a78b9d7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -102,6 +105,12 @@
     <ClInclude Include="CommonType.h">
       <Filter>ソース ファイル\System</Filter>
     </ClInclude>
+    <ClInclude Include="ModelComponent.h">
+      <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="ResourceManager.h">
+      <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -148,6 +157,9 @@
     </ClCompile>
     <ClCompile Include="Renderer.cpp">
       <Filter>ソース ファイル\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="ResourceManager.cpp">
+      <Filter>ソース ファイル\新規作成ファイル</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
