@@ -1,477 +1,1225 @@
 /**
  * @file Renderer.cpp
- * @brief DirectX を用いたレンダリング処理を実装する Renderer クラスの定義（実装部）。
- *
- * このファイルでは、Direct3D デバイス、スワップチェーン、レンダーターゲット、定数バッファなどの
- * 初期化と解放、描画の開始・終了処理、各種レンダリング状態（深度、ブレンド、マトリックスなど）の設定を行います。
+ * @brief DirectX11 Renderer実装
  */
 
-#include <stdexcept>
 #include "Renderer.h"
+
+#include <cstddef>
+#include <d3dcompiler.h>
+
 #include "Window.h"
+#include "MeshBuffer.h"
+#include "ModelData.h"
 
- //------------------------------------------------------------------------------
- // スタティックメンバ変数の初期化
- //------------------------------------------------------------------------------
+ //=====================================================
+ // 内部定義
+ //=====================================================
 
-D3D_FEATURE_LEVEL       Renderer::m_FeatureLevel = D3D_FEATURE_LEVEL_11_0;
-
-ComPtr<ID3D11Device> Renderer::m_Device;
-ComPtr<ID3D11DeviceContext> Renderer::m_DeviceContext;
-ComPtr<IDXGISwapChain> Renderer::m_SwapChain;
-ComPtr<ID3D11RenderTargetView> Renderer::m_RenderTargetView;
-ComPtr<ID3D11DepthStencilView> Renderer::m_DepthStencilView;
-
-ComPtr<ID3D11Buffer> Renderer::m_WorldBuffer;
-ComPtr<ID3D11Buffer> Renderer::m_ViewBuffer;
-ComPtr<ID3D11Buffer> Renderer::m_ProjectionBuffer;
-ComPtr<ID3D11Buffer> Renderer::m_MaterialBuffer;
-ComPtr<ID3D11Buffer> Renderer::m_LightBuffer;
-
-ComPtr<ID3D11DepthStencilState> Renderer::m_DepthStateEnable;
-ComPtr<ID3D11DepthStencilState> Renderer::m_DepthStateDisable;
-
-ComPtr<ID3D11BlendState> Renderer::m_BlendState[MAX_BLENDSTATE];
-ComPtr<ID3D11BlendState> Renderer::m_BlendStateATC;
-
-LIGHT Renderer::m_Light;
-
-//------------------------------------------------------------------------------
-// Renderer クラスの各関数の実装
-//------------------------------------------------------------------------------
-
-/**
- * @brief Renderer の初期化処理を行います。
- *
- * Direct3D デバイスとスワップチェーンの作成、レンダーターゲットビュー、デプスステンシルビュー、
- * ビューポート、ラスタライザ、ブレンドステート、深度ステンシルステート、サンプラーステート、
- * 定数バッファの生成、初期ライトおよびマテリアルの設定などを実施します。
- */
-void Renderer::Init()
+namespace
 {
-    HRESULT hr = S_OK;
+	/**
+	 * @brief モデル描画用ConstantBuffer
+	 *
+	 * @details
+	 * HLSL側のModelConstantBufferと
+	 * メモリレイアウトを一致させる必要がある。
+	 *
+	 * ConstantBufferは16byte単位である必要がある。
+	 *
+	 * Matrix4x4 : 64byte
+	 * Vector4   : 16byte
+	 * 合計      : 80byte
+	 */
+	struct ModelConstantBuffer
+	{
+		Matrix4x4 WorldViewProjection;
 
-    DXGI_SWAP_CHAIN_DESC swapChainDesc{};
-    swapChainDesc.BufferCount = 1;
-    swapChainDesc.BufferDesc.Width = Window::GetWidth();
-    swapChainDesc.BufferDesc.Height = Window::GetHeight();
-    swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    swapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
-    swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
-    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDesc.OutputWindow = Window::GetWindow();
-    swapChainDesc.SampleDesc.Count = 1;
-    swapChainDesc.SampleDesc.Quality = 0;
-    swapChainDesc.Windowed = TRUE;
+		Vector4 DiffuseColor;
+	};
 
-    hr = D3D11CreateDeviceAndSwapChain(
-        nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-        nullptr, 0, D3D11_SDK_VERSION, &swapChainDesc,
-        m_SwapChain.GetAddressOf(),
-        m_Device.GetAddressOf(),
-        &m_FeatureLevel,
-        m_DeviceContext.GetAddressOf());
+	static_assert(
+		sizeof(ModelConstantBuffer) % 16 == 0,
+		"ConstantBuffer size must be 16-byte aligned.");
 
-    ComPtr<ID3D11Texture2D> renderTarget;
-    hr = m_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(renderTarget.GetAddressOf()));
-    if (SUCCEEDED(hr) && renderTarget) {
-        m_Device->CreateRenderTargetView(renderTarget.Get(), nullptr, m_RenderTargetView.GetAddressOf());
-    }
-    else {
-        throw std::runtime_error("Failed to retrieve render target buffer.");
-    }
+	/**
+	 * @brief HLSLファイルをコンパイル
+	 */
+	bool CompileShader(
+		const wchar_t* filePath,
+		const char* entryPoint,
+		const char* shaderModel,
+		ComPtr<ID3DBlob>& shaderBlob)
+	{
+		UINT compileFlags = 0;
 
-    ComPtr<ID3D11Texture2D> depthStencil;
-    D3D11_TEXTURE2D_DESC textureDesc{};
-    textureDesc.Width = swapChainDesc.BufferDesc.Width;
-    textureDesc.Height = swapChainDesc.BufferDesc.Height;
-    textureDesc.MipLevels = 1;
-    textureDesc.ArraySize = 1;
-    //  textureDesc.Format = DXGI_FORMAT_D16_UNORM;
-    textureDesc.Format = DXGI_FORMAT_D32_FLOAT;
-    textureDesc.SampleDesc = swapChainDesc.SampleDesc;
-    textureDesc.Usage = D3D11_USAGE_DEFAULT;
-    textureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-    hr = m_Device->CreateTexture2D(&textureDesc, nullptr, depthStencil.GetAddressOf());
-    if (FAILED(hr)) {
-        throw std::runtime_error("Failed to Create depthStencil.");
-    }
+#ifdef _DEBUG
 
-    D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc{};
-    depthStencilViewDesc.Format = textureDesc.Format;
-    depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-    hr = m_Device->CreateDepthStencilView(depthStencil.Get(), &depthStencilViewDesc, m_DepthStencilView.GetAddressOf());
-    if (FAILED(hr)) {
-        throw std::runtime_error("Failed to Create depthStencilView.");
-    }
+		// DebugBuildではShaderデバッグ情報を付ける
+		compileFlags |=
+			D3DCOMPILE_DEBUG |
+			D3DCOMPILE_SKIP_OPTIMIZATION;
 
-    m_DeviceContext->OMSetRenderTargets(1, m_RenderTargetView.GetAddressOf(), m_DepthStencilView.Get());
+#endif
 
-    D3D11_VIEWPORT viewport;
-    viewport.Width = static_cast<FLOAT>(Window::GetWidth());
-    viewport.Height = static_cast<FLOAT>(Window::GetHeight());
-    viewport.MinDepth = 0.0f;
-    viewport.MaxDepth = 1.0f;
-    viewport.TopLeftX = 0;
-    viewport.TopLeftY = 0;
-    m_DeviceContext->RSSetViewports(1, &viewport);
+		ComPtr<ID3DBlob> errorBlob;
 
+		const HRESULT hr =
+			D3DCompileFromFile(
+				filePath,
+				nullptr,
+				D3D_COMPILE_STANDARD_FILE_INCLUDE,
+				entryPoint,
+				shaderModel,
+				compileFlags,
+				0,
+				shaderBlob.GetAddressOf(),
+				errorBlob.GetAddressOf());
 
-    // --- ラスタライザステート設定 ---
-    D3D11_RASTERIZER_DESC rasterizerDesc{};
-    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
-    rasterizerDesc.CullMode = D3D11_CULL_BACK;
-    rasterizerDesc.DepthClipEnable = TRUE;
+		if (FAILED(hr))
+		{
+			// ShaderCompilerのエラーを
+			// VisualStudio出力へ表示する
+			if (errorBlob)
+			{
+				OutputDebugStringA(
+					static_cast<const char*>(
+						errorBlob->GetBufferPointer()));
+			}
 
-    ComPtr<ID3D11RasterizerState> rs;
-    m_Device->CreateRasterizerState(&rasterizerDesc, rs.GetAddressOf());
-    m_DeviceContext->RSSetState(rs.Get());
+			return false;
+		}
 
-    // --- ブレンドステートの生成 ---
-    D3D11_BLEND_DESC BlendDesc{};
-    BlendDesc.AlphaToCoverageEnable = FALSE;
-    BlendDesc.IndependentBlendEnable = TRUE;
-    BlendDesc.RenderTarget[0].BlendEnable = FALSE;
-    BlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-    BlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-    BlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-    BlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-    BlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
-    BlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-    BlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-
-    m_Device->CreateBlendState(&BlendDesc, m_BlendState[0].GetAddressOf());
-    BlendDesc.RenderTarget[0].BlendEnable = TRUE;
-    m_Device->CreateBlendState(&BlendDesc, m_BlendState[1].GetAddressOf());
-    m_Device->CreateBlendState(&BlendDesc, m_BlendStateATC.GetAddressOf());
-
-    BlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
-    m_Device->CreateBlendState(&BlendDesc, m_BlendState[2].GetAddressOf());
-
-    BlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_REV_SUBTRACT;
-    m_Device->CreateBlendState(&BlendDesc, m_BlendState[3].GetAddressOf());
-
-    SetBlendState(BS_ALPHABLEND);
-
-    // --- 深度ステンシルステートの設定 ---
-    D3D11_DEPTH_STENCIL_DESC depthStencilDesc{};
-    depthStencilDesc.DepthEnable = TRUE;
-    depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-    depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
-    depthStencilDesc.StencilEnable = FALSE;
-
-    m_Device->CreateDepthStencilState(&depthStencilDesc, m_DepthStateEnable.GetAddressOf());
-
-    depthStencilDesc.DepthEnable = FALSE;
-    depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-    m_Device->CreateDepthStencilState(&depthStencilDesc, m_DepthStateDisable.GetAddressOf());
-
-    m_DeviceContext->OMSetDepthStencilState(m_DepthStateEnable.Get(), 0);
-
-    // --- サンプラーステート設定 ---
-    D3D11_SAMPLER_DESC samplerDesc{};
-    samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
-    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-    //    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-    //    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-    //    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-    samplerDesc.MaxAnisotropy = 4;
-    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-
-    ComPtr<ID3D11SamplerState> samplerState;
-    m_Device->CreateSamplerState(&samplerDesc, samplerState.GetAddressOf());
-    m_DeviceContext->PSSetSamplers(0, 1, samplerState.GetAddressOf());
-
-    // --- 定数バッファ生成 ---
-    D3D11_BUFFER_DESC bufferDesc{};
-    bufferDesc.ByteWidth = sizeof(Matrix4x4);
-    bufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    bufferDesc.CPUAccessFlags = 0;
-    bufferDesc.MiscFlags = 0;
-    bufferDesc.StructureByteStride = sizeof(float);
-
-    m_Device->CreateBuffer(&bufferDesc, nullptr, m_WorldBuffer.GetAddressOf());
-    m_DeviceContext->VSSetConstantBuffers(0, 1, m_WorldBuffer.GetAddressOf());
-
-    m_Device->CreateBuffer(&bufferDesc, nullptr, m_ViewBuffer.GetAddressOf());
-    m_DeviceContext->VSSetConstantBuffers(1, 1, m_ViewBuffer.GetAddressOf());
-
-    m_Device->CreateBuffer(&bufferDesc, nullptr, m_ProjectionBuffer.GetAddressOf());
-    m_DeviceContext->VSSetConstantBuffers(2, 1, m_ProjectionBuffer.GetAddressOf());
-
-    bufferDesc.ByteWidth = sizeof(MATERIAL);
-    m_Device->CreateBuffer(&bufferDesc, nullptr, m_MaterialBuffer.GetAddressOf());
-
-    bufferDesc.ByteWidth = sizeof(LIGHT);
-    m_Device->CreateBuffer(&bufferDesc, nullptr, m_LightBuffer.GetAddressOf());
-
-    // --- ライト初期化 ---
-    LIGHT light{};
-    light.Enable = true;
-    light.Direction = Vector4(0.5f, -1.0f, 0.8f, 0.0f);
-    light.Direction.Normalize();
-    light.Ambient = Color(0.2f, 0.2f, 0.2f, 1.0f);
-    light.Diffuse = Color(1.5f, 1.5f, 1.5f, 1.0f);
-    SetLight(light);
-
-    // --- マテリアル初期化 ---
-    MATERIAL material{};
-    material.Diffuse = Color(1.0f, 1.0f, 1.0f, 1.0f);
-    material.Ambient = Color(1.0f, 1.0f, 1.0f, 1.0f);
-    SetMaterial(material);
-
-    m_DeviceContext->VSSetConstantBuffers(3, 1, m_MaterialBuffer.GetAddressOf());
-    m_DeviceContext->PSSetConstantBuffers(3, 1, m_MaterialBuffer.GetAddressOf());
-
-    m_DeviceContext->VSSetConstantBuffers(4, 1, m_LightBuffer.GetAddressOf());
-    m_DeviceContext->PSSetConstantBuffers(4, 1, m_LightBuffer.GetAddressOf());
-
+		return true;
+	}
 }
 
-/**
- * @brief 使用していたリソースを全て解放します。
- *
- * @details
- * Direct3Dのリソースは明示的に解放しないとメモリリークが発生するため、
- * ComPtr::Reset()で安全にリソースを開放しています。
- */
+//=====================================================
+// staticメンバ
+//=====================================================
+
+D3D_FEATURE_LEVEL
+Renderer::m_FeatureLevel =
+D3D_FEATURE_LEVEL_11_0;
+
+ComPtr<ID3D11Device>
+Renderer::m_Device;
+
+ComPtr<ID3D11DeviceContext>
+Renderer::m_DeviceContext;
+
+ComPtr<IDXGISwapChain>
+Renderer::m_SwapChain;
+
+ComPtr<ID3D11RenderTargetView>
+Renderer::m_RenderTargetView;
+
+ComPtr<ID3D11DepthStencilView>
+Renderer::m_DepthStencilView;
+
+
+//====================
+// Depth
+//====================
+
+ComPtr<ID3D11DepthStencilState>
+Renderer::m_DepthStateEnable;
+
+ComPtr<ID3D11DepthStencilState>
+Renderer::m_DepthStateDisable;
+
+
+//====================
+// Blend
+//====================
+
+ComPtr<ID3D11BlendState>
+Renderer::m_BlendStates[
+	static_cast<size_t>(
+		BlendState::Count)];
+
+
+//====================
+// Rasterizer
+//====================
+
+ComPtr<ID3D11RasterizerState>
+Renderer::m_RasterizerSolidCull;
+
+ComPtr<ID3D11RasterizerState>
+Renderer::m_RasterizerSolidNoCull;
+
+ComPtr<ID3D11RasterizerState>
+Renderer::m_RasterizerWireframeCull;
+
+ComPtr<ID3D11RasterizerState>
+Renderer::m_RasterizerWireframeNoCull;
+
+bool Renderer::m_CullingEnabled = true;
+
+D3D11_FILL_MODE
+Renderer::m_CurrentFillMode =
+D3D11_FILL_SOLID;
+
+
+//====================
+// Model
+//====================
+
+ComPtr<ID3D11VertexShader>
+Renderer::m_ModelVertexShader;
+
+ComPtr<ID3D11PixelShader>
+Renderer::m_ModelPixelShader;
+
+ComPtr<ID3D11InputLayout>
+Renderer::m_ModelInputLayout;
+
+ComPtr<ID3D11Buffer>
+Renderer::m_ModelConstantBuffer;
+
+
+//=====================================================
+// Initialize
+//=====================================================
+
+bool Renderer::Init()
+{
+	//====================
+	// Device
+	//====================
+
+	if (!CreateDevice())
+	{
+		return false;
+	}
+
+	//====================
+	// RenderTarget
+	//====================
+
+	if (!CreateRenderTarget())
+	{
+		return false;
+	}
+
+	//====================
+	// DepthBuffer
+	//====================
+
+	if (!CreateDepthStencil())
+	{
+		return false;
+	}
+
+	// RenderTargetとDepthBufferを設定
+	ID3D11RenderTargetView* renderTargets[] =
+	{
+		m_RenderTargetView.Get()
+	};
+
+	m_DeviceContext->OMSetRenderTargets(
+		1,
+		renderTargets,
+		m_DepthStencilView.Get());
+
+	//====================
+	// Viewport
+	//====================
+
+	CreateViewport();
+
+	//====================
+	// RenderState
+	//====================
+
+	if (!CreateRenderStates())
+	{
+		return false;
+	}
+
+	//====================
+	// Model描画Pipeline
+	//====================
+
+	if (!CreateModelPipeline())
+	{
+		return false;
+	}
+
+	//====================
+	// 初期State
+	//====================
+
+	SetDepthEnable(true);
+
+	SetBlendState(
+		BlendState::None);
+
+	SetCulling(true);
+
+	SetFillMode(
+		D3D11_FILL_SOLID);
+
+	return true;
+}
+
+
+//=====================================================
+// Dispose
+//=====================================================
+
 void Renderer::Dispose()
 {
-    for (auto& bs : m_BlendState) {
-        bs.Reset();
-    }
-    m_BlendStateATC.Reset();
-    m_DepthStateEnable.Reset();
-    m_DepthStateDisable.Reset();
-    m_WorldBuffer.Reset();
-    m_ViewBuffer.Reset();
-    m_ProjectionBuffer.Reset();
-    m_LightBuffer.Reset();
-    m_MaterialBuffer.Reset();
-    m_RenderTargetView.Reset();
-    m_SwapChain.Reset();
-    m_DeviceContext.Reset();
-    m_Device.Reset();
+	//====================
+	// Model
+	//====================
+
+	m_ModelConstantBuffer.Reset();
+	m_ModelInputLayout.Reset();
+
+	m_ModelPixelShader.Reset();
+	m_ModelVertexShader.Reset();
+
+	//====================
+	// Rasterizer
+	//====================
+
+	m_RasterizerWireframeNoCull.Reset();
+	m_RasterizerWireframeCull.Reset();
+
+	m_RasterizerSolidNoCull.Reset();
+	m_RasterizerSolidCull.Reset();
+
+	//====================
+	// Blend
+	//====================
+
+	for (auto& blendState : m_BlendStates)
+	{
+		blendState.Reset();
+	}
+
+	//====================
+	// Depth
+	//====================
+
+	m_DepthStateDisable.Reset();
+	m_DepthStateEnable.Reset();
+
+	//====================
+	// RenderTarget
+	//====================
+
+	m_DepthStencilView.Reset();
+	m_RenderTargetView.Reset();
+
+	//====================
+	// DXGI / D3D
+	//====================
+
+	m_SwapChain.Reset();
+
+	m_DeviceContext.Reset();
+	m_Device.Reset();
 }
 
-/**
- * @brief 1フレームの描画を開始します。
- *
- * @details
- * - 画面を指定色（青色）でクリア
- * - 深度バッファも初期化
- *
- * 毎フレーム必ず呼び出して、前のフレームの残像を消します。
- */
+
+//=====================================================
+// Frame
+//=====================================================
+
 void Renderer::Begin()
 {
-    float clearColor[4] = { 0.10f, 0.18f, 0.55f, 1.0f };
+	if (!m_DeviceContext ||
+		!m_RenderTargetView ||
+		!m_DepthStencilView)
+	{
+		return;
+	}
 
-    m_DeviceContext->ClearRenderTargetView(m_RenderTargetView.Get(), clearColor);
-    m_DeviceContext->ClearDepthStencilView(m_DepthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+	// 背景色
+	const float clearColor[4] =
+	{
+		0.10f,
+		0.18f,
+		0.25f,
+		1.0f
+	};
+
+	// ColorBufferクリア
+	m_DeviceContext->
+		ClearRenderTargetView(
+			m_RenderTargetView.Get(),
+			clearColor);
+
+	// DepthBufferクリア
+	m_DeviceContext->
+		ClearDepthStencilView(
+			m_DepthStencilView.Get(),
+			D3D11_CLEAR_DEPTH,
+			1.0f,
+			0);
 }
 
-/**
- * @brief 描画を終了して、画面に表示します。
- *
- * @details
- * Presentでバックバッファとフロントバッファを入れ替えます。
- */
+
 void Renderer::End()
 {
-    m_SwapChain->Present(1, 0);
-}
+	if (!m_SwapChain)
+	{
+		return;
+	}
 
-/**
- * @brief 深度テスト（Zバッファ）の有効/無効を切り替えます。
- * @param Enable trueなら有効、falseなら無効
- * @details
- * 深度テストは、奥にあるものを正しく手前のものの裏に描画するための機能です。
- */
-void Renderer::SetDepthEnable(bool Enable)
-{
-    m_DeviceContext->OMSetDepthStencilState(
-        Enable ? m_DepthStateEnable.Get() : m_DepthStateDisable.Get(), 0);
-}
-
-/**
- * @brief Alpha To Coverage（半透明表現用）のON/OFFを切り替えます。
- * @param Enable trueならATC有効、falseなら無効
- * @details
- * マルチサンプリング＋アルファブレンドの高度な合成を行う機能です。
- */
-void Renderer::SetATCEnable(bool Enable)
-{
-    float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    m_DeviceContext->OMSetBlendState(
-        Enable ? m_BlendStateATC.Get() : m_BlendState[0].Get(),
-        blendFactor, 0xffffffff);
-}
-
-/**
- * @brief 2D描画用に、単純なワールド・ビュー・プロジェクション行列をセットします。
- *
- * @details
- * 画面左上を原点とする2D直交投影行列を生成し、各行列バッファに設定します。
- */
-void Renderer::SetWorldViewProjection2D()
-{
-    Matrix4x4 world = Matrix4x4::Identity.Transpose();
-    m_DeviceContext->UpdateSubresource(m_WorldBuffer.Get(), 0, nullptr, &world, 0, 0);
-
-    Matrix4x4 view = Matrix4x4::Identity.Transpose();
-    m_DeviceContext->UpdateSubresource(m_ViewBuffer.Get(), 0, nullptr, &view, 0, 0);
-
-    Matrix4x4 projection =
-        DirectX::XMMatrixOrthographicOffCenterLH(
-            0.0f,
-            static_cast<float>(Window::GetWidth()),
-            static_cast<float>(Window::GetHeight()),
-            0.0f,
-            0.0f,
-            1.0f);
-    projection = projection.Transpose();
-    m_DeviceContext->UpdateSubresource(m_ProjectionBuffer.Get(), 0, nullptr, &projection, 0, 0);
-}
-
-/**
- * @brief 任意のワールド行列をシェーダーにセットします。
- * @param WorldMatrix ワールド行列へのポインタ
- */
-void Renderer::SetWorldMatrix(Matrix4x4* WorldMatrix)
-{
-    Matrix4x4 mat = WorldMatrix->Transpose();
-    m_DeviceContext->UpdateSubresource(m_WorldBuffer.Get(), 0, nullptr, &mat, 0, 0);
-}
-
-/**
- * @brief 任意のビュー行列をシェーダーにセットします。
- * @param ViewMatrix ビュー行列へのポインタ
- */
-void Renderer::SetViewMatrix(Matrix4x4* ViewMatrix)
-{
-    Matrix4x4 mat = ViewMatrix->Transpose();
-    m_DeviceContext->UpdateSubresource(m_ViewBuffer.Get(), 0, nullptr, &mat, 0, 0);
-}
-
-/**
- * @brief 任意のプロジェクション行列をシェーダーにセットします。
- * @param ProjectionMatrix 射影行列へのポインタ
- */
-void Renderer::SetProjectionMatrix(Matrix4x4* ProjectionMatrix)
-{
-    Matrix4x4 mat = ProjectionMatrix->Transpose();
-    m_DeviceContext->UpdateSubresource(m_ProjectionBuffer.Get(), 0, nullptr, &mat, 0, 0);
-}
-
-/**
- * @brief マテリアル（表面材質）情報をセットします。
- * @param Material マテリアル情報
- */
-void Renderer::SetMaterial(MATERIAL Material)
-{
-    m_DeviceContext->UpdateSubresource(m_MaterialBuffer.Get(), 0, nullptr, &Material, 0, 0);
-}
-
-/**
- * @brief ライト（光源）情報をセットします。
- * @param Light ライト情報
- */
-void Renderer::SetLight(LIGHT Light)
-{
-    m_DeviceContext->UpdateSubresource(m_LightBuffer.Get(), 0, nullptr, &Light, 0, 0);
-    m_DeviceContext->VSSetConstantBuffers(4, 1, m_LightBuffer.GetAddressOf());
-    m_DeviceContext->PSSetConstantBuffers(4, 1, m_LightBuffer.GetAddressOf());
-    m_Light = Light;
-}
-
-/**
- * @brief ライト（光源）情報を取得します
- * @param Light ライト情報
- */
-LIGHT Renderer::GetLight()
-{
-    return m_Light;
-}
-
-/**
- * @brief 指定したブレンドステートをセットします。
- * @param nBlendState 使用するブレンドステートの種類
- */
-void Renderer::SetBlendState(int nBlendState)
-{
-    if (nBlendState >= 0 && nBlendState < MAX_BLENDSTATE) {
-        float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-        m_DeviceContext->OMSetBlendState(m_BlendState[nBlendState].Get(), blendFactor, 0xffffffff);
-    }
-}
-
-/**
- * @brief 面の除外（カリング）を無効または有効にします。
- * @param cullflag trueでカリングON（通常）、falseでカリングOFF（両面描画）
- */
-void Renderer::DisableCulling(bool cullflag)
-{
-    D3D11_RASTERIZER_DESC rasterizerDesc{};
-    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
-    rasterizerDesc.CullMode = cullflag ? D3D11_CULL_BACK : D3D11_CULL_NONE;
-    rasterizerDesc.FrontCounterClockwise = FALSE;
-    rasterizerDesc.DepthBias = 0;
-    rasterizerDesc.SlopeScaledDepthBias = 0.0f;
-    rasterizerDesc.DepthClipEnable = TRUE;
-    rasterizerDesc.ScissorEnable = FALSE;
-    rasterizerDesc.MultisampleEnable = FALSE;
-    rasterizerDesc.AntialiasedLineEnable = FALSE;
-
-    ComPtr<ID3D11RasterizerState> pRasterizerState;
-    HRESULT hr = m_Device->CreateRasterizerState(&rasterizerDesc, pRasterizerState.GetAddressOf());
-    if (FAILED(hr))
-        return;
-
-    m_DeviceContext->RSSetState(pRasterizerState.Get());
+	// VSync有効
+	m_SwapChain->Present(
+		1,
+		0);
 }
 
 
-/**
- * @brief ラスタライザステートのフィルモード（塗りつぶし/ワイヤーフレーム）を設定します。
- * @param FillMode D3D11_FILL_SOLID または D3D11_FILL_WIREFRAME
- */
-void Renderer::SetFillMode(D3D11_FILL_MODE FillMode)
-{
-    D3D11_RASTERIZER_DESC rasterizerDesc{};
-    rasterizerDesc.FillMode = FillMode;
-    rasterizerDesc.CullMode = D3D11_CULL_BACK;
-    rasterizerDesc.DepthClipEnable = TRUE;
-    rasterizerDesc.MultisampleEnable = FALSE;
+//=====================================================
+// Device
+//=====================================================
 
-    ComPtr<ID3D11RasterizerState> rs;
-    m_Device->CreateRasterizerState(&rasterizerDesc, rs.GetAddressOf());
-    m_DeviceContext->RSSetState(rs.Get());
+bool Renderer::CreateDevice()
+{
+	DXGI_SWAP_CHAIN_DESC desc{};
+
+	desc.BufferCount = 1;
+
+	desc.BufferDesc.Width =
+		Window::GetWidth();
+
+	desc.BufferDesc.Height =
+		Window::GetHeight();
+
+	desc.BufferDesc.Format =
+		DXGI_FORMAT_R8G8B8A8_UNORM;
+
+	desc.BufferDesc.RefreshRate.Numerator =
+		60;
+
+	desc.BufferDesc.RefreshRate.Denominator =
+		1;
+
+	desc.BufferUsage =
+		DXGI_USAGE_RENDER_TARGET_OUTPUT;
+
+	desc.OutputWindow =
+		Window::GetWindow();
+
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+
+	desc.Windowed = TRUE;
+
+	UINT createFlags =
+		D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+
+#ifdef _DEBUG
+
+	// DirectX DebugLayer
+	// Windows側にGraphics Toolsが
+	// インストールされている必要がある。
+	createFlags |=
+		D3D11_CREATE_DEVICE_DEBUG;
+
+#endif
+
+	const HRESULT hr =
+		D3D11CreateDeviceAndSwapChain(
+			nullptr,
+			D3D_DRIVER_TYPE_HARDWARE,
+			nullptr,
+			createFlags,
+			nullptr,
+			0,
+			D3D11_SDK_VERSION,
+			&desc,
+			m_SwapChain.GetAddressOf(),
+			m_Device.GetAddressOf(),
+			&m_FeatureLevel,
+			m_DeviceContext.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+#ifdef _DEBUG
+		// DebugLayerが無い環境もあるため、
+		// 必要ならReleaseBuildまたはFlags調整を行う。
+#endif
+		return false;
+	}
+
+	return true;
 }
 
-/**
- * @brief 深度テストを常にパスさせる設定に変更します。
- *
- * @details
- * - 深度テストは有効（DepthEnable = TRUE）
- * - ただし、常に「描画OK」（DepthFunc = D3D11_COMPARISON_ALWAYS）
- * - 深度バッファにも書き込む（DepthWriteMask = ALL）
- */
-void Renderer::SetDepthAllwaysWrite()
-{
-    D3D11_DEPTH_STENCIL_DESC depthStencilDesc{};
-    depthStencilDesc.DepthEnable = TRUE;
-    depthStencilDesc.DepthFunc = D3D11_COMPARISON_ALWAYS; // 常に深度テスト成功
-    depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-    depthStencilDesc.StencilEnable = FALSE; // ステンシルテストは無効
 
-    ComPtr<ID3D11DepthStencilState> pDepthStencilState;
-    HRESULT hr = m_Device->CreateDepthStencilState(&depthStencilDesc, pDepthStencilState.GetAddressOf());
-    if (SUCCEEDED(hr))
-    {
-        m_DeviceContext->OMSetDepthStencilState(pDepthStencilState.Get(), 0);
-    }
+//=====================================================
+// RenderTarget
+//=====================================================
+
+bool Renderer::CreateRenderTarget()
+{
+	if (!m_Device ||
+		!m_SwapChain)
+	{
+		return false;
+	}
+
+	ComPtr<ID3D11Texture2D>
+		backBuffer;
+
+	const HRESULT getBufferResult =
+		m_SwapChain->GetBuffer(
+			0,
+			__uuidof(ID3D11Texture2D),
+			reinterpret_cast<void**>(
+				backBuffer.GetAddressOf()));
+
+	if (FAILED(getBufferResult))
+	{
+		return false;
+	}
+
+	const HRESULT createResult =
+		m_Device->CreateRenderTargetView(
+			backBuffer.Get(),
+			nullptr,
+			m_RenderTargetView.GetAddressOf());
+
+	return SUCCEEDED(createResult);
+}
+
+
+//=====================================================
+// DepthStencil
+//=====================================================
+
+bool Renderer::CreateDepthStencil()
+{
+	if (!m_Device)
+	{
+		return false;
+	}
+
+	//====================
+	// DepthTexture
+	//====================
+
+	D3D11_TEXTURE2D_DESC textureDesc{};
+
+	textureDesc.Width =
+		Window::GetWidth();
+
+	textureDesc.Height =
+		Window::GetHeight();
+
+	textureDesc.MipLevels = 1;
+	textureDesc.ArraySize = 1;
+
+	textureDesc.Format =
+		DXGI_FORMAT_D32_FLOAT;
+
+	textureDesc.SampleDesc.Count = 1;
+	textureDesc.SampleDesc.Quality = 0;
+
+	textureDesc.Usage =
+		D3D11_USAGE_DEFAULT;
+
+	textureDesc.BindFlags =
+		D3D11_BIND_DEPTH_STENCIL;
+
+	ComPtr<ID3D11Texture2D>
+		depthTexture;
+
+	HRESULT hr =
+		m_Device->CreateTexture2D(
+			&textureDesc,
+			nullptr,
+			depthTexture.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//====================
+	// DSV
+	//====================
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC
+		viewDesc{};
+
+	viewDesc.Format =
+		textureDesc.Format;
+
+	viewDesc.ViewDimension =
+		D3D11_DSV_DIMENSION_TEXTURE2D;
+
+	viewDesc.Texture2D.MipSlice = 0;
+
+	hr =
+		m_Device->CreateDepthStencilView(
+			depthTexture.Get(),
+			&viewDesc,
+			m_DepthStencilView.GetAddressOf());
+
+	return SUCCEEDED(hr);
+}
+
+
+//=====================================================
+// Viewport
+//=====================================================
+
+void Renderer::CreateViewport()
+{
+	D3D11_VIEWPORT viewport{};
+
+	viewport.TopLeftX = 0.0f;
+	viewport.TopLeftY = 0.0f;
+
+	viewport.Width =
+		static_cast<float>(
+			Window::GetWidth());
+
+	viewport.Height =
+		static_cast<float>(
+			Window::GetHeight());
+
+	viewport.MinDepth = 0.0f;
+	viewport.MaxDepth = 1.0f;
+
+	m_DeviceContext->RSSetViewports(
+		1,
+		&viewport);
+}
+
+
+//=====================================================
+// RenderState
+//=====================================================
+
+bool Renderer::CreateRenderStates()
+{
+	//=================================================
+	// DepthState
+	//=================================================
+
+	D3D11_DEPTH_STENCIL_DESC
+		depthDesc{};
+
+	depthDesc.DepthEnable = TRUE;
+
+	depthDesc.DepthWriteMask =
+		D3D11_DEPTH_WRITE_MASK_ALL;
+
+	depthDesc.DepthFunc =
+		D3D11_COMPARISON_LESS_EQUAL;
+
+	depthDesc.StencilEnable =
+		FALSE;
+
+	HRESULT hr =
+		m_Device->CreateDepthStencilState(
+			&depthDesc,
+			m_DepthStateEnable.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	depthDesc.DepthEnable = FALSE;
+
+	depthDesc.DepthWriteMask =
+		D3D11_DEPTH_WRITE_MASK_ZERO;
+
+	hr =
+		m_Device->CreateDepthStencilState(
+			&depthDesc,
+			m_DepthStateDisable.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// BlendState : None
+	//=================================================
+
+	D3D11_BLEND_DESC blendDesc{};
+
+	blendDesc.RenderTarget[0].
+		RenderTargetWriteMask =
+		D3D11_COLOR_WRITE_ENABLE_ALL;
+
+	blendDesc.RenderTarget[0].
+		BlendEnable =
+		FALSE;
+
+	hr =
+		m_Device->CreateBlendState(
+			&blendDesc,
+			m_BlendStates[
+				static_cast<size_t>(
+					BlendState::None)]
+			.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// BlendState : Alpha
+	//=================================================
+
+	blendDesc.RenderTarget[0].
+		BlendEnable =
+		TRUE;
+
+	blendDesc.RenderTarget[0].
+		SrcBlend =
+		D3D11_BLEND_SRC_ALPHA;
+
+	blendDesc.RenderTarget[0].
+		DestBlend =
+		D3D11_BLEND_INV_SRC_ALPHA;
+
+	blendDesc.RenderTarget[0].
+		BlendOp =
+		D3D11_BLEND_OP_ADD;
+
+	blendDesc.RenderTarget[0].
+		SrcBlendAlpha =
+		D3D11_BLEND_ONE;
+
+	blendDesc.RenderTarget[0].
+		DestBlendAlpha =
+		D3D11_BLEND_ZERO;
+
+	blendDesc.RenderTarget[0].
+		BlendOpAlpha =
+		D3D11_BLEND_OP_ADD;
+
+	hr =
+		m_Device->CreateBlendState(
+			&blendDesc,
+			m_BlendStates[
+				static_cast<size_t>(
+					BlendState::Alpha)]
+			.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// BlendState : Additive
+	//=================================================
+
+	blendDesc.RenderTarget[0].
+		SrcBlend =
+		D3D11_BLEND_SRC_ALPHA;
+
+	blendDesc.RenderTarget[0].
+		DestBlend =
+		D3D11_BLEND_ONE;
+
+	hr =
+		m_Device->CreateBlendState(
+			&blendDesc,
+			m_BlendStates[
+				static_cast<size_t>(
+					BlendState::Additive)]
+			.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// RasterizerState
+	//=================================================
+
+	auto createRasterizer =
+		[](D3D11_FILL_MODE fillMode,
+			D3D11_CULL_MODE cullMode,
+			ComPtr<ID3D11RasterizerState>& result)
+		-> bool
+		{
+			D3D11_RASTERIZER_DESC desc{};
+
+			desc.FillMode = fillMode;
+
+			desc.CullMode = cullMode;
+
+			desc.FrontCounterClockwise =
+				FALSE;
+
+			desc.DepthClipEnable =
+				TRUE;
+
+			const HRESULT resultHr =
+				Renderer::m_Device->
+				CreateRasterizerState(
+					&desc,
+					result.GetAddressOf());
+
+			return SUCCEEDED(resultHr);
+		};
+
+	if (!createRasterizer(
+		D3D11_FILL_SOLID,
+		D3D11_CULL_BACK,
+		m_RasterizerSolidCull))
+	{
+		return false;
+	}
+
+	if (!createRasterizer(
+		D3D11_FILL_SOLID,
+		D3D11_CULL_NONE,
+		m_RasterizerSolidNoCull))
+	{
+		return false;
+	}
+
+	if (!createRasterizer(
+		D3D11_FILL_WIREFRAME,
+		D3D11_CULL_BACK,
+		m_RasterizerWireframeCull))
+	{
+		return false;
+	}
+
+	if (!createRasterizer(
+		D3D11_FILL_WIREFRAME,
+		D3D11_CULL_NONE,
+		m_RasterizerWireframeNoCull))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+
+//=====================================================
+// Model Pipeline
+//=====================================================
+
+bool Renderer::CreateModelPipeline()
+{
+	//====================
+	// ShaderCompile
+	//====================
+
+	ComPtr<ID3DBlob>
+		vertexShaderBlob;
+
+	ComPtr<ID3DBlob>
+		pixelShaderBlob;
+
+	if (!CompileShader(
+		L"VS_Model.hlsl",
+		"main",
+		"vs_5_0",
+		vertexShaderBlob))
+	{
+		return false;
+	}
+
+	if (!CompileShader(
+		L"PS_Model.hlsl",
+		"main",
+		"ps_5_0",
+		pixelShaderBlob))
+	{
+		return false;
+	}
+
+	//====================
+	// VertexShader
+	//====================
+
+	HRESULT hr =
+		m_Device->CreateVertexShader(
+			vertexShaderBlob->GetBufferPointer(),
+			vertexShaderBlob->GetBufferSize(),
+			nullptr,
+			m_ModelVertexShader.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//====================
+	// PixelShader
+	//====================
+
+	hr =
+		m_Device->CreatePixelShader(
+			pixelShaderBlob->GetBufferPointer(),
+			pixelShaderBlob->GetBufferSize(),
+			nullptr,
+			m_ModelPixelShader.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//====================
+	// InputLayout
+	//====================
+
+	const D3D11_INPUT_ELEMENT_DESC
+		inputElements[] =
+	{
+		{
+			"POSITION",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					VertexData,
+					Position)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		{
+			"NORMAL",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					VertexData,
+					Normal)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		{
+			"TEXCOORD",
+			0,
+			DXGI_FORMAT_R32G32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					VertexData,
+					TexCoord)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		}
+	};
+
+	hr =
+		m_Device->CreateInputLayout(
+			inputElements,
+			static_cast<UINT>(
+				std::size(
+					inputElements)),
+			vertexShaderBlob->GetBufferPointer(),
+			vertexShaderBlob->GetBufferSize(),
+			m_ModelInputLayout.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//====================
+	// ConstantBuffer
+	//====================
+
+	D3D11_BUFFER_DESC
+		bufferDesc{};
+
+	bufferDesc.ByteWidth =
+		sizeof(ModelConstantBuffer);
+
+	bufferDesc.Usage =
+		D3D11_USAGE_DEFAULT;
+
+	bufferDesc.BindFlags =
+		D3D11_BIND_CONSTANT_BUFFER;
+
+	bufferDesc.CPUAccessFlags = 0;
+
+	hr =
+		m_Device->CreateBuffer(
+			&bufferDesc,
+			nullptr,
+			m_ModelConstantBuffer.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+
+//=====================================================
+// Model描画
+//=====================================================
+
+void Renderer::DrawMesh(
+	const MeshBuffer& mesh,
+	const MaterialData& material,
+	const Matrix4x4& worldMatrix)
+{
+	if (!m_DeviceContext ||
+		!mesh.IsValid())
+	{
+		return;
+	}
+
+	//=================================================
+	// 仮Camera
+	//=================================================
+	//
+	// CameraComponentが完成したら、
+	// Renderer外からView / Projectionを
+	// 渡す構造へ変更する。
+	//
+
+	const Vector3 cameraPosition(
+		0.0f,
+		2.0f,
+		-5.0f);
+
+	const Vector3 cameraTarget(
+		0.0f,
+		0.0f,
+		0.0f);
+
+	const Matrix4x4 viewMatrix =
+		Matrix4x4::CreateLookAt(
+			cameraPosition,
+			cameraTarget,
+			Vector3{0.0f, 1.0f, 0.0f});
+
+	const float width =
+		static_cast<float>(
+			Window::GetWidth());
+
+	const float height =
+		static_cast<float>(
+			Window::GetHeight());
+
+	if (height <= 0.0f)
+	{
+		return;
+	}
+
+	const float aspect =
+		width / height;
+
+	const Matrix4x4 projectionMatrix =
+		Matrix4x4::
+		CreatePerspectiveFieldOfView(
+			DirectX::XMConvertToRadians(
+				60.0f),
+			aspect,
+			0.1f,
+			1000.0f);
+
+	//=================================================
+	// ConstantBuffer
+	//=================================================
+
+	ModelConstantBuffer
+		constantBuffer{};
+
+	// HLSLへ渡すためTransposeする
+	constantBuffer.WorldViewProjection =
+		(
+			worldMatrix *
+			viewMatrix *
+			projectionMatrix
+			).Transpose();
+
+	constantBuffer.DiffuseColor =
+		material.Diffuse;
+
+	m_DeviceContext->
+		UpdateSubresource(
+			m_ModelConstantBuffer.Get(),
+			0,
+			nullptr,
+			&constantBuffer,
+			0,
+			0);
+
+	//=================================================
+	// InputAssembler
+	//=================================================
+
+	m_DeviceContext->
+		IASetInputLayout(
+			m_ModelInputLayout.Get());
+
+	//=================================================
+	// Shader
+	//=================================================
+
+	m_DeviceContext->VSSetShader(
+		m_ModelVertexShader.Get(),
+		nullptr,
+		0);
+
+	m_DeviceContext->PSSetShader(
+		m_ModelPixelShader.Get(),
+		nullptr,
+		0);
+
+	ID3D11Buffer* constantBuffers[] =
+	{
+		m_ModelConstantBuffer.Get()
+	};
+
+	// VertexShader b0
+	m_DeviceContext->
+		VSSetConstantBuffers(
+			0,
+			1,
+			constantBuffers);
+
+	// PixelShader b0
+	m_DeviceContext->
+		PSSetConstantBuffers(
+			0,
+			1,
+			constantBuffers);
+
+	//=================================================
+	// Mesh
+	//=================================================
+
+	mesh.Bind(
+		m_DeviceContext.Get());
+
+	mesh.Draw(
+		m_DeviceContext.Get());
+}
+
+
+//=====================================================
+// Depth
+//=====================================================
+
+void Renderer::SetDepthEnable(
+	bool enable)
+{
+	if (!m_DeviceContext)
+	{
+		return;
+	}
+
+	m_DeviceContext->
+		OMSetDepthStencilState(
+			enable
+			? m_DepthStateEnable.Get()
+			: m_DepthStateDisable.Get(),
+			0);
+}
+
+
+//=====================================================
+// Blend
+//=====================================================
+
+void Renderer::SetBlendState(
+	BlendState state)
+{
+	if (!m_DeviceContext)
+	{
+		return;
+	}
+
+	const size_t index =
+		static_cast<size_t>(state);
+
+	if (index >=
+		static_cast<size_t>(
+			BlendState::Count))
+	{
+		return;
+	}
+
+	const float blendFactor[4] =
+	{
+		0.0f,
+		0.0f,
+		0.0f,
+		0.0f
+	};
+
+	m_DeviceContext->
+		OMSetBlendState(
+			m_BlendStates[index].Get(),
+			blendFactor,
+			0xffffffff);
+}
+
+
+//=====================================================
+// Rasterizer
+//=====================================================
+
+void Renderer::SetCulling(
+	bool enable)
+{
+	m_CullingEnabled =
+		enable;
+
+	SetFillMode(
+		m_CurrentFillMode);
+}
+
+
+void Renderer::SetFillMode(
+	D3D11_FILL_MODE fillMode)
+{
+	if (!m_DeviceContext)
+	{
+		return;
+	}
+
+	m_CurrentFillMode =
+		fillMode;
+
+	ID3D11RasterizerState*
+		rasterizerState = nullptr;
+
+	if (fillMode ==
+		D3D11_FILL_WIREFRAME)
+	{
+		rasterizerState =
+			m_CullingEnabled
+			? m_RasterizerWireframeCull.Get()
+			: m_RasterizerWireframeNoCull.Get();
+	}
+	else
+	{
+		rasterizerState =
+			m_CullingEnabled
+			? m_RasterizerSolidCull.Get()
+			: m_RasterizerSolidNoCull.Get();
+	}
+
+	m_DeviceContext->
+		RSSetState(
+			rasterizerState);
 }

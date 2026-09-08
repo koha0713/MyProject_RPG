@@ -37,6 +37,15 @@
     <Filter Include="ソース ファイル\新規作成ファイル">
       <UniqueIdentifier>{4258e661-fcfb-4fb0-8493-6de21a78b9d7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\Graphics">
+      <UniqueIdentifier>{4857e728-c4d9-496a-8c74-5a2e3a381500}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="リソース ファイル\PS">
+      <UniqueIdentifier>{daf7c47f-91b2-4a05-9609-4f2706542dd4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="リソース ファイル\VS">
+      <UniqueIdentifier>{e52d59e3-d8f2-4ae3-8088-183a3960a966}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -111,6 +120,21 @@
     <ClInclude Include="ResourceManager.h">
       <Filter>ソース ファイル\新規作成ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="ModelData.h">
+      <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshBuffer.h">
+      <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelLoader.h">
+      <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="TransformComponent.h">
+      <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -161,5 +185,28 @@
     <ClCompile Include="ResourceManager.cpp">
       <Filter>ソース ファイル\新規作成ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="ModelLoader.cpp">
+      <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelComponent.cpp">
+      <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="MeshBuffer.cpp">
+      <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="TransformComponent.cpp">
+      <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelData.cpp">
+      <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="VS_Model.hlsl">
+      <Filter>リソース ファイル\VS</Filter>
+    </FxCompile>
+    <FxCompile Include="PS_Model.hlsl">
+      <Filter>リソース ファイル\PS</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

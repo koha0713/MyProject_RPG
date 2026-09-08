@@ -69,11 +69,20 @@ bool Game::Initialize()
 		return false;
 	}
 
-	Renderer::Init();
+	//====================
+	// Renderer初期化
+	//====================
+
+	if (!Renderer::Init())
+	{
+		return false;
+	}
 
 	//=================
 	// デバッグUIの初期化
-	DebugUI::Initialize(Renderer::GetDevice(),
+	//=================
+	DebugUI::Initialize(
+		Renderer::GetDevice(),
 		Renderer::GetDeviceContext());
 
 
@@ -88,12 +97,33 @@ bool Game::Initialize()
 //==============================
 void Game::Finalize()
 {
+	//====================
+	// Scene
+	//====================
+
+	SceneManager::Finalize();
+
+	//====================
+	// DebugUI
+	//====================
 
 	DebugUI::Finalize();
-	SceneManager::Finalize();
+
+	//====================
+	// Renderer
+	//====================
+
 	Renderer::Dispose();
-	// ウィンドウ破棄
-	m_window.reset();
+
+	//====================
+	// Window
+	//====================
+
+	if (m_window)
+	{
+		m_window->Finalize();
+		m_window.reset();
+	}
 }
 
 //==============================
