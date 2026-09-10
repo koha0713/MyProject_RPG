@@ -4,6 +4,7 @@
 #include "GameObject.h"
 #include "TransformComponent.h"
 #include "Renderer.h"
+#include "DebugUI.h"
 
 void ModelComponent::Initialize()
 {
@@ -119,4 +120,9 @@ bool ModelComponent::SetTexture(
 		std::move(texture);
 
 	return true;
+}
+
+void ModelComponent::DrawDebugUI()
+{
+	ImGui::Text("ModelComponent");
 }

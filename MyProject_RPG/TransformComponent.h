@@ -116,14 +116,20 @@ public:
 	 */
 	const Matrix4x4& GetWorldMatrix() const;
 
+
+	void DrawDebugUI() override;
+
+	const char* GetComponentName() const override
+	{
+		return "TransformComponent";
+	}
+
 private:
 
 	/**
 	 * @brief WorldMatrix‚ğÄŒvZ
 	 */
 	void UpdateWorldMatrix() const;
-
-	void ImGuiDrawTransformGizmo();
 
 private:
 

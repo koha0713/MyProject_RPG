@@ -7,6 +7,8 @@
 #include "SceneClassFactory.h"
 #include "GameObjectManager.h"
 
+class CameraComponent;
+
 class TestScene : public IScene
 {
 public:
@@ -28,6 +30,7 @@ public:
 	// ƒƒ“ƒo•Ï”
 	//====================
 	GameObjectManager m_gameObjectManager;
+	CameraComponent* m_MainCamera = nullptr;
 };
 // Scene“o˜^
 REGISTER_CLASS(TestScene)

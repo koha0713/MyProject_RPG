@@ -55,6 +55,13 @@ public:
 		size_t materialIndex,
 		const std::string& filePath);
 
+	void DrawDebugUI() override;
+
+	const char* GetComponentName() const override
+	{
+		return "ModelComponent";
+	}
+
 private:
 	std::shared_ptr<ModelData> m_Model = nullptr; // モデルデータ
 

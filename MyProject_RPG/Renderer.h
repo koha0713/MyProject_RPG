@@ -120,6 +120,20 @@ public:
 		D3D11_FILL_MODE fillMode);
 
 	//====================
+	// Camera
+	//====================
+	/**
+	 * @brief 描画に使用するCamera行列を設定
+	 *
+	 * @details
+	 * RendererはCameraComponentには依存せず、
+	 * 描画に必要なView / Projectionのみ受け取る。
+	 */
+	static void SetCamera(
+		const Matrix4x4& viewMatrix,
+		const Matrix4x4& projectionMatrix);
+
+	//====================
 	// Getter
 	//====================
 
@@ -229,6 +243,13 @@ private:
 
 	static D3D11_FILL_MODE
 		m_CurrentFillMode;
+
+	//====================
+	// Camera
+	//====================
+
+	static Matrix4x4 m_ViewMatrix;
+	static Matrix4x4 m_ProjectionMatrix;
 
 	//====================
 	// Model Pipeline

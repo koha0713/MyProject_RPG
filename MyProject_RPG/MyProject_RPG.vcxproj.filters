@@ -114,9 +114,6 @@
     <ClInclude Include="CommonType.h">
       <Filter>ソース ファイル\System</Filter>
     </ClInclude>
-    <ClInclude Include="ModelComponent.h">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
-    </ClInclude>
     <ClInclude Include="ResourceManager.h">
       <Filter>ソース ファイル\新規作成ファイル</Filter>
     </ClInclude>
@@ -132,11 +129,17 @@
     <ClInclude Include="ModelLoader.h">
       <Filter>ソース ファイル\新規作成ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="TransformComponent.h">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
-    </ClInclude>
     <ClInclude Include="stb_image.h">
       <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelComponent.h">
+      <Filter>ソース ファイル\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="TransformComponent.h">
+      <Filter>ソース ファイル\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="CameraComponent.h">
+      <Filter>ソース ファイル\Component</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -191,13 +194,7 @@
     <ClCompile Include="ModelLoader.cpp">
       <Filter>ソース ファイル\新規作成ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="ModelComponent.cpp">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
-    </ClCompile>
     <ClCompile Include="MeshBuffer.cpp">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="TransformComponent.cpp">
       <Filter>ソース ファイル\新規作成ファイル</Filter>
     </ClCompile>
     <ClCompile Include="ModelData.cpp">
@@ -205,6 +202,15 @@
     </ClCompile>
     <ClCompile Include="Texture.cpp">
       <Filter>ソース ファイル\新規作成ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelComponent.cpp">
+      <Filter>ソース ファイル\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="TransformComponent.cpp">
+      <Filter>ソース ファイル\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="CameraComponent.cpp">
+      <Filter>ソース ファイル\Component</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

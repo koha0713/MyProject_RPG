@@ -3,8 +3,6 @@
 
 void TransformComponent::Update()
 {
-	// Transformの更新処理
-	ImGuiDrawTransformGizmo();
 }
 
 /**
@@ -68,23 +66,43 @@ void TransformComponent::UpdateWorldMatrix() const
 	m_IsDirty = false;
 }
 
-void TransformComponent::ImGuiDrawTransformGizmo()
+
+void TransformComponent::DrawDebugUI()
 {
-	DebugUI::RegisterDebugFunction([this]()
-		{
-			ImGui::Begin("Transform");
-			if (ImGui::SliderFloat3("Position", &m_Position.x, -10.0f, 10.0f))
-			{
-				m_IsDirty = true;
-			}
-			if (ImGui::SliderFloat3("Rotation(ラジアン)", &m_Rotation.x, -3.14159f, 3.14159f))
-			{
-				m_IsDirty = true;
-			}
-			if (ImGui::SliderFloat3("Scale", &m_Scale.x, 0.0f, 10.0f))
-			{
-				m_IsDirty = true;
-			}
-			ImGui::End();
-		});
+	float position[3] =
+	{
+		m_Position.x,
+		m_Position.y,
+		m_Position.z
+	};
+	if(ImGui::DragFloat3("Position", position, 0.1f))
+	{
+		SetPosition(position[0], position[1], position[2]);
+		m_IsDirty = true;
+	}
+
+	float rotation[3] =
+	{
+		m_Rotation.x,
+		m_Rotation.y,
+		m_Rotation.z
+	};
+	if(ImGui::DragFloat3("Rotation", rotation, 0.1f))
+	{
+		SetRotation(rotation[0], rotation[1], rotation[2]);
+		m_IsDirty = true;
+	}
+
+	float scale[3] =
+	{
+		m_Scale.x,
+		m_Scale.y,
+		m_Scale.z
+	};
+	if(ImGui::DragFloat3("Scale", scale, 0.1f))
+	{
+		SetScale(scale[0], scale[1], scale[2]);
+		m_IsDirty = true;
+	}
+
 }

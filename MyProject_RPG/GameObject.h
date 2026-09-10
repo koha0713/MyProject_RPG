@@ -203,6 +203,19 @@ public:
 		return m_IsDestroy;
 	}
 
+	/**
+	 * @brief 所有しているComponent一覧を取得
+	 *
+	 * @details
+	 * 所有権はGameObjectが保持するため、
+	 * 外部からvector自体は変更させない。
+	 */
+	const std::vector<std::unique_ptr<Component>>&
+		GetComponents() const
+	{
+		return m_Components;
+	}
+
 private:
 	std::string m_Name;
 	Tag m_Tag;

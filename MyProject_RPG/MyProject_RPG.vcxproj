@@ -136,6 +136,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CameraComponent.h" />
     <ClInclude Include="CommonType.h" />
     <ClInclude Include="Component.h" />
     <ClInclude Include="FpsControl.h" />
@@ -168,6 +169,7 @@
     <ClInclude Include="DebugUI.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CameraComponent.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="GameObjectManager.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />

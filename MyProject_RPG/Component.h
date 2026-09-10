@@ -31,6 +31,29 @@ public:
 		return m_Owner;
 	}
 
+	//====================
+	// Debug UI
+	//====================
+	/**
+	 * @brief Component固有のデバッグUIを描画する
+	 *
+	 * @details
+	 * 必要なComponentだけoverrideする。
+	 * GameObjectManager側はComponentの具体型を知らずに
+	 * この関数を呼び出せる。
+	 */
+	virtual void DrawDebugUI()
+	{
+	}
+
+	//====================
+	// Getter関数
+	//====================
+	virtual const char* GetComponentName() const
+	{
+		return "Component";
+	}
+
 private:
 	friend class GameObject;
 

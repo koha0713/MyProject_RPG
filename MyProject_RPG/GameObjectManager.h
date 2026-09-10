@@ -82,6 +82,11 @@ public:
 		return m_GameObjects;
 	}
 
+	/**
+	 * @brief GameObject / Component—pDebugUI
+	 */
+	void DrawDebugUI();
+
 private:
 	/**
 	 * @brief ”jŠü‚³‚ê‚½GameObject‚ğíœ
@@ -94,5 +99,6 @@ private:
 	//====================
 	std::vector<std::unique_ptr<GameObject>> m_GameObjects;
 
-
+	size_t m_SelectedGameObjectIndex = 0;
+	size_t m_SelectedComponentIndex = 0;
 };

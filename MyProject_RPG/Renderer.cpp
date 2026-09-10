@@ -127,6 +127,20 @@ Renderer::m_DepthStencilView;
 ComPtr<ID3D11SamplerState>
 Renderer::m_ModelSamplerState;
 
+Matrix4x4 Renderer::m_ViewMatrix =
+Matrix4x4(
+	1.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 1.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 1.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 1.0f);
+
+Matrix4x4 Renderer::m_ProjectionMatrix =
+Matrix4x4(
+	1.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 1.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 1.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 1.0f);
+
 //====================
 // Depth
 //====================
@@ -1035,54 +1049,9 @@ void Renderer::DrawMesh(
 	}
 
 	//=================================================
-	// 仮Camera
+	// Camera
 	//=================================================
-	//
-	// CameraComponentが完成したら、
-	// Renderer外からView / Projectionを
-	// 渡す構造へ変更する。
-	//
-
-	const Vector3 cameraPosition(
-		0.0f,
-		2.0f,
-		-5.0f);
-
-	const Vector3 cameraTarget(
-		0.0f,
-		0.0f,
-		0.0f);
-
-	const Matrix4x4 viewMatrix =
-		Matrix4x4::CreateLookAt(
-			cameraPosition,
-			cameraTarget,
-			Vector3{0.0f, 1.0f, 0.0f});
-
-	const float width =
-		static_cast<float>(
-			Window::GetWidth());
-
-	const float height =
-		static_cast<float>(
-			Window::GetHeight());
-
-	if (height <= 0.0f)
-	{
-		return;
-	}
-
-	const float aspect =
-		width / height;
-
-	const Matrix4x4 projectionMatrix =
-		Matrix4x4::
-		CreatePerspectiveFieldOfView(
-			DirectX::XMConvertToRadians(
-				60.0f),
-			aspect,
-			0.1f,
-			1000.0f);
+	
 
 	//=================================================
 	// ConstantBuffer
@@ -1095,8 +1064,8 @@ void Renderer::DrawMesh(
 	constantBuffer.WorldViewProjection =
 		(
 			worldMatrix *
-			viewMatrix *
-			projectionMatrix
+			m_ViewMatrix *
+			m_ProjectionMatrix
 			).Transpose();
 
 	constantBuffer.DiffuseColor =
@@ -1310,4 +1279,19 @@ void Renderer::SetFillMode(
 	m_DeviceContext->
 		RSSetState(
 			rasterizerState);
+}
+
+//=====================================================
+// Camera
+//=====================================================
+
+void Renderer::SetCamera(
+	const Matrix4x4& viewMatrix,
+	const Matrix4x4& projectionMatrix)
+{
+	m_ViewMatrix =
+		viewMatrix;
+
+	m_ProjectionMatrix =
+		projectionMatrix;
 }

@@ -77,6 +77,8 @@ void DebugUI::EndFrame()
 	ImGui::Render();
 
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
+	m_debugUIFunctions.clear();	// 登録されたデバッグUI関数をクリア
 }
 
 void DebugUI::RegisterDebugFunction(const std::function<void()>& func)
