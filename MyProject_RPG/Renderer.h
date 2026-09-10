@@ -245,4 +245,7 @@ private:
 
 	static ComPtr<ID3D11Buffer>
 		m_ModelConstantBuffer;
+
+	static ComPtr<ID3D11SamplerState>
+		m_ModelSamplerState;
 };

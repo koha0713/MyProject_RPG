@@ -32,6 +32,7 @@ struct MaterialData
 		Vector4(0.0f,0.0f,0.0f,1.0f);             // 環境光の色
 	Vector4 Specular = 
 		Vector4(0.0f,0.0f,0.0f,1.0f);            // 鏡面反射色
+	std::string TexturePath;		// テクスチャのパス
 	std::shared_ptr<Texture> Texture;  // テクスチャ
 };
 /**

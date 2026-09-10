@@ -39,6 +39,7 @@ private:
 		m_Owner = owner;
 	}
 
+
 private:
 	GameObject* m_Owner = nullptr;
 

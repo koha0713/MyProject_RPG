@@ -2,13 +2,32 @@
 // Model Pixel Shader
 //=====================================================
 
+//=====================================================
+// ConstantBuffer
+//=====================================================
+
 cbuffer ModelConstantBuffer : register(b0)
 {
     float4x4 WorldViewProjection;
 
     float4 DiffuseColor;
+
+    uint HasTexture;
+
+    float3 Padding;
 };
 
+//=====================================================
+// Texture
+//=====================================================
+
+// Diffuse Texture
+Texture2D DiffuseTexture :
+    register(t0);
+
+// Texture Sampler
+SamplerState TextureSampler :
+    register(s0);
 
 //=====================================================
 // Input
@@ -23,7 +42,6 @@ struct PSInput
     float2 TexCoord : TEXCOORD0;
 };
 
-
 //=====================================================
 // Main
 //=====================================================
@@ -31,8 +49,23 @@ struct PSInput
 float4 main(
     PSInput input) : SV_TARGET
 {
-    // 現段階ではTexture / Lightingを使わない。
-    // Assimpから取得したDiffuseColorのみを表示する。
+    // Textureを持たないMaterialは
+    // Assimpから取得したDiffuseColorのみ使用
+    if (HasTexture == 0)
+    {
+        return DiffuseColor;
+    }
 
-    return DiffuseColor;
+    //====================
+    // Diffuse Texture
+    //====================
+
+    const float4 textureColor =
+        DiffuseTexture.Sample(
+            TextureSampler,
+            input.TexCoord);
+
+    // TextureとMaterialColorを合成
+    return textureColor *
+        DiffuseColor;
 }

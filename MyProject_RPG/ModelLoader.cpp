@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <cassert>
+#include <filesystem>
 
 #if _MSC_VER >= 1920
 #ifdef _DEBUG
@@ -41,52 +42,228 @@ namespace
 	}
 
 	/**
-	 * @brief AssimpのMaterialをMaterialDataに変換する
-	 */
-	MaterialData LoadMaterial(const aiMaterial* aimaterial)
+ * @brief Assimpから取得したTextureパスを実ファイルへ解決する
+ *
+ * @details
+ * 配布FBXでは、作成者PC上の絶対パスや
+ * 不正な相対パスが保存されている場合がある。
+ *
+ * 以下の順で探索する。
+ * 1. 指定パスそのまま
+ * 2. モデルディレクトリ + 指定パス
+ * 3. モデルディレクトリ + ファイル名のみ
+ */
+	std::string ResolveTexturePath(
+		const std::filesystem::path& modelDirectory,
+		const std::string& texturePath)
 	{
-		MaterialData rst;
-		aiColor4D col;
-		if (AI_SUCCESS ==
-			aiGetMaterialColor(
-				aimaterial,
-				AI_MATKEY_COLOR_DIFFUSE,
-				&col))
+		if (texturePath.empty())
 		{
-			rst.Diffuse = Vector4(
-				col.r, col.g, col.b, col.a);
+			return {};
 		}
 
-		if (AI_SUCCESS ==
-			aiGetMaterialColor(
-				aimaterial,
-				AI_MATKEY_COLOR_AMBIENT,
-				&col))
+		const std::filesystem::path originalPath =
+			texturePath;
+
+		//====================
+		// 1. 指定パスそのまま
+		//====================
+
+		if (std::filesystem::exists(originalPath))
 		{
-			rst.Ambient =
-				Vector4(
-					col.r,
-					col.g,
-					col.b,
-					col.a);
+			return originalPath
+				.lexically_normal()
+				.string();
 		}
 
-		if (AI_SUCCESS ==
-			aiGetMaterialColor(
-				aimaterial,
-				AI_MATKEY_COLOR_SPECULAR,
-				&col))
+		//====================
+		// 2. モデルディレクトリ + 指定パス
+		//====================
+
+		const std::filesystem::path relativePath =
+			modelDirectory /
+			originalPath;
+
+		if (std::filesystem::exists(relativePath))
 		{
-			rst.Specular =
-				Vector4(
-					col.r,
-					col.g,
-					col.b,
-					col.a);
+			return relativePath
+				.lexically_normal()
+				.string();
 		}
 
-		return rst;
+		//====================
+		// 3. ファイル名だけ取り出して探索
+		//====================
+
+		const std::filesystem::path fileName =
+			originalPath.filename();
+
+		const std::filesystem::path sameDirectoryPath =
+			modelDirectory /
+			fileName;
+
+		if (std::filesystem::exists(sameDirectoryPath))
+		{
+			return sameDirectoryPath
+				.lexically_normal()
+				.string();
+		}
+
+		//====================
+		// 4. モデルディレクトリ/Textures/ファイル名
+		//====================
+
+		const std::filesystem::path textureDirectoryPath =
+			modelDirectory /
+			"Textures" /
+			fileName;
+
+		if (std::filesystem::exists(
+			textureDirectoryPath))
+		{
+			return textureDirectoryPath
+				.lexically_normal()
+				.string();
+		}
+
+		// 見つからなかった
+		return {};
 	}
+
+	/**
+	 * @brief Assimp MaterialをMaterialDataへ変換
+	 *
+	 * @param aiMaterial Assimp Material
+	 * @param modelDirectory Modelファイルが存在するディレクトリ
+	 */
+	MaterialData LoadMaterial(
+		const aiMaterial* aiMaterial,
+		const std::filesystem::path& modelDirectory)
+	{
+		MaterialData result{};
+
+		aiColor4D color{};
+
+		//====================
+		// Diffuse
+		//====================
+
+		if (AI_SUCCESS ==
+			aiGetMaterialColor(
+				aiMaterial,
+				AI_MATKEY_COLOR_DIFFUSE,
+				&color))
+		{
+			result.Diffuse =
+				Vector4(
+					color.r,
+					color.g,
+					color.b,
+					color.a);
+		}
+
+		//====================
+		// Ambient
+		//====================
+
+		if (AI_SUCCESS ==
+			aiGetMaterialColor(
+				aiMaterial,
+				AI_MATKEY_COLOR_AMBIENT,
+				&color))
+		{
+			result.Ambient =
+				Vector4(
+					color.r,
+					color.g,
+					color.b,
+					color.a);
+		}
+
+		//====================
+		// Specular
+		//====================
+
+		if (AI_SUCCESS ==
+			aiGetMaterialColor(
+				aiMaterial,
+				AI_MATKEY_COLOR_SPECULAR,
+				&color))
+		{
+			result.Specular =
+				Vector4(
+					color.r,
+					color.g,
+					color.b,
+					color.a);
+		}
+
+		//====================
+		// Diffuse Texture
+		//====================
+
+		if (aiMaterial->GetTextureCount(
+			aiTextureType_DIFFUSE) > 0)
+		{
+			aiString aiTexturePath;
+
+			if (AI_SUCCESS ==
+				aiMaterial->GetTexture(
+					aiTextureType_DIFFUSE,
+					0,
+					&aiTexturePath))
+			{
+				//========================================
+				// AssimpがFBXから取得したTextureパス確認
+				//========================================
+				OutputDebugStringA(
+					"[ModelLoader] Assimp texture path: ");
+
+				OutputDebugStringA(
+					aiTexturePath.C_Str());
+
+				OutputDebugStringA("\n");
+
+				const std::string texturePath =
+					aiTexturePath.C_Str();
+
+				OutputDebugStringA(
+					"[ModelLoader] Assimp texture path: ");
+
+				OutputDebugStringA(
+					aiTexturePath.C_Str());
+
+				OutputDebugStringA("\n");
+
+				// Embedded Textureは現段階では未対応
+				if (!texturePath.empty() &&
+					texturePath[0] != '*')
+				{
+					result.TexturePath =
+						ResolveTexturePath(
+							modelDirectory,
+							texturePath);
+
+					if (result.TexturePath.empty())
+					{
+						OutputDebugStringA(
+							"[ModelLoader] texture not found: ");
+
+						OutputDebugStringA(
+							texturePath.c_str());
+
+						OutputDebugStringA("\n");
+					}
+				}
+			}
+		}
+
+
+
+		return result;
+	}
+
+
 }
 
 /**
@@ -114,7 +291,8 @@ std::shared_ptr<ModelData> ModelLoader::LoadModel(
 		aiProcess_Triangulate |	// 三角形化
 		aiProcess_JoinIdenticalVertices | // 同一頂点の結合
 		aiProcess_GenSmoothNormals | // スムーズ法線の生成
-		aiProcess_SortByPType; // プリミティブタイプごとにソート
+		aiProcess_SortByPType | // プリミティブタイプごとにソート
+		aiProcess_FlipWindingOrder;	// 頂点の順序を反転（右手系→左手系）
 
 	if (flip)
 	{
@@ -139,15 +317,41 @@ std::shared_ptr<ModelData> ModelLoader::LoadModel(
 
 	model->SetScaleBase(scaleBase);
 
-	//=====================
-	// マテリアルの読み込み
-	//=====================
-	for(unsigned int i = 0;
-		i < scene->mNumMaterials ; ++i)
+	//====================
+	// Modelディレクトリ
+	//====================
+
+	const std::filesystem::path
+		modelDirectory =
+		std::filesystem::path(filePath)
+		.parent_path();
+
+	//====================
+	// Material読み込み
+	//====================
+
+	for (unsigned int i = 0;
+		i < scene->mNumMaterials;
+		++i)
 	{
 		MaterialData material =
-			LoadMaterial(scene->mMaterials[i]);
-		model->GetMaterials().push_back(material);
+			LoadMaterial(
+				scene->mMaterials[i],
+				modelDirectory);
+
+		std::string message =
+			"[ModelLoader] Material[" +
+			std::to_string(i) +
+			"] Texture: " +
+			material.TexturePath +
+			"\n";
+
+		OutputDebugStringA(
+			message.c_str());
+
+		model->GetMaterials().
+			emplace_back(
+				std::move(material));
 	}
 
 	//=====================
@@ -210,6 +414,13 @@ std::shared_ptr<ModelData> ModelLoader::LoadModel(
 					aiMesh->mTextureCoords[0][v].y
 				};
 			}
+			else
+			{
+				vertex.TexCoord =
+					Vector2(
+						0.0f,
+						0.0f);
+			}
 
 			vertices[v] = vertex;
 		}
@@ -245,6 +456,19 @@ std::shared_ptr<ModelData> ModelLoader::LoadModel(
 
 		meshData.MaterialIndex =
 			aiMesh->mMaterialIndex;
+
+		//========================================
+		// Meshが使用するMaterial番号を確認
+		//========================================
+
+		std::string message =
+			"[ModelLoader] Mesh MaterialIndex: " +
+			std::to_string(
+				meshData.MaterialIndex) +
+			"\n";
+
+		OutputDebugStringA(
+			message.c_str());
 
 		model->GetMeshes().emplace_back(
 			std::move(meshData));

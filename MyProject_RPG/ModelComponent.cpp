@@ -84,3 +84,39 @@ bool ModelComponent::SetModel(const std::string& filePath)
 
 	return true;
 }
+
+bool ModelComponent::SetTexture(
+	size_t materialIndex,
+	const std::string& filePath)
+{
+	// Model‚ªİ’è‚³‚ê‚Ä‚¢‚È‚¢ê‡‚Í¸”s
+	if (!m_Model)
+	{
+		return false;
+	}
+
+	auto& materials =
+		m_Model->GetMaterials();
+
+	// Material”Ô†‚ª”ÍˆÍŠO‚Ìê‡‚Í¸”s
+	if (materialIndex >= materials.size())
+	{
+		return false;
+	}
+
+	// ResourceManager‚©‚çTexture‚ğæ“¾
+	auto texture =
+		RESOURCE_MANAGER.LoadTexture(
+			filePath);
+
+	if (!texture)
+	{
+		return false;
+	}
+
+	// w’èMaterial‚ÖTexture‚ğİ’è
+	materials[materialIndex].Texture =
+		std::move(texture);
+
+	return true;
+}

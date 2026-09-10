@@ -51,6 +51,10 @@ public:
 		return m_Model != nullptr;
 	}
 
+	bool SetTexture(
+		size_t materialIndex,
+		const std::string& filePath);
+
 private:
 	std::shared_ptr<ModelData> m_Model = nullptr; // モデルデータ
 

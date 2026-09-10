@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include "NonCopyable.h"
 #include "ModelData.h"
+#include "Texture.h"
 
 /**
  * @class ResourceManager
@@ -53,6 +54,35 @@ public:
 	  */
 	void ClearModels();
 
+	//====================
+	// Texture関係
+	//====================
+
+	/**
+	 * @brief Texture取得
+	 *
+	 * @details
+	 * 同じパスのTextureが既にロード済みなら
+	 * 既存Textureを返す。
+	 *
+	 * @param filePath Textureファイルパス
+	 *
+	 * @return Texture
+	 */
+	std::shared_ptr<Texture> LoadTexture(
+		const std::string& filePath);
+
+	/**
+	 * @brief TextureをResourceManagerから削除
+	 */
+	void UnloadTexture(
+		const std::string& filePath);
+
+	/**
+	 * @brief Textureを全て削除
+	 */
+	void ClearTextures();
+
 private:
 	//====================
 	// メンバ変数
@@ -64,6 +94,14 @@ private:
 		std::string,
 		std::shared_ptr<ModelData>
 	> m_ModelDataMap;	// モデルデータのマップ
+
+	/**
+	 * @brief Textureキャッシュ
+	 */
+	std::unordered_map<
+		std::string,
+		std::shared_ptr<Texture>
+	> m_TextureMap;
 	
 public:
 	/**

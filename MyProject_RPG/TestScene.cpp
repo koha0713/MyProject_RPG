@@ -67,18 +67,18 @@ void TestScene::Initialize()
 			// 使用するモデルの実際のパスに変更する
 			const bool result =
 				model->SetModel(
-					"Assets/Models/Warrior_Run.fbx");
+					"Assets/Models/Warrior/Warrior.fbx");
+			// Material[0]へTextureを手動設定
+			const bool texture0Result =
+				model->SetTexture(
+					0,
+					"Assets/Models/Warrior/Warrior_Texture.png");
+			// Material[1]へTextureを手動設定
+			const bool texture1Result =
+				model->SetTexture(
+					1,
+					"Assets/Models/Warrior/Warrior_Sword_Texture.png");
 
-			if (!result)
-			{
-				OutputDebugStringA(
-					"[TestScene] Model load failed.\n");
-			}
-			else
-			{
-				OutputDebugStringA(
-					"[TestScene] Model load succeeded.\n");
-			}
 		}
 
 

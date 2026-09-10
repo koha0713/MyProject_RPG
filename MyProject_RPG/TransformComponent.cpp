@@ -73,9 +73,18 @@ void TransformComponent::ImGuiDrawTransformGizmo()
 	DebugUI::RegisterDebugFunction([this]()
 		{
 			ImGui::Begin("Transform");
-			ImGui::DragFloat3("Position", &m_Position.x, 0.1f);
-			ImGui::DragFloat3("Rotation", &m_Rotation.x, 0.1f);
-			ImGui::DragFloat3("Scale", &m_Scale.x, 0.1f);	
+			if (ImGui::SliderFloat3("Position", &m_Position.x, -10.0f, 10.0f))
+			{
+				m_IsDirty = true;
+			}
+			if (ImGui::SliderFloat3("Rotation(ƒ‰ƒWƒAƒ“)", &m_Rotation.x, -3.14159f, 3.14159f))
+			{
+				m_IsDirty = true;
+			}
+			if (ImGui::SliderFloat3("Scale", &m_Scale.x, 0.0f, 10.0f))
+			{
+				m_IsDirty = true;
+			}
 			ImGui::End();
 		});
 }

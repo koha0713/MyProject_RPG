@@ -7,6 +7,10 @@ cbuffer ModelConstantBuffer : register(b0)
     float4x4 WorldViewProjection;
 
     float4 DiffuseColor;
+
+    uint HasTexture;
+
+    float3 Padding;
 };
 
 

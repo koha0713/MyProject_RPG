@@ -36,6 +36,13 @@ namespace
 		Matrix4x4 WorldViewProjection;
 
 		Vector4 DiffuseColor;
+
+		// Texture‚ªİ’è‚³‚ê‚Ä‚¢‚é‚©
+		uint32_t HasTexture = 0;
+
+		// HLSL ConstantBuffer‚Í
+		// 16byte‹«ŠE‚Ö‡‚í‚¹‚é•K—v‚ª‚ ‚é‚½‚ßPadding
+		float Padding[3]{};
 	};
 
 	static_assert(
@@ -117,6 +124,8 @@ Renderer::m_RenderTargetView;
 ComPtr<ID3D11DepthStencilView>
 Renderer::m_DepthStencilView;
 
+ComPtr<ID3D11SamplerState>
+Renderer::m_ModelSamplerState;
 
 //====================
 // Depth
@@ -274,6 +283,7 @@ void Renderer::Dispose()
 	//====================
 	// Model
 	//====================
+	m_ModelSamplerState.Reset();
 
 	m_ModelConstantBuffer.Reset();
 	m_ModelInputLayout.Reset();
@@ -938,14 +948,14 @@ bool Renderer::CreateModelPipeline()
 	}
 
 	//====================
-	// ConstantBuffer
-	//====================
+// ConstantBuffer
+//====================
 
-	D3D11_BUFFER_DESC
-		bufferDesc{};
+	D3D11_BUFFER_DESC bufferDesc{};
 
 	bufferDesc.ByteWidth =
-		sizeof(ModelConstantBuffer);
+		static_cast<UINT>(
+			sizeof(ModelConstantBuffer));
 
 	bufferDesc.Usage =
 		D3D11_USAGE_DEFAULT;
@@ -954,6 +964,7 @@ bool Renderer::CreateModelPipeline()
 		D3D11_BIND_CONSTANT_BUFFER;
 
 	bufferDesc.CPUAccessFlags = 0;
+	bufferDesc.MiscFlags = 0;
 
 	hr =
 		m_Device->CreateBuffer(
@@ -963,6 +974,44 @@ bool Renderer::CreateModelPipeline()
 
 	if (FAILED(hr))
 	{
+		OutputDebugStringA(
+			"[Renderer] Create ModelConstantBuffer failed.\n");
+
+		return false;
+	}
+
+	//====================
+	// Texture Sampler
+	//====================
+
+	D3D11_SAMPLER_DESC samplerDesc{};
+
+	samplerDesc.Filter =
+		D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+
+	samplerDesc.AddressU =
+		D3D11_TEXTURE_ADDRESS_WRAP;
+
+	samplerDesc.AddressV =
+		D3D11_TEXTURE_ADDRESS_WRAP;
+
+	samplerDesc.AddressW =
+		D3D11_TEXTURE_ADDRESS_WRAP;
+
+	samplerDesc.MinLOD = 0.0f;
+	samplerDesc.MaxLOD =
+		D3D11_FLOAT32_MAX;
+
+	hr =
+		m_Device->CreateSamplerState(
+			&samplerDesc,
+			m_ModelSamplerState.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		OutputDebugStringA(
+			"[Renderer] Create ModelSamplerState failed.\n");
+
 		return false;
 	}
 
@@ -1053,6 +1102,12 @@ void Renderer::DrawMesh(
 	constantBuffer.DiffuseColor =
 		material.Diffuse;
 
+	constantBuffer.HasTexture =
+		(material.Texture &&
+			material.Texture->IsValid())
+		? 1u
+		: 0u;
+
 	m_DeviceContext->
 		UpdateSubresource(
 			m_ModelConstantBuffer.Get(),
@@ -1102,6 +1157,39 @@ void Renderer::DrawMesh(
 			0,
 			1,
 			constantBuffers);
+
+	//=================================================
+	// Texture
+	//=================================================
+
+	ID3D11ShaderResourceView*
+		textureView = nullptr;
+
+	if (material.Texture &&
+		material.Texture->IsValid())
+	{
+		textureView =
+			material.Texture->
+			GetShaderResourceView();
+	}
+
+	// PixelShader t0
+	m_DeviceContext->
+		PSSetShaderResources(
+			0,
+			1,
+			&textureView);
+
+	// PixelShader s0
+	ID3D11SamplerState*
+		sampler =
+		m_ModelSamplerState.Get();
+
+	m_DeviceContext->
+		PSSetSamplers(
+			0,
+			1,
+			&sampler);
 
 	//=================================================
 	// Mesh

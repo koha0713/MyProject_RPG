@@ -160,6 +160,7 @@
     <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="SceneClassFactory.h" />
     <ClInclude Include="SceneManager.h" />
+    <ClInclude Include="stb_image.h" />
     <ClInclude Include="TestScene.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="TransformComponent.h" />
@@ -185,6 +186,7 @@
     <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="TestScene.cpp" />
+    <ClCompile Include="Texture.cpp" />
     <ClCompile Include="TransformComponent.cpp" />
     <ClCompile Include="Window.cpp" />
     <ClCompile Include="DebugUI.cpp" />
