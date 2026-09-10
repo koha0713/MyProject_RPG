@@ -19,8 +19,6 @@ public:
 	TransformComponent() = default;
 	~TransformComponent() override = default;
 
-	void Update() override;
-
 	//====================
 	// Position
 	//====================

@@ -1,10 +1,6 @@
 #include "TransformComponent.h"
 #include <DebugUI.h>
 
-void TransformComponent::Update()
-{
-}
-
 /**
  * @brief WorldMatrixŽæ“¾
  */

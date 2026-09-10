@@ -46,6 +46,9 @@
     <Filter Include="リソース ファイル\VS">
       <UniqueIdentifier>{e52d59e3-d8f2-4ae3-8088-183a3960a966}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\Graphics\Animation">
+      <UniqueIdentifier>{c619ba06-3c29-4349-aa72-82319240c2af}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -141,6 +144,12 @@
     <ClInclude Include="CameraComponent.h">
       <Filter>ソース ファイル\Component</Filter>
     </ClInclude>
+    <ClInclude Include="AnimationData.h">
+      <Filter>ソース ファイル\Graphics\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="AnimatorComponent.h">
+      <Filter>ソース ファイル\Component</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -210,6 +219,9 @@
       <Filter>ソース ファイル\Component</Filter>
     </ClCompile>
     <ClCompile Include="CameraComponent.cpp">
+      <Filter>ソース ファイル\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="AnimatorComponent.cpp">
       <Filter>ソース ファイル\Component</Filter>
     </ClCompile>
   </ItemGroup>

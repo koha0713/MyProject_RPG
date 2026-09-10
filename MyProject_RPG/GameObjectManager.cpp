@@ -21,11 +21,11 @@ void GameObjectManager::Finalize()
 	}
 }
 
-void GameObjectManager::Update()
+void GameObjectManager::Update(uint64_t delta)
 {
 	for (auto& object : m_GameObjects)
 	{
-		object->Update();
+		object->Update(delta);
 	}
 
 	RemoveDestroyedObjects();

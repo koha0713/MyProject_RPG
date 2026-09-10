@@ -57,7 +57,7 @@ public:
 	/**
 	 * @brief 更新処理
 	 */
-	virtual void Update()
+	virtual void Update(uint64_t delta)
 	{
 		// 非アクティブなら更新しない
 		if (!m_IsActive)
@@ -65,7 +65,11 @@ public:
 
 		for (auto& component : m_Components)
 		{
-			component->Update();
+			if (!component)
+			{
+				continue;
+			}
+			component->Update(delta);
 		}
 	}
 

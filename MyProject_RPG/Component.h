@@ -1,5 +1,6 @@
 #pragma once
 #include "NonCopyable.h"
+#include <cstdint>
 
 class GameObject;
 
@@ -19,7 +20,7 @@ public:
 
 	virtual void Finalize() {}
 
-	virtual void Update() {}
+	virtual void Update(uint64_t delta) {}
 
 	virtual void Draw() {}
 

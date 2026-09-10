@@ -1,10 +1,12 @@
 #pragma once
 #include <string>
 #include <memory>
+#include <unordered_map>
 
 #include "CommonType.h"
 #include "Texture.h"
 #include "MeshBuffer.h"
+#include "AnimationData.h"
 /**
  * @brief モデルデータを保持する構造体
  */
@@ -35,6 +37,7 @@ struct MaterialData
 	std::string TexturePath;		// テクスチャのパス
 	std::shared_ptr<Texture> Texture;  // テクスチャ
 };
+
 /**
  * @brief モデルのメッシュ情報
  * @details 1つのMeshBufferと、
@@ -44,8 +47,25 @@ struct MeshData
 {
 	std::vector<VertexData> Vertices;
 	std::vector<uint32_t> Indices;
+
 	std::shared_ptr<MeshBuffer> Mesh;
-	unsigned int MaterialIndex = 0; // インデックス数
+
+	unsigned int MaterialIndex = 0;
+
+	/**
+	 * @brief このMeshが所属しているNodeのIndex
+	 *
+	 * SkeletonData::BonesのIndexと共通化する。
+	 * -1なら所属Node不明。
+	 */
+	int NodeIndex = -1;
+
+	/**
+	 * @brief BoneWeightによるSkinningを行うMeshか
+	 */
+	bool HasSkinning = false;
+
+	void CreateGpuResources();
 };
 
 /**
@@ -61,29 +81,57 @@ struct BoneWeight
 };
 
 /**
- * @brief ボーン情報
+ * @brief 1Bone分のデータ
  */
 struct BoneData
 {
-	std::string BoneName;        // ボーン名
-	std::string MeshName;  // ボーンが属するメッシュ名
-	std::string ArmatureName; // ボーンが属するアーマチュア名
+	std::string Name;
 
-	Matrix4x4 Matrix;             // ボーンの変換行列
-	Matrix4x4 AnimationMatrix;    // ボーンのアニメーション行列
-	Matrix4x4 OffsetMatrix;       // ボーンのオフセット行列
+	int ParentIndex = -1;
 
-	int Index = 0;                  // ボーンのインデックス
+	/**
+	 * @brief Bind Pose時のLocal Transform
+	 */
+	Matrix4x4 LocalTransform =
+		Matrix4x4(
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f);
 
-	std::vector<BoneWeight> Weights; // ボーンが影響を与える頂点のウェイト情報
+	/**
+	 * @brief Skinning用Offset Matrix
+	 *
+	 * Skinning対象でないNodeではIdentityのまま。
+	 */
+	Matrix4x4 OffsetMatrix =
+		Matrix4x4(
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f);
 };
 
 /**
- * @brief スケルトン情報
+ * @brief Modelが使用するSkeleton情報
  */
 struct SkeletonData
 {
-	std::vector<BoneData> Bones; // ボーン情報の配列
+	std::vector<BoneData> Bones;
+
+	// Bone名からIndexを取得するためのMap
+	std::unordered_map<std::string, int>
+		BoneMap;
+	/**
+	 * @brief Scene Root Transformの逆行列
+	 * BoneのGlobalTransformをモデル空間へ戻すために使用する。
+	 */
+	Matrix4x4 GlobalInverseTransform =
+		Matrix4x4(
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f);
 };
 
 /**
@@ -123,6 +171,10 @@ public:
 	{
 		return m_Skeleton;
 	}
+	/*const  SkeletonData& GetSkeleton() const
+	{
+		return m_Skeleton;
+	}*/
 	float GetScaleBase() const
 	{
 		return m_ScaleBase;
@@ -130,6 +182,21 @@ public:
 	void SetScaleBase(float scale)
 	{
 		m_ScaleBase = scale;
+	}
+
+	/**
+	 * @brief Modelファイル自身が持つAnimation一覧
+	 */
+	std::vector<AnimationClip>&
+		GetAnimations()
+	{
+		return m_Animations;
+	}
+
+	const std::vector<AnimationClip>&
+		GetAnimations() const
+	{
+		return m_Animations;
 	}
 
 	bool CreateGpuResources(
@@ -142,6 +209,12 @@ private:
 	Materials m_Materials; // マテリアル情報の配列
 	Meshes m_Meshes;       // メッシュ情報の配列
 	SkeletonData m_Skeleton; // スケルトン情報
+	
+	//====================
+	// Animation Resource
+	//====================
+	std::vector<AnimationClip>
+		m_Animations;
 
 	float m_ScaleBase = 1.0f; // モデルのスケール基準値
 };

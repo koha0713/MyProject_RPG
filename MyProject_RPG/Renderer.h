@@ -7,6 +7,7 @@
 
 #include <d3d11.h>
 #include <dxgi.h>
+#include <span>
 
 #include "CommonType.h"
 #include "NonCopyable.h"
@@ -90,7 +91,8 @@ public:
 	static void DrawMesh(
 		const MeshBuffer& mesh,
 		const MaterialData& material,
-		const Matrix4x4& worldMatrix);
+		const Matrix4x4& worldMatrix,
+		std::span<const Matrix4x4> boneMatrices = {});
 
 	//====================
 	// RenderState
@@ -269,4 +271,10 @@ private:
 
 	static ComPtr<ID3D11SamplerState>
 		m_ModelSamplerState;
+
+	/**
+	 * @brief Skinning—pBone ConstantBuffer
+	 */
+	static ComPtr<ID3D11Buffer>
+		m_BoneConstantBuffer;
 };

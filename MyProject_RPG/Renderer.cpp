@@ -50,6 +50,25 @@ namespace
 		"ConstantBuffer size must be 16-byte aligned.");
 
 	/**
+	 * @brief GPU Skinning用ConstantBuffer
+	 */
+	struct BoneConstantBuffer
+	{
+		// Skinning用Bone Matrix
+		Matrix4x4 BoneMatrices[MAX_BONES];
+
+		// Skinningを行うか
+		uint32_t HasSkinning = 0;
+
+		// 16byte Alignment調整
+		float Padding[3]{};
+	};
+
+	static_assert(
+		sizeof(BoneConstantBuffer) % 16 == 0,
+		"BoneConstantBuffer must be 16-byte aligned.");
+
+	/**
 	 * @brief HLSLファイルをコンパイル
 	 */
 	bool CompileShader(
@@ -127,6 +146,7 @@ Renderer::m_DepthStencilView;
 ComPtr<ID3D11SamplerState>
 Renderer::m_ModelSamplerState;
 
+
 Matrix4x4 Renderer::m_ViewMatrix =
 Matrix4x4(
 	1.0f, 0.0f, 0.0f, 0.0f,
@@ -200,6 +220,9 @@ Renderer::m_ModelInputLayout;
 
 ComPtr<ID3D11Buffer>
 Renderer::m_ModelConstantBuffer;
+
+ComPtr<ID3D11Buffer>
+Renderer::m_BoneConstantBuffer;
 
 
 //=====================================================
@@ -299,11 +322,13 @@ void Renderer::Dispose()
 	//====================
 	m_ModelSamplerState.Reset();
 
+	m_BoneConstantBuffer.Reset();
 	m_ModelConstantBuffer.Reset();
 	m_ModelInputLayout.Reset();
 
 	m_ModelPixelShader.Reset();
 	m_ModelVertexShader.Reset();
+
 
 	//====================
 	// Rasterizer
@@ -943,6 +968,31 @@ bool Renderer::CreateModelPipeline()
 					TexCoord)),
 			D3D11_INPUT_PER_VERTEX_DATA,
 			0
+		},
+		{
+			"BLENDINDICES",
+			0,
+			DXGI_FORMAT_R32G32B32A32_SINT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					VertexData,
+					BoneIndex)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		{
+			"BLENDWEIGHT",
+			0,
+			DXGI_FORMAT_R32G32B32A32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					VertexData,
+					BoneWeight)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
 		}
 	};
 
@@ -962,8 +1012,8 @@ bool Renderer::CreateModelPipeline()
 	}
 
 	//====================
-// ConstantBuffer
-//====================
+	// ConstantBuffer
+	//====================
 
 	D3D11_BUFFER_DESC bufferDesc{};
 
@@ -990,6 +1040,39 @@ bool Renderer::CreateModelPipeline()
 	{
 		OutputDebugStringA(
 			"[Renderer] Create ModelConstantBuffer failed.\n");
+
+		return false;
+	}
+
+	//=====================================================
+	// Bone ConstantBuffer
+	//=====================================================
+
+	D3D11_BUFFER_DESC
+		boneBufferDesc{};
+
+	boneBufferDesc.ByteWidth =
+		static_cast<UINT>(
+			sizeof(BoneConstantBuffer));
+
+	boneBufferDesc.Usage =
+		D3D11_USAGE_DEFAULT;
+
+	boneBufferDesc.BindFlags =
+		D3D11_BIND_CONSTANT_BUFFER;
+
+	boneBufferDesc.CPUAccessFlags = 0;
+
+	hr =
+		m_Device->CreateBuffer(
+			&boneBufferDesc,
+			nullptr,
+			m_BoneConstantBuffer.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		OutputDebugStringA(
+			"[Renderer] Create BoneConstantBuffer failed.\n");
 
 		return false;
 	}
@@ -1040,7 +1123,8 @@ bool Renderer::CreateModelPipeline()
 void Renderer::DrawMesh(
 	const MeshBuffer& mesh,
 	const MaterialData& material,
-	const Matrix4x4& worldMatrix)
+	const Matrix4x4& worldMatrix,
+	std::span<const Matrix4x4> boneMatrices)
 {
 	if (!m_DeviceContext ||
 		!mesh.IsValid())
@@ -1086,6 +1170,53 @@ void Renderer::DrawMesh(
 			0,
 			0);
 
+	//=====================================================
+	// Bone ConstantBuffer
+	//=====================================================
+
+	BoneConstantBuffer
+		boneConstantBuffer{};
+
+	// Bone行列が存在する場合のみSkinning
+	if (!boneMatrices.empty())
+	{
+		if (boneMatrices.size() >
+			MAX_BONES)
+		{
+			OutputDebugStringA(
+				"[Renderer::DrawMesh] Bone count exceeds MAX_BONES.\n");
+
+			return;
+		}
+
+		boneConstantBuffer.HasSkinning = 1;
+
+		for (size_t i = 0;
+			i < boneMatrices.size();
+			++i)
+		{
+			// HLSLへ渡すためTranspose
+			boneConstantBuffer.
+				BoneMatrices[i] =
+				boneMatrices[i].
+				Transpose();
+		}
+	}
+	else
+	{
+		// Static Modelの場合
+		boneConstantBuffer.HasSkinning = 0;
+	}
+
+	m_DeviceContext->
+		UpdateSubresource(
+			m_BoneConstantBuffer.Get(),
+			0,
+			nullptr,
+			&boneConstantBuffer,
+			0,
+			0);
+
 	//=================================================
 	// InputAssembler
 	//=================================================
@@ -1126,6 +1257,22 @@ void Renderer::DrawMesh(
 			0,
 			1,
 			constantBuffers);
+
+	//=====================================================
+	// Bone ConstantBuffer
+	//=====================================================
+
+	ID3D11Buffer* boneBuffers[] =
+	{
+		m_BoneConstantBuffer.Get()
+	};
+
+	// VertexShader b1
+	m_DeviceContext->
+		VSSetConstantBuffers(
+			1,
+			1,
+			boneBuffers);
 
 	//=================================================
 	// Texture

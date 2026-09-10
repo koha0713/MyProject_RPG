@@ -136,6 +136,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="AnimationData.h" />
+    <ClInclude Include="AnimatorComponent.h" />
     <ClInclude Include="CameraComponent.h" />
     <ClInclude Include="CommonType.h" />
     <ClInclude Include="Component.h" />
@@ -169,6 +171,7 @@
     <ClInclude Include="DebugUI.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AnimatorComponent.cpp" />
     <ClCompile Include="CameraComponent.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="GameObjectManager.cpp" />
@@ -205,6 +208,7 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
     </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -17,13 +17,18 @@ public:
      * @param fps –Ú•WFPS
      */
     explicit FPS(uint64_t fps)
-        : m_MicrosecondsPerFrame(1000000 / fps)
     {
-        if (fps == 0) {
-            throw std::invalid_argument("fps must not be zero");
+        if (fps == 0)
+        {
+            throw std::invalid_argument(
+                "fps must not be zero");
         }
 
-        auto now = std::chrono::steady_clock::now();
+        m_MicrosecondsPerFrame =
+            1'000'000 / fps;
+
+        auto now =
+            std::chrono::steady_clock::now();
 
         m_frameStartTime = now;
         m_prevFrameStartTime = now;

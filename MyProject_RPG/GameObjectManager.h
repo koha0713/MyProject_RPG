@@ -29,7 +29,7 @@ public:
 	/**
 	 * @brief XVˆ—
 	 */
-	void Update();
+	void Update(uint64_t delta);
 
 	/**
 	 * @brief •`‰æˆ—

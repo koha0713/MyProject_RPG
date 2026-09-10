@@ -2,6 +2,7 @@
 #include <string>
 #include "Component.h"
 #include "ModelData.h"
+#include "AnimationData.h"
 
 /**
  * @brief 3Dモデルの描画Component
@@ -16,7 +17,7 @@ public:
 	~ModelComponent() = default;
 
 	void Initialize() override;
-	void Update() override;
+	void Update(uint64_t delta) override;
 	void Draw() override;
 
 	//====================
@@ -61,6 +62,20 @@ public:
 	{
 		return "ModelComponent";
 	}
+
+	/**
+	 * @brief Animation登録
+	 */
+	bool SetAnimation(
+		AnimationID id,
+		const std::string& filePath);
+
+	/**
+	 * @brief Animation再生
+	 */
+	bool PlayAnimation(
+		AnimationID id,
+		bool loop = true);
 
 private:
 	std::shared_ptr<ModelData> m_Model = nullptr; // モデルデータ
