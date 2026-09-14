@@ -55,7 +55,7 @@ void TestScene::Initialize()
 
 					// モデルサイズに応じて調整する
 					transform->SetScale(
-						1.0f);
+						0.01f);
 				}
 			}
 			//====================
@@ -83,7 +83,7 @@ void TestScene::Initialize()
 							"Assets/Models/Warrior/Warrior_Sword_Texture.png");
 
 					// 初期Animation設定
-					model->PlayAnimation(AnimationID::Idle);
+					model->PlayAnimation(AnimationID::Idle,true,0.0f);
 				}
 			}
 

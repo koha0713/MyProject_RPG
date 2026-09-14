@@ -72,7 +72,8 @@ public:
 	 */
 	bool PlayAnimation(
 		AnimationID id,
-		bool loop = true);
+		bool loop = true,
+		float blendDuration = 0.15f);
 
 	/**
 	 * @brief Animation停止
@@ -149,6 +150,12 @@ public:
 		return m_GlobalBoneMatrices;
 	}
 
+	/**
+	 * @brief Blend元AnimationClipを取得
+	 */
+	const AnimationClip*
+		GetPreviousClip() const;
+
 private:
 
 	/**
@@ -176,6 +183,12 @@ private:
 	 * @brief 現在時刻からSkeleton姿勢を計算
 	 */
 	void UpdateBonePose();
+
+	void UpdatePreviousAnimationTime(
+		double deltaSeconds);
+
+	void UpdateBlend(
+		float deltaSeconds);
 
 	/**
 	 * @brief Bone名からAnimationChannelを取得
@@ -250,4 +263,40 @@ private:
 	bool m_Playing = false;
 	bool m_Paused = false;
 	bool m_Loop = true;
+
+	//====================
+	// Animation Blend
+	//====================
+
+	/**
+	 * @brief ブレンド元Animation
+	 */
+	AnimationID m_PreviousAnimation =
+		AnimationID::None;
+
+	/**
+	 * @brief ブレンド元Animationの再生時間
+	 *
+	 * Tick単位。
+	 */
+	double m_PreviousTime = 0.0;
+
+	/**
+	 * @brief 現在ブレンド中か
+	 */
+	bool m_IsBlending = false;
+
+	/**
+	 * @brief ブレンド経過時間
+	 *
+	 * 秒単位。
+	 */
+	float m_BlendTime = 0.0f;
+
+	/**
+	 * @brief ブレンド時間
+	 *
+	 * 秒単位。
+	 */
+	float m_BlendDuration = 0.15f;
 };

@@ -75,7 +75,8 @@ public:
 	 */
 	bool PlayAnimation(
 		AnimationID id,
-		bool loop = true);
+		bool loop,
+		float blendDuration);
 
 private:
 	std::shared_ptr<ModelData> m_Model = nullptr; // モデルデータ

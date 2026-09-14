@@ -157,9 +157,20 @@ void AnimatorComponent::Update(
 		static_cast<double>(delta) /
 		1'000'000.0;
 
+	// 現在Animation
 	UpdateAnimationTime(
 		deltaSeconds);
 
+	// Blend元Animationも進める
+	UpdatePreviousAnimationTime(
+		deltaSeconds);
+
+	// Blend率更新
+	UpdateBlend(
+		static_cast<float>(
+			deltaSeconds));
+
+	// Skeleton Pose生成
 	UpdateBonePose();
 }
 
@@ -222,7 +233,8 @@ bool AnimatorComponent::SetAnimation(
 
 bool AnimatorComponent::PlayAnimation(
 	AnimationID id,
-	bool loop)
+	bool loop,
+	float blendDuration)
 {
 	const auto it =
 		m_Animations.find(
@@ -232,6 +244,49 @@ bool AnimatorComponent::PlayAnimation(
 		m_Animations.end())
 	{
 		return false;
+	}
+
+	// 同じアニメーションを指定した場合
+	if (m_CurrentAnimation == id &&
+		m_Playing)
+	{
+		return true;
+	}
+
+	// Animationブレンドの設定
+	if (m_CurrentAnimation !=
+		AnimationID::None &&
+		m_Playing &&
+		blendDuration > 0.0f)
+	{
+		m_PreviousAnimation =
+			m_CurrentAnimation;
+
+		m_PreviousTime =
+			m_CurrentTime;
+
+		m_IsBlending =
+			true;
+
+		m_BlendTime =
+			0.0f;
+
+		m_BlendDuration =
+			blendDuration;
+	}
+	else
+	{
+		m_PreviousAnimation =
+			AnimationID::None;
+
+		m_PreviousTime =
+			0.0;
+
+		m_IsBlending =
+			false;
+
+		m_BlendTime =
+			0.0f;
 	}
 
 	m_CurrentAnimation =
@@ -775,7 +830,6 @@ void AnimatorComponent::UpdateBonePose()
 		//====================
 		// Bind Pose
 		//====================
-
 		Vector3 defaultScale;
 		Quaternion defaultRotation;
 		Vector3 defaultPosition;
@@ -786,58 +840,132 @@ void AnimatorComponent::UpdateBonePose()
 			defaultRotation,
 			defaultPosition);
 
-		// デフォルトではFBXのBind Pose
-		Matrix4x4 localMatrix =
-			bone.LocalTransform;
+		//====================
+		// Current Pose
+		//====================
+		Vector3 position =
+			defaultPosition;
 
-		//====================
-		// Animation Channel
-		//====================
+		Quaternion rotation =
+			defaultRotation;
+
+		Vector3 scale =
+			defaultScale;
 
 		const BoneAnimation*
-			boneAnimation =
+			currentBoneAnimation =
 			FindBoneAnimation(
 				*clip,
 				bone.Name);
 
-		if (boneAnimation)
+		if (currentBoneAnimation)
 		{
-			const Vector3 position =
+			position =
 				SamplePosition(
-					*boneAnimation,
+					*currentBoneAnimation,
 					m_CurrentTime,
 					defaultPosition);
 
-			const Quaternion rotation =
+			rotation =
 				SampleRotation(
-					*boneAnimation,
+					*currentBoneAnimation,
 					m_CurrentTime,
 					defaultRotation);
 
-			const Vector3 scale =
+			scale =
 				SampleScale(
-					*boneAnimation,
+					*currentBoneAnimation,
 					m_CurrentTime,
 					defaultScale);
-
-			//====================
-			// Local Transform
-			//====================
-			//
-			// DirectX / SimpleMathでは
-			// Row Vector形式として
-			// Scale → Rotation → Translation
-			// の順で合成する。
-			//
-
-			localMatrix =
-				Matrix4x4::CreateScale(
-					scale) *
-				Matrix4x4::CreateFromQuaternion(
-					rotation) *
-				Matrix4x4::CreateTranslation(
-					position);
 		}
+
+		//====================
+		// Animation Blend
+		//====================
+
+		if (m_IsBlending)
+		{
+			const AnimationClip* previousClip =
+				GetPreviousClip();
+
+			if (previousClip)
+			{
+				Vector3 previousPosition =
+					defaultPosition;
+
+				Quaternion previousRotation =
+					defaultRotation;
+
+				Vector3 previousScale =
+					defaultScale;
+
+				const BoneAnimation*
+					previousBoneAnimation =
+					FindBoneAnimation(
+						*previousClip,
+						bone.Name);
+
+				if (previousBoneAnimation)
+				{
+					previousPosition =
+						SamplePosition(
+							*previousBoneAnimation,
+							m_PreviousTime,
+							defaultPosition);
+
+					previousRotation =
+						SampleRotation(
+							*previousBoneAnimation,
+							m_PreviousTime,
+							defaultRotation);
+
+					previousScale =
+						SampleScale(
+							*previousBoneAnimation,
+							m_PreviousTime,
+							defaultScale);
+				}
+
+				const float blendFactor =
+					m_BlendDuration > 0.0f
+					? std::clamp(
+						m_BlendTime /
+						m_BlendDuration,
+						0.0f,
+						1.0f)
+					: 1.0f;
+
+				position =
+					LerpVector3(
+						previousPosition,
+						position,
+						blendFactor);
+
+				rotation =
+					SlerpQuaternion(
+						previousRotation,
+						rotation,
+						blendFactor);
+
+				scale =
+					LerpVector3(
+						previousScale,
+						scale,
+						blendFactor);
+			}
+		}
+
+		//====================
+		// Local Transform
+		//====================
+
+		const Matrix4x4 localMatrix =
+			Matrix4x4::CreateScale(
+				scale) *
+			Matrix4x4::CreateFromQuaternion(
+				rotation) *
+			Matrix4x4::CreateTranslation(
+				position);
 
 		//====================
 		// Global Transform
@@ -863,23 +991,86 @@ void AnimatorComponent::UpdateBonePose()
 		}
 
 		//====================
-		// Final Bone Matrix
+		// Skinning Matrix
 		//====================
-		// Assimp(column-vector)で一般的な
-		// GlobalInverse
-		// * Global
-		// * Offset
-		// を、現在のDirectX row-vector表現へ
-		// 変換した順序。
-		//
 
 		m_FinalBoneMatrices[
 			boneIndex] =
 			bone.OffsetMatrix *
 				m_GlobalBoneMatrices[
 					boneIndex] *
-				skeleton.
-						GlobalInverseTransform;
+				skeleton.GlobalInverseTransform;
+	}
+}
+
+void AnimatorComponent::
+UpdatePreviousAnimationTime(
+	double deltaSeconds)
+{
+	if (!m_IsBlending)
+	{
+		return;
+	}
+
+	const AnimationClip* clip =
+		GetPreviousClip();
+
+	if (!clip ||
+		clip->Duration <= 0.0)
+	{
+		return;
+	}
+
+	const double ticksPerSecond =
+		clip->TicksPerSecond > 0.0
+		? clip->TicksPerSecond
+		: 30.0;
+
+	m_PreviousTime +=
+		deltaSeconds *
+		ticksPerSecond *
+		static_cast<double>(
+			m_Speed);
+
+	// Blend元は基本Loop扱いで問題ない
+	m_PreviousTime =
+		std::fmod(
+			m_PreviousTime,
+			clip->Duration);
+
+	if (m_PreviousTime < 0.0)
+	{
+		m_PreviousTime +=
+			clip->Duration;
+	}
+}
+
+void AnimatorComponent::UpdateBlend(
+	float deltaSeconds)
+{
+	if (!m_IsBlending)
+	{
+		return;
+	}
+
+	m_BlendTime +=
+		deltaSeconds;
+
+	if (m_BlendDuration <= 0.0f ||
+		m_BlendTime >= m_BlendDuration)
+	{
+		// Blend完了
+		m_IsBlending =
+			false;
+
+		m_PreviousAnimation =
+			AnimationID::None;
+
+		m_PreviousTime =
+			0.0;
+
+		m_BlendTime =
+			0.0f;
 	}
 }
 
@@ -940,6 +1131,20 @@ bool AnimatorComponent::SetAnimations(
 	return registered;
 }
 
+const AnimationClip*
+AnimatorComponent::GetPreviousClip() const
+{
+	const auto it =
+		m_Animations.find(
+			m_PreviousAnimation);
+
+	if (it == m_Animations.end())
+	{
+		return nullptr;
+	}
+
+	return &it->second;
+}
 
 void AnimatorComponent::DrawDebugUI()
 {

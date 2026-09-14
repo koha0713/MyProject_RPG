@@ -284,7 +284,8 @@ bool ModelComponent::SetAnimation(
 
 bool ModelComponent::PlayAnimation(
 	AnimationID id,
-	bool loop)
+	bool loop,
+	float blendDuration)
 {
 	if (!GetOwner())
 	{
