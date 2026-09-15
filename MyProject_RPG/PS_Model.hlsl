@@ -2,15 +2,27 @@
 // Model Pixel Shader
 //=====================================================
 
-//=====================================================
-// ConstantBuffer
-//=====================================================
-
 cbuffer ModelConstantBuffer : register(b0)
 {
     float4x4 WorldViewProjection;
 
+    float4x4 WorldInverseTranspose;
+
     float4 DiffuseColor;
+
+    // xyz : 光が進む方向
+    // w   : Light Intensity
+    float4 LightDirectionIntensity;
+
+    float4 LightColor;
+
+    float4 AmbientLightColor;
+
+    // x : HighlightThreshold
+    // y : ShadowThreshold
+    // z : MidToneIntensity
+    // w : ShadowIntensity
+    float4 ToonParameters;
 
     uint HasTexture;
 
@@ -21,12 +33,10 @@ cbuffer ModelConstantBuffer : register(b0)
 // Texture
 //=====================================================
 
-// Diffuse Texture
-Texture2D DiffuseTexture :
+Texture2D ModelTexture :
     register(t0);
 
-// Texture Sampler
-SamplerState TextureSampler :
+SamplerState ModelSampler :
     register(s0);
 
 //=====================================================
@@ -37,7 +47,7 @@ struct PSInput
 {
     float4 Position : SV_POSITION;
 
-    float3 Normal : NORMAL;
+    float3 WorldNormal : NORMAL;
 
     float2 TexCoord : TEXCOORD0;
 };
@@ -49,23 +59,130 @@ struct PSInput
 float4 main(
     PSInput input) : SV_TARGET
 {
-    // Textureを持たないMaterialは
-    // Assimpから取得したDiffuseColorのみ使用
-    if (HasTexture == 0)
+    //=================================================
+    // Base Color
+    //=================================================
+
+    float4 baseColor =
+        DiffuseColor;
+
+    if (HasTexture != 0)
     {
-        return DiffuseColor;
+        const float4 textureColor =
+            ModelTexture.Sample(
+                ModelSampler,
+                input.TexCoord);
+
+        baseColor *=
+            textureColor;
     }
 
-    //====================
-    // Diffuse Texture
-    //====================
+    //=================================================
+    // Normal
+    //=================================================
 
-    const float4 textureColor =
-        DiffuseTexture.Sample(
-            TextureSampler,
-            input.TexCoord);
+    const float3 normal =
+        normalize(
+            input.WorldNormal);
 
-    // TextureとMaterialColorを合成
-    return textureColor *
-        DiffuseColor;
+    //=================================================
+    // Directional Light
+    //=================================================
+
+    // Directionは「光が進む方向」なので反転する
+    const float3 lightDirection =
+        normalize(
+            -LightDirectionIntensity.xyz);
+
+    const float lightIntensity =
+        LightDirectionIntensity.w;
+
+    //=================================================
+    // N dot L
+    //=================================================
+
+    const float NdotL =
+        saturate(
+            dot(
+                normal,
+                lightDirection));
+
+    //=================================================
+    // Toon Shading Parameters
+    //=================================================
+
+    const float highlightThreshold =
+        ToonParameters.x;
+
+    const float shadowThreshold =
+        ToonParameters.y;
+
+    const float midToneIntensity =
+        ToonParameters.z;
+
+    const float shadowIntensity =
+        ToonParameters.w;
+
+    //=================================================
+    // 3段階 Toon Shading
+    //=================================================
+
+    float toonIntensity =
+        1.0f;
+
+    if (NdotL >= highlightThreshold)
+    {
+        // 明部
+        toonIntensity =
+            1.0f;
+    }
+    else if (NdotL >= shadowThreshold)
+    {
+        // 中間部
+        toonIntensity =
+            midToneIntensity;
+    }
+    else
+    {
+        // 影部
+        toonIntensity =
+            shadowIntensity;
+    }
+
+    //=================================================
+    // Directional Light
+    //=================================================
+
+    const float3 toonLight =
+        LightColor.rgb *
+        lightIntensity *
+        toonIntensity;
+
+    //=================================================
+    // Ambient
+    //=================================================
+
+    const float3 ambientLight =
+        AmbientLightColor.rgb;
+
+    //=================================================
+    // Final Lighting
+    //=================================================
+
+    const float3 lighting =
+        ambientLight +
+        toonLight;
+
+    const float3 finalColor =
+        baseColor.rgb *
+        lighting;
+
+    const float3 gammaCorrected =
+    pow(
+        saturate(finalColor),
+        1.0f / 2.2f);
+
+    return float4(
+    gammaCorrected,
+    baseColor.a);
 }

@@ -6,6 +6,7 @@
 #include "Renderer.h"
 
 #include <cstddef>
+#include <cmath>
 #include <d3dcompiler.h>
 
 #include "Window.h"
@@ -19,35 +20,68 @@
 namespace
 {
 	/**
-	 * @brief モデル描画用ConstantBuffer
+	 * @brief Model描画用ConstantBuffer
 	 *
 	 * @details
 	 * HLSL側のModelConstantBufferと
-	 * メモリレイアウトを一致させる必要がある。
-	 *
-	 * ConstantBufferは16byte単位である必要がある。
-	 *
-	 * Matrix4x4 : 64byte
-	 * Vector4   : 16byte
-	 * 合計      : 80byte
+	 * メモリレイアウトを一致させること。
 	 */
 	struct ModelConstantBuffer
 	{
+		/**
+		 * @brief World * View * Projection
+		 */
 		Matrix4x4 WorldViewProjection;
 
+		/**
+		 * @brief 法線変換用World逆転置行列
+		 */
+		Matrix4x4 WorldInverseTranspose;
+
+		/**
+		 * @brief MaterialのDiffuse Color
+		 */
 		Vector4 DiffuseColor;
 
-		// Textureが設定されているか
+		/**
+		 * @brief xyz : 光が進む方向
+		 *        w   : 光強度
+		 */
+		Vector4 LightDirectionIntensity;
+
+		/**
+		 * @brief Directional Light色
+		 */
+		Vector4 LightColor;
+
+		/**
+		 * @brief Ambient Light色
+		 */
+		Vector4 AmbientLightColor;
+
+		/**
+		 * @brief Toon Shading
+		 * x : HighlightThreshold
+		 * y : ShadowThreshold
+		 * z : MidToneIntensity
+		 * w : ShadowIntensity
+		 */
+		Vector4 ToonParameters;
+
+		/**
+		 * @brief Textureを使用するか
+		 */
 		uint32_t HasTexture = 0;
 
-		// HLSL ConstantBufferは
-		// 16byte境界へ合わせる必要があるためPadding
+		/**
+		 * @brief ConstantBuffer 16byte Alignment
+		 */
 		float Padding[3]{};
 	};
 
 	static_assert(
 		sizeof(ModelConstantBuffer) % 16 == 0,
-		"ConstantBuffer size must be 16-byte aligned.");
+		"ModelConstantBuffer must be 16-byte aligned.");
 
 	/**
 	 * @brief GPU Skinning用ConstantBuffer
@@ -67,6 +101,37 @@ namespace
 	static_assert(
 		sizeof(BoneConstantBuffer) % 16 == 0,
 		"BoneConstantBuffer must be 16-byte aligned.");
+
+	/**
+	 * @brief Outline描画用ConstantBuffer
+	 */
+	struct OutlineConstantBuffer
+	{
+		/**
+		 * @brief World * View * Projection
+		 */
+		Matrix4x4 WorldViewProjection;
+
+		/**
+		 * @brief 法線変換用
+		 */
+		Matrix4x4 WorldInverseTranspose;
+
+		/**
+		 * @brief x : Outline Width
+		 *        yzw : padding
+		 */
+		Vector4 OutlineParameters;
+
+		/**
+		 * @brief Outline Color
+		 */
+		Vector4 OutlineColor;
+	};
+
+	static_assert(
+		sizeof(OutlineConstantBuffer) % 16 == 0,
+		"OutlineConstantBuffer must be 16-byte aligned.");
 
 	/**
 	 * @brief HLSLファイルをコンパイル
@@ -118,6 +183,70 @@ namespace
 
 		return true;
 	}
+
+	/**
+ * @brief Vector3を安全に正規化
+ */
+	Vector3 NormalizeDirection(
+		const Vector3& value)
+	{
+		const float lengthSq =
+			value.x * value.x +
+			value.y * value.y +
+			value.z * value.z;
+
+		// ゼロベクトルを正規化しない
+		if (lengthSq <= 0.000001f)
+		{
+			return Vector3(
+				0.0f,
+				-1.0f,
+				0.0f);
+		}
+
+		const float inverseLength =
+			1.0f /
+			std::sqrt(lengthSq);
+
+		return Vector3(
+			value.x * inverseLength,
+			value.y * inverseLength,
+			value.z * inverseLength);
+	}
+
+	/**
+	 * @brief 法線変換用の逆転置行列を生成
+	 *
+	 * @details
+	 * World行列に非一様Scaleが含まれていても
+	 * 法線方向が正しくなるようにする。
+	 */
+	Matrix4x4 CreateWorldInverseTranspose(
+		const Matrix4x4& worldMatrix)
+	{
+		using namespace DirectX;
+
+		const XMMATRIX world =
+			XMLoadFloat4x4(
+				&worldMatrix);
+
+		const XMMATRIX inverse =
+			XMMatrixInverse(
+				nullptr,
+				world);
+
+		const XMMATRIX inverseTranspose =
+			XMMatrixTranspose(
+				inverse);
+
+		Matrix4x4 result;
+
+		XMStoreFloat4x4(
+			&result,
+			inverseTranspose);
+
+		return result;
+	}
 }
 
 //=====================================================
@@ -160,6 +289,38 @@ Matrix4x4(
 	0.0f, 1.0f, 0.0f, 0.0f,
 	0.0f, 0.0f, 1.0f, 0.0f,
 	0.0f, 0.0f, 0.0f, 1.0f);
+
+ToonShading
+Renderer::m_ToonShading{};
+
+OutlineSetting
+Renderer::m_OutlineSetting{};
+
+ComPtr<ID3D11VertexShader>
+Renderer::m_OutlineVertexShader;
+
+ComPtr<ID3D11PixelShader>
+Renderer::m_OutlinePixelShader;
+
+ComPtr<ID3D11Buffer>
+Renderer::m_OutlineConstantBuffer;
+
+ComPtr<ID3D11RasterizerState>
+Renderer::m_OutlineRasterizerState;
+
+//=====================================================
+// Lighting
+//=====================================================
+
+DirectionalLight
+Renderer::m_DirectionalLight{};
+
+Color Renderer::m_AmbientLight =
+Color(
+	0.5f,
+	0.5f,
+	0.5f,
+	1.0f);
 
 //====================
 // Depth
@@ -231,32 +392,43 @@ Renderer::m_BoneConstantBuffer;
 
 bool Renderer::Init()
 {
+	OutputDebugStringA(
+		"[Renderer::Init] START\n");
 	//====================
 	// Device
 	//====================
-
+	OutputDebugStringA(
+		"[Renderer::Init] CreateDevice START\n");
 	if (!CreateDevice())
 	{
 		return false;
 	}
+	OutputDebugStringA(
+		"[Renderer::Init] CreateDevice OK\n");
 
 	//====================
 	// RenderTarget
 	//====================
-
+	OutputDebugStringA(
+		"[Renderer::Init] RenderTarget START\n");
 	if (!CreateRenderTarget())
 	{
 		return false;
 	}
+	OutputDebugStringA(
+		"[Renderer::Init] RenderTarget OK\n");
 
 	//====================
 	// DepthBuffer
 	//====================
-
+	OutputDebugStringA(
+		"[Renderer::Init] DepthStencil START\n");
 	if (!CreateDepthStencil())
 	{
 		return false;
 	}
+	OutputDebugStringA(
+		"[Renderer::Init] DepthStencil OK\n");
 
 	// RenderTargetとDepthBufferを設定
 	ID3D11RenderTargetView* renderTargets[] =
@@ -273,25 +445,54 @@ bool Renderer::Init()
 	// Viewport
 	//====================
 
+	OutputDebugStringA(
+		"[Renderer::Init] Viewport START\n");
+
 	CreateViewport();
+
+	OutputDebugStringA(
+		"[Renderer::Init] Viewport OK\n");
 
 	//====================
 	// RenderState
 	//====================
 
+	OutputDebugStringA(
+		"[Renderer::Init] RenderStates START\n");
+
 	if (!CreateRenderStates())
 	{
+		OutputDebugStringA(
+			"[Renderer::Init] RenderStates FAILED\n");
+
 		return false;
 	}
+
+	OutputDebugStringA(
+		"[Renderer::Init] RenderStates OK\n");
 
 	//====================
 	// Model描画Pipeline
 	//====================
-
+	OutputDebugStringA(
+		"[Renderer::Init] ModelPipeline START\n");
 	if (!CreateModelPipeline())
 	{
 		return false;
 	}
+	OutputDebugStringA(
+		"[Renderer::Init] ModelPipeline OK\n");
+	OutputDebugStringA(
+		"[Renderer::Init] OutlinePipeline START\n");
+	if (!CreateOutlinePipeline())
+	{
+		OutputDebugStringA(
+			"[Renderer::Init] OutlinePipeline FAILED\n");
+		return false;
+	}
+	OutputDebugStringA(
+		"[Renderer::Init] OutlinePipeline OK\n");
+
 
 	//====================
 	// 初期State
@@ -801,26 +1002,40 @@ bool Renderer::CreateRenderStates()
 			ComPtr<ID3D11RasterizerState>& result)
 		-> bool
 		{
-			D3D11_RASTERIZER_DESC desc{};
+			D3D11_RASTERIZER_DESC
+				rasterizerDesc{};
 
-			desc.FillMode = fillMode;
+			rasterizerDesc.FillMode =
+				fillMode;
 
-			desc.CullMode = cullMode;
+			rasterizerDesc.CullMode =
+				cullMode;
 
-			desc.FrontCounterClockwise =
+			rasterizerDesc.FrontCounterClockwise =
 				FALSE;
 
-			desc.DepthClipEnable =
+			rasterizerDesc.DepthClipEnable =
 				TRUE;
 
-			const HRESULT resultHr =
-				Renderer::m_Device->
-				CreateRasterizerState(
-					&desc,
+			const HRESULT hr =
+				m_Device->CreateRasterizerState(
+					&rasterizerDesc,
 					result.GetAddressOf());
 
-			return SUCCEEDED(resultHr);
+			if (FAILED(hr))
+			{
+				OutputDebugStringA(
+					"[Renderer] CreateRasterizerState failed.\n");
+
+				return false;
+			}
+
+			return true;
 		};
+
+	//=================================================
+	// 通常Rasterizer
+	//=================================================
 
 	if (!createRasterizer(
 		D3D11_FILL_SOLID,
@@ -851,6 +1066,25 @@ bool Renderer::CreateRenderStates()
 		D3D11_CULL_NONE,
 		m_RasterizerWireframeNoCull))
 	{
+		return false;
+	}
+
+	//=================================================
+	// Outline Rasterizer
+	//=================================================
+	//
+	// Inverted Hull法では表面をカリングし、
+	// 膨張させた裏面だけを描画する。
+	//
+
+	if (!createRasterizer(
+		D3D11_FILL_SOLID,
+		D3D11_CULL_FRONT,
+		m_OutlineRasterizerState))
+	{
+		OutputDebugStringA(
+			"[Renderer] Create OutlineRasterizerState failed.\n");
+
 		return false;
 	}
 
@@ -1115,6 +1349,90 @@ bool Renderer::CreateModelPipeline()
 	return true;
 }
 
+bool Renderer::CreateOutlinePipeline()
+{
+	ComPtr<ID3DBlob> vertexShaderBlob;
+	ComPtr<ID3DBlob> pixelShaderBlob;
+
+	//=================================================
+	// Vertex Shader
+	//=================================================
+
+	if (!CompileShader(
+		L"VS_Outline.hlsl",
+		"main",
+		"vs_5_0",
+		vertexShaderBlob))
+	{
+		return false;
+	}
+
+	HRESULT hr =
+		m_Device->CreateVertexShader(
+			vertexShaderBlob->GetBufferPointer(),
+			vertexShaderBlob->GetBufferSize(),
+			nullptr,
+			m_OutlineVertexShader.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Pixel Shader
+	//=================================================
+
+	if (!CompileShader(
+		L"PS_Outline.hlsl",
+		"main",
+		"ps_5_0",
+		pixelShaderBlob))
+	{
+		return false;
+	}
+
+	hr =
+		m_Device->CreatePixelShader(
+			pixelShaderBlob->GetBufferPointer(),
+			pixelShaderBlob->GetBufferSize(),
+			nullptr,
+			m_OutlinePixelShader.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// ConstantBuffer
+	//=================================================
+
+	D3D11_BUFFER_DESC bufferDesc{};
+
+	bufferDesc.ByteWidth =
+		static_cast<UINT>(
+			sizeof(OutlineConstantBuffer));
+
+	bufferDesc.Usage =
+		D3D11_USAGE_DEFAULT;
+
+	bufferDesc.BindFlags =
+		D3D11_BIND_CONSTANT_BUFFER;
+
+	hr =
+		m_Device->CreateBuffer(
+			&bufferDesc,
+			nullptr,
+			m_OutlineConstantBuffer.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	return true;
+}
 
 //=====================================================
 // Model描画
@@ -1132,6 +1450,10 @@ void Renderer::DrawMesh(
 		return;
 	}
 
+	m_DeviceContext->
+		RSSetState(
+			m_RasterizerSolidCull.Get());
+
 	//=================================================
 	// Camera
 	//=================================================
@@ -1144,7 +1466,10 @@ void Renderer::DrawMesh(
 	ModelConstantBuffer
 		constantBuffer{};
 
-	// HLSLへ渡すためTransposeする
+	//=================================================
+	// World View Projection
+	//=================================================
+
 	constantBuffer.WorldViewProjection =
 		(
 			worldMatrix *
@@ -1152,8 +1477,72 @@ void Renderer::DrawMesh(
 			m_ProjectionMatrix
 			).Transpose();
 
+	//=================================================
+	// Normal Matrix
+	//=================================================
+	//
+	// PositionとNormalでは変換方法が異なる。
+	// NormalにはWorld行列の逆転置行列を使用する。
+	//
+
+	const Matrix4x4
+		worldInverseTranspose =
+		CreateWorldInverseTranspose(
+			worldMatrix);
+
+	constantBuffer.WorldInverseTranspose =
+		worldInverseTranspose.Transpose();
+
+	//=================================================
+	// Material
+	//=================================================
+
 	constantBuffer.DiffuseColor =
 		material.Diffuse;
+
+	//=================================================
+	// Directional Light
+	//=================================================
+
+	constantBuffer.LightDirectionIntensity =
+		Vector4(
+			m_DirectionalLight.Direction.x,
+			m_DirectionalLight.Direction.y,
+			m_DirectionalLight.Direction.z,
+			m_DirectionalLight.Intensity);
+
+	constantBuffer.LightColor =
+		Vector4(
+			m_DirectionalLight.LightColor.x,
+			m_DirectionalLight.LightColor.y,
+			m_DirectionalLight.LightColor.z,
+			m_DirectionalLight.LightColor.w);
+
+	//=================================================
+	// Ambient Light
+	//=================================================
+
+	constantBuffer.AmbientLightColor =
+		Vector4(
+			m_AmbientLight.x,
+			m_AmbientLight.y,
+			m_AmbientLight.z,
+			m_AmbientLight.w);
+
+	//=================================================
+	// Toon Shading
+	//=================================================
+
+	constantBuffer.ToonParameters =
+		Vector4(
+			m_ToonShading.HighlightThreshold,
+			m_ToonShading.ShadowThreshold,
+			m_ToonShading.MidToneIntensity,
+			m_ToonShading.ShadowIntensity);
+
+	//=================================================
+	// Texture
+	//=================================================
 
 	constantBuffer.HasTexture =
 		(material.Texture &&
@@ -1441,4 +1830,205 @@ void Renderer::SetCamera(
 
 	m_ProjectionMatrix =
 		projectionMatrix;
+}
+
+void Renderer::SetDirectionalLight(
+	const DirectionalLight& light)
+{
+	m_DirectionalLight =
+		light;
+
+	// Shader側では正規化済みの方向を使えるようにする
+	m_DirectionalLight.Direction =
+		NormalizeDirection(
+			light.Direction);
+}
+
+void Renderer::SetAmbientLight(
+	const Color& color)
+{
+	m_AmbientLight =
+		color;
+}
+
+void Renderer::SetToonShading(
+	const ToonShading& toon)
+{
+	m_ToonShading =
+		toon;
+}
+
+void Renderer::SetOutlineSetting(
+	const OutlineSetting& setting)
+{
+	m_OutlineSetting =
+		setting;
+}
+
+void Renderer::DrawOutline(
+	const MeshBuffer& mesh,
+	const Matrix4x4& worldMatrix,
+	std::span<const Matrix4x4> boneMatrices)
+{
+	if (!m_DeviceContext ||
+		!mesh.IsValid())
+	{
+		return;
+	}
+
+	//=================================================
+	// Outline ConstantBuffer
+	//=================================================
+
+	OutlineConstantBuffer
+		constantBuffer{};
+
+	constantBuffer.WorldViewProjection =
+		(
+			worldMatrix *
+			m_ViewMatrix *
+			m_ProjectionMatrix
+			).Transpose();
+
+	const Matrix4x4
+		worldInverseTranspose =
+		CreateWorldInverseTranspose(
+			worldMatrix);
+
+	constantBuffer.WorldInverseTranspose =
+		worldInverseTranspose.Transpose();
+
+	constantBuffer.OutlineParameters =
+		Vector4(
+			m_OutlineSetting.Width,
+			0.0f,
+			0.0f,
+			0.0f);
+
+	constantBuffer.OutlineColor =
+		Vector4(
+			m_OutlineSetting.OutlineColor.x,
+			m_OutlineSetting.OutlineColor.y,
+			m_OutlineSetting.OutlineColor.z,
+			m_OutlineSetting.OutlineColor.w);
+
+	m_DeviceContext->
+		UpdateSubresource(
+			m_OutlineConstantBuffer.Get(),
+			0,
+			nullptr,
+			&constantBuffer,
+			0,
+			0);
+
+	//=================================================
+	// Bone ConstantBuffer
+	//=================================================
+
+	BoneConstantBuffer
+		boneConstantBuffer{};
+
+	if (!boneMatrices.empty())
+	{
+		if (boneMatrices.size() >
+			MAX_BONES)
+		{
+			return;
+		}
+
+		boneConstantBuffer.HasSkinning =
+			1;
+
+		for (size_t i = 0;
+			i < boneMatrices.size();
+			++i)
+		{
+			boneConstantBuffer.
+				BoneMatrices[i] =
+				boneMatrices[i].
+				Transpose();
+		}
+	}
+
+	m_DeviceContext->
+		UpdateSubresource(
+			m_BoneConstantBuffer.Get(),
+			0,
+			nullptr,
+			&boneConstantBuffer,
+			0,
+			0);
+
+	//=================================================
+	// InputAssembler
+	//=================================================
+
+	m_DeviceContext->
+		IASetInputLayout(
+			m_ModelInputLayout.Get());
+
+	//=================================================
+	// Shader
+	//=================================================
+
+	m_DeviceContext->
+		VSSetShader(
+			m_OutlineVertexShader.Get(),
+			nullptr,
+			0);
+
+	m_DeviceContext->
+		PSSetShader(
+			m_OutlinePixelShader.Get(),
+			nullptr,
+			0);
+
+	// VS b0
+	ID3D11Buffer* outlineBuffers[] =
+	{
+		m_OutlineConstantBuffer.Get()
+	};
+
+	m_DeviceContext->
+		VSSetConstantBuffers(
+			0,
+			1,
+			outlineBuffers);
+
+	// PS b0
+	m_DeviceContext->
+		PSSetConstantBuffers(
+			0,
+			1,
+			outlineBuffers);
+
+	// VS b1
+	ID3D11Buffer* boneBuffers[] =
+	{
+		m_BoneConstantBuffer.Get()
+	};
+
+	m_DeviceContext->
+		VSSetConstantBuffers(
+			1,
+			1,
+			boneBuffers);
+
+	//=================================================
+	// Rasterizer
+	//=================================================
+
+	m_DeviceContext->
+		RSSetState(
+			m_OutlineRasterizerState.Get());
+
+	//=================================================
+	// Draw
+	//=================================================
+
+	mesh.Bind(
+		m_DeviceContext.Get());
+
+	mesh.Draw(
+		m_DeviceContext.Get());
 }

@@ -11,6 +11,9 @@
 
 #include "CommonType.h"
 #include "NonCopyable.h"
+#include "DirectionalLight.h"
+#include "ToonShading.h"
+#include "OutlineSetting.h"
 
 
  // DirectX11
@@ -154,6 +157,39 @@ public:
 		return m_SwapChain.Get();
 	}
 
+
+	/**
+	 * @brief 平行光源を設定
+	 */
+	static void SetDirectionalLight(
+		const DirectionalLight& light);
+
+	/**
+	 * @brief 環境光を設定
+	 */
+	static void SetAmbientLight(
+		const Color& color);
+
+	/**
+	 * @brief Toon Shading設定
+	 */
+	static void SetToonShading(
+		const ToonShading& toon);
+
+	/**
+	 * @brief Outline設定
+	 */
+	static void SetOutlineSetting(
+		const OutlineSetting& setting);
+
+	/**
+	 * @brief Outline描画
+	 */
+	static void DrawOutline(
+		const MeshBuffer& mesh,
+		const Matrix4x4& worldMatrix,
+		std::span<const Matrix4x4> boneMatrices = {});
+
 private:
 
 	//====================
@@ -189,6 +225,8 @@ private:
 	 * @brief モデル描画Pipeline生成
 	 */
 	static bool CreateModelPipeline();
+
+	static bool CreateOutlinePipeline();
 
 private:
 
@@ -277,4 +315,46 @@ private:
 	 */
 	static ComPtr<ID3D11Buffer>
 		m_BoneConstantBuffer;
+
+	//====================
+	// Lighting
+	//====================
+
+	/**
+	 * @brief シーンで使用する平行光源
+	 */
+	static DirectionalLight
+		m_DirectionalLight;
+
+	/**
+	 * @brief 環境光
+	 */
+	static Color
+		m_AmbientLight;
+
+	//====================
+	// Toon Shading
+	//====================
+
+	static ToonShading
+		m_ToonShading;
+
+	//====================
+	// Outline
+	//====================
+
+	static OutlineSetting
+		m_OutlineSetting;
+
+	static ComPtr<ID3D11VertexShader>
+		m_OutlineVertexShader;
+
+	static ComPtr<ID3D11PixelShader>
+		m_OutlinePixelShader;
+
+	static ComPtr<ID3D11Buffer>
+		m_OutlineConstantBuffer;
+
+	static ComPtr<ID3D11RasterizerState>
+		m_OutlineRasterizerState;
 };

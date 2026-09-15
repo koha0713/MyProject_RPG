@@ -1,48 +1,20 @@
 //=====================================================
-// Model Vertex Shader
+// Outline Vertex Shader
 //=====================================================
 
 #define MAX_BONES 128
 
-//=====================================================
-// Model ConstantBuffer
-//=====================================================
-
-cbuffer ModelConstantBuffer : register(b0)
+cbuffer OutlineConstantBuffer : register(b0)
 {
-    // World * View * Projection
     float4x4 WorldViewProjection;
 
-    // 法線変換用World逆転置行列
     float4x4 WorldInverseTranspose;
 
-    // Material Diffuse
-    float4 DiffuseColor;
+    // x : Outline Width
+    float4 OutlineParameters;
 
-    // xyz : 光が進む方向
-    // w   : Intensity
-    float4 LightDirectionIntensity;
-
-    // Directional Light Color
-    float4 LightColor;
-
-    // Ambient Light
-    float4 AmbientLightColor;
-    
-    // x : HighlightThreshold
-    // y : ShadowThreshold
-    // z : MidToneIntensity
-    // w : ShadowIntensity
-    float4 ToonParameters;
-
-    uint HasTexture;
-
-    float3 Padding;
+    float4 OutlineColor;
 };
-
-//=====================================================
-// Bone ConstantBuffer
-//=====================================================
 
 cbuffer BoneConstantBuffer : register(b1)
 {
@@ -52,10 +24,6 @@ cbuffer BoneConstantBuffer : register(b1)
 
     float3 BonePadding;
 };
-
-//=====================================================
-// Input
-//=====================================================
 
 struct VSInput
 {
@@ -70,32 +38,15 @@ struct VSInput
     float4 BoneWeights : BLENDWEIGHT;
 };
 
-//=====================================================
-// Output
-//=====================================================
-
 struct VSOutput
 {
     float4 Position : SV_POSITION;
-
-    // World空間の法線
-    float3 WorldNormal : NORMAL;
-
-    float2 TexCoord : TEXCOORD0;
 };
-
-//=====================================================
-// Main
-//=====================================================
 
 VSOutput main(
     VSInput input)
 {
     VSOutput output;
-
-    //=================================================
-    // Model Space
-    //=================================================
 
     float4 position =
         float4(
@@ -131,7 +82,6 @@ VSOutput main(
                 0.0f,
                 0.0f);
 
-        // 最大4BoneのInfluence
         [unroll]
         for (int i = 0;
             i < 4;
@@ -154,7 +104,6 @@ VSOutput main(
                 continue;
             }
 
-            // Position Skinning
             skinnedPosition +=
                 mul(
                     position,
@@ -162,10 +111,6 @@ VSOutput main(
                         boneIndex]) *
                 weight;
 
-            // Normal Skinning
-            //
-            // Bone MatrixのTranslationは
-            // Normalへ適用しない。
             skinnedNormal +=
                 mul(
                     normal,
@@ -184,33 +129,25 @@ VSOutput main(
     }
 
     //=================================================
-    // Position
+    // Outline Expansion
+    //=================================================
+
+    const float outlineWidth =
+        OutlineParameters.x;
+
+    // Model空間で法線方向へ押し出す
+    position.xyz +=
+        normalize(normal) *
+        outlineWidth;
+
+    //=================================================
+    // Transform
     //=================================================
 
     output.Position =
         mul(
             position,
             WorldViewProjection);
-
-    //=================================================
-    // Normal
-    //=================================================
-    // Skinning後のModel Space Normalを
-    // World Spaceへ変換する。
-
-    output.WorldNormal =
-        normalize(
-            mul(
-                normal,
-                (float3x3)
-                WorldInverseTranspose));
-
-    //=================================================
-    // UV
-    //=================================================
-
-    output.TexCoord =
-        input.TexCoord;
 
     return output;
 }

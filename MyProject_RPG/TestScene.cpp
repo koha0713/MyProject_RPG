@@ -21,23 +21,23 @@ void TestScene::Initialize()
 		// Player生成
 		//====================
 		{
-			auto* player =
+			auto* warrior =
 				m_gameObjectManager.Create<GameObject>();
 
-			if (!player)
+			if (!warrior)
 			{
 				return;
 			}
 
-			player->SetName("Player");
-			player->SetTag(Tag::Player);
+			warrior->SetName("Warrior");
+			warrior->SetTag(Tag::Player);
 
 			//====================
 			// TransformComponent
 			//====================
 			{
 				auto* transform =
-					player->AddComponent<TransformComponent>();
+					warrior->AddComponent<TransformComponent>();
 
 				if (transform)
 				{
@@ -50,7 +50,7 @@ void TestScene::Initialize()
 
 					transform->SetRotation(
 						0.0f,
-						0.0f,
+						3.3f,
 						0.0f);
 
 					// モデルサイズに応じて調整する
@@ -63,24 +63,24 @@ void TestScene::Initialize()
 			//====================
 			{
 				auto* model =
-					player->AddComponent<ModelComponent>();
+					warrior->AddComponent<ModelComponent>();
 
 				if (model)
 				{
 					// 使用するモデルの実際のパスに変更する
 					const bool result =
 						model->SetModel(
-							"Assets/Models/Warrior/Warrior.fbx");
+							"Assets/Models/Player/Warrior.fbx");
 					// Material[0]へTextureを手動設定
 					const bool texture0Result =
 						model->SetTexture(
 							0,
-							"Assets/Models/Warrior/Warrior_Texture.png");
+							"Assets/Models/Player/Warrior_Texture.png");
 					// Material[1]へTextureを手動設定
 					const bool texture1Result =
 						model->SetTexture(
 							1,
-							"Assets/Models/Warrior/Warrior_Sword_Texture.png");
+							"Assets/Models/Player/Warrior_Sword_Texture.png");
 
 					// 初期Animation設定
 					model->PlayAnimation(AnimationID::Idle,true,0.0f);
@@ -88,6 +88,274 @@ void TestScene::Initialize()
 			}
 
 		}
+		{
+			auto* ranger =
+				m_gameObjectManager.Create<GameObject>();
+
+			if (!ranger)
+			{
+				return;
+			}
+
+			ranger->SetName("Ranger");
+			ranger->SetTag(Tag::Player);
+
+			//====================
+			// TransformComponent
+			//====================
+			{
+				auto* transform =
+					ranger->AddComponent<TransformComponent>();
+
+				if (transform)
+				{
+					// 仮カメラが原点を向いているため、
+					// まずはモデルを原点に配置して確認する
+					transform->SetPosition(
+						2.0f,
+						0.0f,
+						0.0f);
+
+					transform->SetRotation(
+						0.0f,
+						3.3f,
+						0.0f);
+
+					// モデルサイズに応じて調整する
+					transform->SetScale(
+						0.01f);
+				}
+			}
+			//====================
+			// ModelComponent
+			//====================
+			{
+				auto* model =
+					ranger->AddComponent<ModelComponent>();
+
+				if (model)
+				{
+					// 使用するモデルの実際のパスに変更する
+					const bool result =
+						model->SetModel(
+							"Assets/Models/Player/Ranger.fbx");
+					// Material[0]へTextureを手動設定
+					const bool texture0Result =
+						model->SetTexture(
+							0,
+							"Assets/Models/Player/Ranger_Texture.png");
+					// Material[1]へTextureを手動設定
+					const bool texture1Result =
+						model->SetTexture(
+							1,
+							"Assets/Models/Player/Ranger_Bow_Texture.png");
+
+					// 初期Animation設定
+					model->PlayAnimation(AnimationID::Idle, true, 0.0f);
+				}
+			}
+
+		}
+		{
+			auto* monk =
+				m_gameObjectManager.Create<GameObject>();
+
+			if (!monk)
+			{
+				return;
+			}
+
+			monk->SetName("Monk");
+			monk->SetTag(Tag::Player);
+
+			//====================
+			// TransformComponent
+			//====================
+			{
+				auto* transform =
+					monk->AddComponent<TransformComponent>();
+
+				if (transform)
+				{
+					// 仮カメラが原点を向いているため、
+					// まずはモデルを原点に配置して確認する
+					transform->SetPosition(
+						-2.0f,
+						0.0f,
+						0.0f);
+
+					transform->SetRotation(
+						0.0f,
+						3.3f,
+						0.0f);
+
+					// モデルサイズに応じて調整する
+					transform->SetScale(
+						0.01f);
+				}
+			}
+			//====================
+			// ModelComponent
+			//====================
+			{
+				auto* model =
+					monk->AddComponent<ModelComponent>();
+
+				if (model)
+				{
+					// 使用するモデルの実際のパスに変更する
+					const bool result =
+						model->SetModel(
+							"Assets/Models/Player/Monk.fbx");
+					// Material[0]へTextureを手動設定
+					const bool texture0Result =
+						model->SetTexture(
+							0,
+							"Assets/Models/Player/Monk_Texture.png");
+					
+					// 初期Animation設定
+					model->PlayAnimation(AnimationID::Idle, true, 0.0f);
+				}
+			}
+
+		}
+		{
+			auto* rogue =
+				m_gameObjectManager.Create<GameObject>();
+
+			if (!rogue)
+			{
+				return;
+			}
+
+			rogue->SetName("Rogue");
+			rogue->SetTag(Tag::Player);
+
+			//====================
+			// TransformComponent
+			//====================
+			{
+				auto* transform =
+					rogue->AddComponent<TransformComponent>();
+
+				if (transform)
+				{
+					// 仮カメラが原点を向いているため、
+					// まずはモデルを原点に配置して確認する
+					transform->SetPosition(
+						4.0f,
+						0.0f,
+						0.0f);
+
+					transform->SetRotation(
+						0.0f,
+						3.3f,
+						0.0f);
+
+					// モデルサイズに応じて調整する
+					transform->SetScale(
+						0.01f);
+				}
+			}
+			//====================
+			// ModelComponent
+			//====================
+			{
+				auto* model =
+					rogue->AddComponent<ModelComponent>();
+
+				if (model)
+				{
+					// 使用するモデルの実際のパスに変更する
+					const bool result =
+						model->SetModel(
+							"Assets/Models/Player/Rogue.fbx");
+					// Material[0]へTextureを手動設定
+					const bool texture0Result =
+						model->SetTexture(
+							0,
+							"Assets/Models/Player/Rogue_Texture.png");
+					// Material[1]へTextureを手動設定
+					const bool texture1Result =
+						model->SetTexture(
+							1,
+							"Assets/Models/Player/Rogue_Dagger_Texture.png");
+
+					// 初期Animation設定
+					model->PlayAnimation(AnimationID::Idle, true, 0.0f);
+				}
+			}
+
+		}
+		{
+			auto* wizard =
+				m_gameObjectManager.Create<GameObject>();
+
+			if (!wizard)
+			{
+				return;
+			}
+
+			wizard->SetName("Wizard");
+			wizard->SetTag(Tag::Player);
+
+			//====================
+			// TransformComponent
+			//====================
+			{
+				auto* transform =
+					wizard->AddComponent<TransformComponent>();
+
+				if (transform)
+				{
+					// 仮カメラが原点を向いているため、
+					// まずはモデルを原点に配置して確認する
+					transform->SetPosition(
+						-4.0f,
+						0.0f,
+						0.0f);
+
+					transform->SetRotation(
+						0.0f,
+						3.3f,
+						0.0f);
+
+					// モデルサイズに応じて調整する
+					transform->SetScale(
+						0.01f);
+				}
+			}
+			//====================
+			// ModelComponent
+			//====================
+			{
+				auto* model =
+					wizard->AddComponent<ModelComponent>();
+
+				if (model)
+				{
+					// 使用するモデルの実際のパスに変更する
+					const bool result =
+						model->SetModel(
+							"Assets/Models/Player/Wizard.fbx");
+					// Material[0]へTextureを手動設定
+					const bool texture0Result =
+						model->SetTexture(
+							0,
+							"Assets/Models/Player/Wizard_Texture.png");
+					// Material[1]へTextureを手動設定
+					const bool texture1Result =
+						model->SetTexture(
+							1,
+							"Assets/Models/Player/Wizard_Staff_Texture.png");
+
+					// 初期Animation設定
+					model->PlayAnimation(AnimationID::Idle, true, 0.0f);
+				}
+			}
+
+		}
+		
 		//====================
 		// Camera生成
 		//====================
@@ -147,7 +415,81 @@ void TestScene::Initialize()
 			}
 		}
 
-		
+		//====================
+		// Directional Light
+		//====================
+		{
+			DirectionalLight directionalLight;
+
+			directionalLight.Direction =
+				Vector3(
+					0.5f,
+					-1.0f,
+					0.4f);
+
+			directionalLight.LightColor =
+				Color(
+					1.0f,
+					0.97f,
+					0.90f,
+					1.0f);
+
+			directionalLight.Intensity =
+				0.90f;
+
+			Renderer::SetDirectionalLight(
+				directionalLight);
+
+			//=====================================================
+			// Ambient Light
+			//=====================================================
+
+			Renderer::SetAmbientLight(
+				Color(
+					0.14f,
+					0.17f,
+					0.22f,
+					1.0f));
+		}
+		//=====================================================
+		// Toon Shading
+		//=====================================================
+		{
+			ToonShading toon;
+
+			toon.HighlightThreshold =
+				0.68f;
+
+			toon.ShadowThreshold =
+				0.35f;
+
+			// 日中なので中間色はかなり明るめ
+			toon.MidToneIntensity =
+				0.80f;
+
+			// 影でも色が潰れない程度
+			toon.ShadowIntensity =
+				0.50f;
+
+			Renderer::SetToonShading(
+				toon);
+		}
+		{
+			OutlineSetting outline;
+
+			outline.Width =
+				0.015f;
+
+			outline.OutlineColor =
+				Color(
+					0.02f,
+					0.02f,
+					0.02f,
+					1.0f);
+
+			Renderer::SetOutlineSetting(
+				outline);
+		}
 	}
 
 	m_gameObjectManager.Initialize();
@@ -164,6 +506,8 @@ void TestScene::Update(uint64_t delta)
 {
 	// GameObjectの更新
 	m_gameObjectManager.Update(delta);
+
+	
 }
 
 void TestScene::Draw(uint64_t delta)

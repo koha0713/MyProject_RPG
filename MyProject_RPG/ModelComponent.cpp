@@ -105,6 +105,17 @@ void ModelComponent::Draw()
 
 		if (meshData.HasSkinning)
 		{
+			//====================
+			// Outline
+			//====================
+			Renderer::DrawOutline(
+				*meshData.Mesh,
+				worldMatrix,
+				boneMatrices);
+
+			//====================
+			// Toon Model
+			//====================
 			Renderer::DrawMesh(
 				*meshData.Mesh,
 				materialData,
@@ -144,6 +155,11 @@ void ModelComponent::Draw()
 					worldMatrix;
 			}
 		}
+
+		Renderer::DrawOutline(
+			*meshData.Mesh,
+			meshWorld,
+			{});
 
 		Renderer::DrawMesh(
 			*meshData.Mesh,
