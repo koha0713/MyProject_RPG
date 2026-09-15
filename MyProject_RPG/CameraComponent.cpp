@@ -201,14 +201,12 @@ Matrix4x4 CameraComponent::GetViewMatrix() const
 		position +
 		forward;
 
-	//====================
-	// ViewçsóÒê∂ê¨
-	//====================
 
-	return Matrix4x4::CreateLookAt(
-		position,
-		target,
-		up);
+	return Matrix4x4(
+		DirectX::XMMatrixLookAtLH(
+			position,
+			target,
+			up));
 }
 
 //=====================================================

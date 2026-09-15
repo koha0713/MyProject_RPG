@@ -138,6 +138,7 @@
   <ItemGroup>
     <ClInclude Include="AnimationData.h" />
     <ClInclude Include="AnimatorComponent.h" />
+    <ClInclude Include="AudioSourceComponent.h" />
     <ClInclude Include="CameraComponent.h" />
     <ClInclude Include="CommonType.h" />
     <ClInclude Include="Component.h" />
@@ -181,6 +182,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AnimatorComponent.cpp" />
+    <ClCompile Include="AudioSourceComponent.cpp" />
     <ClCompile Include="CameraComponent.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="GameObjectManager.cpp" />

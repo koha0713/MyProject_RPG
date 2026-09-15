@@ -180,6 +180,9 @@
     <ClInclude Include="SoundCategory.h">
       <Filter>ソース ファイル\System\Sound</Filter>
     </ClInclude>
+    <ClInclude Include="AudioSourceComponent.h">
+      <Filter>ソース ファイル\Component</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -262,6 +265,9 @@
     </ClCompile>
     <ClCompile Include="WavLoader.cpp">
       <Filter>ソース ファイル\System\Sound</Filter>
+    </ClCompile>
+    <ClCompile Include="AudioSourceComponent.cpp">
+      <Filter>ソース ファイル\Component</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

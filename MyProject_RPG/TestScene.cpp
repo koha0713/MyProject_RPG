@@ -6,6 +6,7 @@
 #include "ModelComponent.h"
 #include "TransformComponent.h"
 #include "CameraComponent.h"
+#include "AudioSourceComponent.h"
 #include <ModelLoader.h>
 
 #include "InputManager.h"
@@ -88,6 +89,34 @@ void TestScene::Initialize()
 					// ‰ŠúAnimationÝ’è
 					model->PlayAnimation(AnimationID::Idle,true,0.0f);
 				}
+			}
+			//====================
+			// Audio
+			//====================
+			{
+				auto* audioSource =
+					warrior->AddComponent<
+					AudioSourceComponent>();
+
+				audioSource->SetSoundPath(
+					L"Assets/Sound/BGM.wav");
+
+				audioSource->Set3D(
+					true);
+
+				audioSource->SetLoop(
+					true);
+
+				audioSource->SetVolume(
+					1.0f);
+
+				audioSource->SetCategory(
+					SoundCategory::SE);
+
+				audioSource->SetDistanceScaler(
+					20.0f);
+
+				audioSource->Play();
 			}
 
 		}
@@ -384,7 +413,7 @@ void TestScene::Initialize()
 					cameraTransform->SetPosition(
 						0.0f,
 						2.0f,
-						-5.0f);
+						5.0f);
 
 					// Œ´“_•ûŒü‚ðŒü‚­‰Šú’l
 					cameraTransform->SetRotation(
