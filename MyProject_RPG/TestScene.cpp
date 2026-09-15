@@ -524,10 +524,20 @@ void TestScene::Update(uint64_t delta)
 		KeyCode::W))
 	{
 		m_BGMHandle =
-			SOUND_MANAGER.Play2D(
+			SOUND_MANAGER.Play3D(
 				L"Assets/Sound/BGM.wav",
+				Vector3(
+					0.0f,
+					0.0f,
+					0.0f),
 				true,
-				0.5f);
+				1.0f,
+				SoundCategory::BGM);
+		if (!m_BGMHandle.IsValid())
+		{
+			OutputDebugStringA(
+				"[TestScene] Play3D Failed\n");
+		}
 		OutputDebugStringA(
 			"[Input] W Down\n");
 	}

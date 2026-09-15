@@ -4,6 +4,7 @@
 #include "TransformComponent.h"
 #include "Window.h"
 #include "DebugUI.h"
+#include "SoundManager.h"
 
 //=====================================================
 // ライフサイクル
@@ -19,6 +20,87 @@ void CameraComponent::Finalize()
 
 void CameraComponent::Update(uint64_t delta)
 {
+	//====================
+	// Owner確認
+	//====================
+
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		return;
+	}
+
+	//====================
+	// Transform取得
+	//====================
+
+	TransformComponent* transform =
+		owner->GetComponent<TransformComponent>();
+
+	if (!transform)
+	{
+		return;
+	}
+
+	//====================
+	// Camera Transform
+	//====================
+
+	const Vector3 position =
+		transform->GetPosition();
+
+	const Vector3 rotation =
+		transform->GetRotation();
+
+	//====================
+	// Rotation Matrix
+	//====================
+
+	const Matrix4x4 rotationMatrix =
+		Matrix4x4::CreateFromYawPitchRoll(
+			rotation.y,
+			rotation.x,
+			rotation.z);
+
+	//====================
+	// Forward / Up
+	//====================
+
+	Vector3 forward(
+		0.0f,
+		0.0f,
+		1.0f);
+
+	Vector3 up(
+		0.0f,
+		1.0f,
+		0.0f);
+
+	forward =
+		Vector3::TransformNormal(
+			forward,
+			rotationMatrix);
+
+	up =
+		Vector3::TransformNormal(
+			up,
+			rotationMatrix);
+
+	// 念のため正規化
+	forward.Normalize();
+	up.Normalize();
+
+	//====================
+	// Audio Listener
+	//====================
+
+	SOUND_MANAGER.SetListener(
+		position,
+		forward,
+		up);
+
 }
 
 void CameraComponent::Draw()
