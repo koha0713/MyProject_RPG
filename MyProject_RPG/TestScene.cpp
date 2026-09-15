@@ -7,6 +7,7 @@
 #include "TransformComponent.h"
 #include "CameraComponent.h"
 #include <ModelLoader.h>
+#include "InputManager.h"
 
 TestScene::TestScene()
 {
@@ -504,6 +505,51 @@ void TestScene::Finalize()
 
 void TestScene::Update(uint64_t delta)
 {
+	//====================
+	// Keyboard Test
+	//====================
+
+	if (INPUT_MANAGER.IsKeyPressed(
+		KeyCode::Space))
+	{
+		OutputDebugStringA(
+			"[Input] Space Pressed\n");
+	}
+
+	if (INPUT_MANAGER.IsKeyDown(
+		KeyCode::W))
+	{
+		OutputDebugStringA(
+			"[Input] W Down\n");
+	}
+
+	if (INPUT_MANAGER.IsKeyReleased(
+		KeyCode::W))
+	{
+		OutputDebugStringA(
+			"[Input] W Released\n");
+	}
+
+	//====================
+	// Mouse Test
+	//====================
+
+	if (INPUT_MANAGER.IsMousePressed(
+		MouseButton::Left))
+	{
+		OutputDebugStringA(
+			"[Input] Left Mouse Pressed\n");
+	}
+
+	const Vector2& mousePosition =
+		INPUT_MANAGER.GetMousePosition();
+
+	const Vector2& mouseDelta =
+		INPUT_MANAGER.GetMouseDelta();
+
+	const float wheel =
+		INPUT_MANAGER.GetMouseWheel();
+
 	// GameObjectÇÃçXêV
 	m_gameObjectManager.Update(delta);
 

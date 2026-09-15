@@ -4,6 +4,7 @@
 #include "Renderer.h"
 #include "DebugUI.h"
 #include "SceneManager.h"
+#include "InputManager.h"
 
 //==============================
 // ÉQÅ[ÉÄé¿çsä÷êî
@@ -89,6 +90,12 @@ bool Game::Initialize()
 	SceneManager::Initialize();
 	SceneManager::SetCurrentScene("TestScene");
 
+	if (!INPUT_MANAGER.Initialize(
+		Window::GetWindow()))
+	{
+		return false;
+	}
+
 	return true;
 }
 
@@ -102,6 +109,8 @@ void Game::Finalize()
 	//====================
 
 	SceneManager::Finalize();
+
+	INPUT_MANAGER.Finalize();
 
 	//====================
 	// DebugUI
@@ -131,7 +140,9 @@ void Game::Finalize()
 //==============================
 void Game::Update(uint64_t delta)
 {
+	INPUT_MANAGER.Update();
 	SceneManager::Update(delta);
+
 }
 
 //==============================

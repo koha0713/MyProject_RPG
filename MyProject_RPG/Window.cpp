@@ -1,6 +1,7 @@
 #include "Window.h"
 // ImGui—p
 #include "imgui/imgui_impl_win32.h"
+#include "InputManager.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 	HWND hWnd,
@@ -174,6 +175,15 @@ LRESULT CALLBACK Window::WindowProc(
 	{
 	case WM_DESTROY:
 		PostQuitMessage(0);
+		return 0;
+	case WM_MOUSEWHEEL:
+		const short wheelDelta =
+			GET_WHEEL_DELTA_WPARAM(
+				wParam);
+
+		INPUT_MANAGER.OnMouseWheel(
+			wheelDelta);
+
 		return 0;
 	}
 
