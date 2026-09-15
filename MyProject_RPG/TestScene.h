@@ -6,6 +6,7 @@
 #include "IScene.h"
 #include "SceneClassFactory.h"
 #include "GameObjectManager.h"
+#include "SoundHandle.h"
 
 class CameraComponent;
 
@@ -31,6 +32,7 @@ public:
 	//====================
 	GameObjectManager m_gameObjectManager;
 	CameraComponent* m_MainCamera = nullptr;
+	SoundHandle m_BGMHandle;
 };
 // Scene“o˜^
 REGISTER_CLASS(TestScene)

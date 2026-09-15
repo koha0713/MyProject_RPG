@@ -5,6 +5,7 @@
 #include "DebugUI.h"
 #include "SceneManager.h"
 #include "InputManager.h"
+#include "SoundManager.h"
 
 //==============================
 // ÉQÅ[ÉÄé¿çsä÷êî
@@ -86,15 +87,19 @@ bool Game::Initialize()
 		Renderer::GetDevice(),
 		Renderer::GetDeviceContext());
 
-
-	SceneManager::Initialize();
-	SceneManager::SetCurrentScene("TestScene");
-
 	if (!INPUT_MANAGER.Initialize(
 		Window::GetWindow()))
 	{
 		return false;
 	}
+
+	if (!SOUND_MANAGER.Initialize())
+	{
+		return false;
+	}
+
+	SceneManager::Initialize();
+	SceneManager::SetCurrentScene("TestScene");
 
 	return true;
 }
@@ -111,6 +116,8 @@ void Game::Finalize()
 	SceneManager::Finalize();
 
 	INPUT_MANAGER.Finalize();
+
+	SOUND_MANAGER.Finalize();
 
 	//====================
 	// DebugUI
@@ -141,6 +148,7 @@ void Game::Finalize()
 void Game::Update(uint64_t delta)
 {
 	INPUT_MANAGER.Update();
+	SOUND_MANAGER.Update();
 	SceneManager::Update(delta);
 
 }

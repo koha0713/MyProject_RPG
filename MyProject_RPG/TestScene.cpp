@@ -7,7 +7,9 @@
 #include "TransformComponent.h"
 #include "CameraComponent.h"
 #include <ModelLoader.h>
+
 #include "InputManager.h"
+#include "SoundManager.h"
 
 TestScene::TestScene()
 {
@@ -512,20 +514,31 @@ void TestScene::Update(uint64_t delta)
 	if (INPUT_MANAGER.IsKeyPressed(
 		KeyCode::Space))
 	{
+		SOUND_MANAGER.Play2D(
+			L"Assets/Sound/Test.wav");
 		OutputDebugStringA(
 			"[Input] Space Pressed\n");
 	}
 
-	if (INPUT_MANAGER.IsKeyDown(
+	if (INPUT_MANAGER.IsKeyPressed(
 		KeyCode::W))
 	{
+		m_BGMHandle =
+			SOUND_MANAGER.Play2D(
+				L"Assets/Sound/BGM.wav",
+				true,
+				0.5f);
 		OutputDebugStringA(
 			"[Input] W Down\n");
 	}
 
-	if (INPUT_MANAGER.IsKeyReleased(
-		KeyCode::W))
+	if (INPUT_MANAGER.IsKeyPressed(
+		KeyCode::S))
 	{
+		SOUND_MANAGER.Stop(
+			m_BGMHandle);
+
+		m_BGMHandle = {};
 		OutputDebugStringA(
 			"[Input] W Released\n");
 	}
