@@ -5,6 +5,7 @@
 #include "Window.h"
 #include "DebugUI.h"
 #include "SoundManager.h"
+#include "InputManager.h"
 
 //=====================================================
 // ライフサイクル
@@ -42,6 +43,26 @@ void CameraComponent::Update(uint64_t delta)
 	if (!transform)
 	{
 		return;
+	}
+
+	//====================
+	// Camera操作(仮)
+	//====================
+	if (INPUT_MANAGER.IsKeyDown(KeyCode::Up))
+	{
+		transform->Translate(Vector3(0.0f,0.0f,-0.1f));
+	}
+	if (INPUT_MANAGER.IsKeyDown(KeyCode::Down))
+	{
+		transform->Translate(Vector3(0.0f, 0.0f, 0.1f));
+	}
+	if (INPUT_MANAGER.IsKeyDown(KeyCode::Left))
+	{
+		transform->Translate(Vector3(-0.1f, 0.0f, 0.0f));
+	}
+	if (INPUT_MANAGER.IsKeyDown(KeyCode::Right))
+	{
+		transform->Translate(Vector3(0.1f, 0.0f, 0.0f));
 	}
 
 	//====================

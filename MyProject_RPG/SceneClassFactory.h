@@ -35,7 +35,7 @@ public:
 	 * @param name クラス名(create()で指定するキー)
 	 * @param func クラスインスタンスを生成する関数(例：std::make_unique)
 	 */
-	void RegisterClass(const std::string& name, SceneCreatorFunc func)
+	void RegisterScene(const std::string& name, SceneCreatorFunc func)
 	{
 		m_registry[name] = func;
 	}
@@ -81,7 +81,7 @@ private:
     namespace { \
         struct CLASSNAME##Registrar { \
             CLASSNAME##Registrar() { \
-                SceneClassFactory::GetInstance().RegisterClass(#CLASSNAME, []() { \
+                SceneClassFactory::GetInstance().RegisterScene(#CLASSNAME, []() { \
                     return std::make_unique<CLASSNAME>(); \
                 }); \
             } \

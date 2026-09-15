@@ -99,7 +99,7 @@ bool Game::Initialize()
 	}
 
 	SceneManager::Initialize();
-	SceneManager::SetCurrentScene("TestScene");
+	SceneManager::SetCurrentScene("FieldScene");
 
 	return true;
 }
