@@ -2,6 +2,8 @@
 
 #include "GameObject.h"
 #include "GridPositionComponent.h"
+#include "CharacterStatusComponent.h"
+#include "GridPositionComponent.h"
 #include "InputManager.h"
 #include "DebugUI.h"
 
@@ -37,6 +39,22 @@ void PlayerControllerComponent::Update(
 	// 将来Mouse操作へ変更しても移動処理そのものは
 	// 変更しなくて済むようにする。
 	//
+
+	//====================
+	// Attack
+	//====================
+
+	if (INPUT_MANAGER.IsKeyPressed(
+		KeyCode::Space))
+	{
+		RequestAttack();
+
+		return;
+	}
+
+	//====================
+	// Movement
+	//====================
 
 	if (INPUT_MANAGER.IsKeyPressed(
 		KeyCode::S))
@@ -89,6 +107,8 @@ void PlayerControllerComponent::Update(
 
 		return;
 	}
+
+
 }
 
 void PlayerControllerComponent::Draw()
@@ -168,4 +188,89 @@ void PlayerControllerComponent::DrawDebugUI()
 
 	ImGui::Text(
 		"Move: 1 Grid Cell");
+}
+
+bool PlayerControllerComponent::RequestAttack()
+{
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner ||
+		!m_AttackTarget)
+	{
+		return false;
+	}
+
+	auto* playerGrid =
+		owner->GetComponent<
+		GridPositionComponent>();
+
+	auto* playerStatus =
+		owner->GetComponent<
+		CharacterStatusComponent>();
+
+	auto* enemyGrid =
+		m_AttackTarget->GetComponent<
+		GridPositionComponent>();
+
+	auto* enemyStatus =
+		m_AttackTarget->GetComponent<
+		CharacterStatusComponent>();
+
+	if (!playerGrid ||
+		!playerStatus ||
+		!enemyGrid ||
+		!enemyStatus)
+	{
+		return false;
+	}
+
+	if (enemyStatus->IsDead())
+	{
+		return false;
+	}
+
+	const GridPosition playerPosition =
+		playerGrid->GetGridPosition();
+
+	const GridPosition enemyPosition =
+		enemyGrid->GetGridPosition();
+
+	const int dx =
+		enemyPosition.X -
+		playerPosition.X;
+
+	const int dy =
+		enemyPosition.Y -
+		playerPosition.Y;
+
+	const int distance =
+		std::abs(dx) +
+		std::abs(dy);
+
+	// 隣接していない場合は攻撃不可
+	if (distance != 1)
+	{
+		OutputDebugStringA(
+			"[PlayerController] Attack failed: Target is not adjacent.\n");
+
+		return false;
+	}
+
+	const int damage =
+		playerStatus->GetAttackPower();
+
+	enemyStatus->TakeDamage(
+		damage);
+
+	OutputDebugStringA(
+		"[PlayerController] Attack success.\n");
+
+	// 攻撃成功時のみターン終了
+	if (m_TurnManager)
+	{
+		m_TurnManager->EndPlayerTurn();
+	}
+
+	return true;
 }

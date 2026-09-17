@@ -6,6 +6,7 @@
 #include "SceneManager.h"
 #include "InputManager.h"
 #include "SoundManager.h"
+#include "QuestManager.h"
 
 //==============================
 // ゲーム実行関数
@@ -87,17 +88,50 @@ bool Game::Initialize()
 		Renderer::GetDevice(),
 		Renderer::GetDeviceContext());
 
+	// Input
 	if (!INPUT_MANAGER.Initialize(
 		Window::GetWindow()))
 	{
 		return false;
 	}
 
+	// Sound
 	if (!SOUND_MANAGER.Initialize())
 	{
 		return false;
 	}
+	
+	// Quest
+	QUEST_MANAGER.Initialize();
+	{
+		// ベータ版用初期化処理 後で消す！
+		Quest questA;
 
+		questA.Setup(
+			"Enemy Hunt",
+			QuestType::KillEnemy,
+			1);
+
+		questA.Accept();
+
+		QUEST_MANAGER.AddQuest(
+			questA);
+
+
+		Quest questB;
+
+		questB.Setup(
+			"Enemy Hunt II",
+			QuestType::KillEnemy,
+			3);
+
+		questB.Accept();
+
+		QUEST_MANAGER.AddQuest(
+			questB);
+	}
+
+	// Scene
 	SceneManager::Initialize();
 	SceneManager::SetCurrentScene("FieldScene");
 
@@ -112,8 +146,10 @@ void Game::Finalize()
 	//====================
 	// Scene
 	//====================
-
 	SceneManager::Finalize();
+
+	// Quest
+	QUEST_MANAGER.Finalize();
 
 	INPUT_MANAGER.Finalize();
 
@@ -161,7 +197,9 @@ void Game::Draw(uint64_t delta)
 	Renderer::Begin();
 
 	DebugUI::BeginFrame();
+
 	SceneManager::Draw(delta);
+	
 	DebugUI::EndFrame();
 	
 	Renderer::End();

@@ -10,13 +10,13 @@
 
 class CameraComponent;
 
-class TestScene : public IScene
+class TownScene : public IScene
 {
 public:
 	//====================
 	// ライフサイクル
 	//====================
-	explicit TestScene();
+	explicit TownScene();
 	void Initialize() override;
 	void Finalize() override;
 	void Update(uint64_t delta) override;
@@ -25,7 +25,7 @@ public:
 	//====================
 	// デバッグ用関数(予定)
 	//====================
-
+	void DrawQuestReportUI();
 
 	//====================
 	// メンバ変数
@@ -35,4 +35,4 @@ public:
 	SoundHandle m_BGMHandle;
 };
 // Scene登録
-REGISTER_CLASS(TestScene)
+REGISTER_CLASS(TownScene)

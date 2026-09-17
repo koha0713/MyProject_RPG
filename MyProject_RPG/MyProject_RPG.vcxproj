@@ -140,9 +140,12 @@
     <ClInclude Include="AnimatorComponent.h" />
     <ClInclude Include="AudioSourceComponent.h" />
     <ClInclude Include="CameraComponent.h" />
+    <ClInclude Include="CharacterStatusComponent.h" />
     <ClInclude Include="CommonType.h" />
     <ClInclude Include="Component.h" />
     <ClInclude Include="DirectionalLight.h" />
+    <ClInclude Include="EnemyAIComponent.h" />
+    <ClInclude Include="FieldExitComponent.h" />
     <ClInclude Include="FieldScene.h" />
     <ClInclude Include="FpsControl.h" />
     <ClInclude Include="Game.h" />
@@ -169,6 +172,8 @@
     <ClInclude Include="IScene.h" />
     <ClInclude Include="OutlineSetting.h" />
     <ClInclude Include="PlayerControllerComponent.h" />
+    <ClInclude Include="Quest.h" />
+    <ClInclude Include="QuestManager.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="SceneClassFactory.h" />
@@ -178,7 +183,7 @@
     <ClInclude Include="SoundHandle.h" />
     <ClInclude Include="SoundManager.h" />
     <ClInclude Include="stb_image.h" />
-    <ClInclude Include="TestScene.h" />
+    <ClInclude Include="TownScene.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="ToonShading.h" />
     <ClInclude Include="TransformComponent.h" />
@@ -191,6 +196,9 @@
     <ClCompile Include="AnimatorComponent.cpp" />
     <ClCompile Include="AudioSourceComponent.cpp" />
     <ClCompile Include="CameraComponent.cpp" />
+    <ClCompile Include="CharacterStatusComponent.cpp" />
+    <ClCompile Include="EnemyAIComponent.cpp" />
+    <ClCompile Include="FieldExitComponent.cpp" />
     <ClCompile Include="FieldScene.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="GameObjectManager.cpp" />
@@ -210,11 +218,13 @@
     <ClCompile Include="ModelData.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
     <ClCompile Include="PlayerControllerComponent.cpp" />
+    <ClCompile Include="Quest.cpp" />
+    <ClCompile Include="QuestManager.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SoundManager.cpp" />
-    <ClCompile Include="TestScene.cpp" />
+    <ClCompile Include="TownScene.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="TransformComponent.cpp" />
     <ClCompile Include="TurnManager.cpp" />

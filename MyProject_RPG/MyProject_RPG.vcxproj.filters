@@ -58,6 +58,21 @@
     <Filter Include="ソース ファイル\Component\Player">
       <UniqueIdentifier>{f964b2ee-c2d8-443b-b0b9-86d928a696e6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\Component\Enemy">
+      <UniqueIdentifier>{5e47cd91-7d5a-499d-9435-151df4246e5d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Component\Chara">
+      <UniqueIdentifier>{27549f6f-17d5-4585-845d-28be8820db28}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\Map">
+      <UniqueIdentifier>{3990de89-36fe-4b7d-b56c-0c4fd5fb1d66}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\Quest">
+      <UniqueIdentifier>{eb2432e2-c16e-460c-ad4e-dbdbdc74e751}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Component\Map">
+      <UniqueIdentifier>{3ae5395f-5c44-4e4d-b0c6-e0a928b9662f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -81,7 +96,7 @@
     <ClInclude Include="IScene.h">
       <Filter>ソース ファイル\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="TestScene.h">
+    <ClInclude Include="TownScene.h">
       <Filter>ソース ファイル\Scene\scenes</Filter>
     </ClInclude>
     <ClInclude Include="GameObject.h">
@@ -144,9 +159,6 @@
     <ClInclude Include="stb_image.h">
       <Filter>ソース ファイル\新規作成ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="ModelComponent.h">
-      <Filter>ソース ファイル\Component</Filter>
-    </ClInclude>
     <ClInclude Include="TransformComponent.h">
       <Filter>ソース ファイル\Component</Filter>
     </ClInclude>
@@ -155,9 +167,6 @@
     </ClInclude>
     <ClInclude Include="AnimationData.h">
       <Filter>ソース ファイル\Graphics\Animation</Filter>
-    </ClInclude>
-    <ClInclude Include="AnimatorComponent.h">
-      <Filter>ソース ファイル\Component</Filter>
     </ClInclude>
     <ClInclude Include="DirectionalLight.h">
       <Filter>ソース ファイル\Graphics</Filter>
@@ -189,18 +198,6 @@
     <ClInclude Include="AudioSourceComponent.h">
       <Filter>ソース ファイル\Component</Filter>
     </ClInclude>
-    <ClInclude Include="GridPosition.h">
-      <Filter>ソース ファイル\Game</Filter>
-    </ClInclude>
-    <ClInclude Include="GridCell.h">
-      <Filter>ソース ファイル\Game</Filter>
-    </ClInclude>
-    <ClInclude Include="GridMap.h">
-      <Filter>ソース ファイル\Game</Filter>
-    </ClInclude>
-    <ClInclude Include="GridPositionComponent.h">
-      <Filter>ソース ファイル\Component</Filter>
-    </ClInclude>
     <ClInclude Include="FieldScene.h">
       <Filter>ソース ファイル\Scene\scenes</Filter>
     </ClInclude>
@@ -209,6 +206,39 @@
     </ClInclude>
     <ClInclude Include="TurnManager.h">
       <Filter>ソース ファイル\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="GridPositionComponent.h">
+      <Filter>ソース ファイル\Component\Chara</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelComponent.h">
+      <Filter>ソース ファイル\Component\Chara</Filter>
+    </ClInclude>
+    <ClInclude Include="AnimatorComponent.h">
+      <Filter>ソース ファイル\Component\Chara</Filter>
+    </ClInclude>
+    <ClInclude Include="EnemyAIComponent.h">
+      <Filter>ソース ファイル\Component\Enemy</Filter>
+    </ClInclude>
+    <ClInclude Include="CharacterStatusComponent.h">
+      <Filter>ソース ファイル\Component\Chara</Filter>
+    </ClInclude>
+    <ClInclude Include="GridCell.h">
+      <Filter>ソース ファイル\Game\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="GridMap.h">
+      <Filter>ソース ファイル\Game\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="GridPosition.h">
+      <Filter>ソース ファイル\Game\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="Quest.h">
+      <Filter>ソース ファイル\Game\Quest</Filter>
+    </ClInclude>
+    <ClInclude Include="QuestManager.h">
+      <Filter>ソース ファイル\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="FieldExitComponent.h">
+      <Filter>ソース ファイル\Component\Map</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -224,7 +254,7 @@
     <ClCompile Include="SceneManager.cpp">
       <Filter>ソース ファイル\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="TestScene.cpp">
+    <ClCompile Include="TownScene.cpp">
       <Filter>ソース ファイル\Scene\scenes</Filter>
     </ClCompile>
     <ClCompile Include="GameObjectManager.cpp">
@@ -272,16 +302,10 @@
     <ClCompile Include="Texture.cpp">
       <Filter>ソース ファイル\新規作成ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="ModelComponent.cpp">
-      <Filter>ソース ファイル\Component</Filter>
-    </ClCompile>
     <ClCompile Include="TransformComponent.cpp">
       <Filter>ソース ファイル\Component</Filter>
     </ClCompile>
     <ClCompile Include="CameraComponent.cpp">
-      <Filter>ソース ファイル\Component</Filter>
-    </ClCompile>
-    <ClCompile Include="AnimatorComponent.cpp">
       <Filter>ソース ファイル\Component</Filter>
     </ClCompile>
     <ClCompile Include="InputManager.cpp">
@@ -296,12 +320,6 @@
     <ClCompile Include="AudioSourceComponent.cpp">
       <Filter>ソース ファイル\Component</Filter>
     </ClCompile>
-    <ClCompile Include="GridMap.cpp">
-      <Filter>ソース ファイル\Game</Filter>
-    </ClCompile>
-    <ClCompile Include="GridPositionComponent.cpp">
-      <Filter>ソース ファイル\Component</Filter>
-    </ClCompile>
     <ClCompile Include="FieldScene.cpp">
       <Filter>ソース ファイル\Scene\scenes</Filter>
     </ClCompile>
@@ -310,6 +328,33 @@
     </ClCompile>
     <ClCompile Include="TurnManager.cpp">
       <Filter>ソース ファイル\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="GridPositionComponent.cpp">
+      <Filter>ソース ファイル\Component\Chara</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelComponent.cpp">
+      <Filter>ソース ファイル\Component\Chara</Filter>
+    </ClCompile>
+    <ClCompile Include="AnimatorComponent.cpp">
+      <Filter>ソース ファイル\Component\Chara</Filter>
+    </ClCompile>
+    <ClCompile Include="EnemyAIComponent.cpp">
+      <Filter>ソース ファイル\Component\Enemy</Filter>
+    </ClCompile>
+    <ClCompile Include="CharacterStatusComponent.cpp">
+      <Filter>ソース ファイル\Component\Chara</Filter>
+    </ClCompile>
+    <ClCompile Include="GridMap.cpp">
+      <Filter>ソース ファイル\Game\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="Quest.cpp">
+      <Filter>ソース ファイル\Game\Quest</Filter>
+    </ClCompile>
+    <ClCompile Include="QuestManager.cpp">
+      <Filter>ソース ファイル\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="FieldExitComponent.cpp">
+      <Filter>ソース ファイル\Component\Map</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

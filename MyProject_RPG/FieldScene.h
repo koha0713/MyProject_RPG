@@ -9,6 +9,8 @@
 #include "SoundHandle.h"
 #include "GridMap.h"
 #include "TurnManager.h"
+#include "Quest.h"
+
 
 class CameraComponent;
 
@@ -37,6 +39,7 @@ public:
 	CameraComponent* m_MainCamera = nullptr;
 	SoundHandle m_BGMHandle;
 	GridMap m_GridMap;
+	Quest m_CurrentQuest;
 };
 // Scene“o˜^
 REGISTER_CLASS(FieldScene)

@@ -9,6 +9,8 @@
 #include "GridPosition.h"
 #include "TurnManager.h"
 
+class GameObject;
+
  /**
   * @brief Player Controller
   *
@@ -72,8 +74,19 @@ public:
 		return "PlayerControllerComponent";
 	}
 
+	void SetAttackTarget(
+		GameObject* target)
+	{
+		m_AttackTarget =
+			target;
+	}
+
+	bool RequestAttack();
+
 private:
 
 	TurnManager* m_TurnManager =
+		nullptr;
+	GameObject* m_AttackTarget =
 		nullptr;
 };
