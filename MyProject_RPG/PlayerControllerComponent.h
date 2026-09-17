@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <vector>
 
 #include "Component.h"
 #include "GridPosition.h"
@@ -15,6 +16,7 @@
 enum class PlayerActionState
 {
 	Idle,
+	Moving,
 	Attacking
 };
 
@@ -156,6 +158,18 @@ private:
 	 */
 	void BeginPlayerTurn();
 
+	/**
+	 * @brief 移動更新
+	 */
+	void UpdateMovement(
+		uint64_t delta);
+
+	/**
+	 * @brief 移動開始
+	 */
+	bool BeginMove(
+		const std::vector<GridPosition>& path);
+
 private:
 
 	/**
@@ -186,4 +200,24 @@ private:
 	 */
 	PlayerActionState m_ActionState =
 		PlayerActionState::Idle;
+
+	/**
+	 * @brief 現在移動中のPath
+	 *
+	 * index 0には開始地点、
+	 * 以降に経路上のGrid座標が入る。
+	 */
+	std::vector<GridPosition> m_MovePath;
+
+	/**
+	 * @brief 現在向かっているPath Index
+	 */
+	size_t m_MovePathIndex =
+		0;
+
+	/**
+	 * @brief 1秒あたりのWorld移動速度
+	 */
+	float m_MoveSpeed =
+		0.01f;
 };

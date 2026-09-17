@@ -4,11 +4,14 @@
 #include <limits>
 
 #include "GameObject.h"
+#include "GridMap.h"
 #include "GridPositionComponent.h"
 #include "CharacterStatusComponent.h"
 #include "CharacterAnimationComponent.h"
 #include "TransformComponent.h"
 #include "DebugUI.h"
+
+#include "AnimatorComponent.h"
 
 //=====================================================
 // Lifecycle
@@ -16,60 +19,81 @@
 
 void EnemyAIComponent::Initialize()
 {
+	m_ActionState =
+		EnemyActionState::Ready;
+
+	m_Target =
+		nullptr;
+
+	m_RemainingMovePoints =
+		0;
 }
 
 void EnemyAIComponent::Finalize()
 {
+	m_Target =
+		nullptr;
 }
 
 void EnemyAIComponent::Update(
 	uint64_t delta)
 {
-	(void)delta;
-
 	//=================================================
-	// Attack Animation終了待ち
+	// Moving
 	//=================================================
 
-	if (m_ActionState !=
+	if (m_ActionState ==
+		EnemyActionState::Moving)
+	{
+		UpdateMovement(
+			delta);
+
+		return;
+	}
+
+	//=================================================
+	// Attacking
+	//=================================================
+
+	if (m_ActionState ==
 		EnemyActionState::Attacking)
 	{
+		GameObject* owner =
+			GetOwner();
+
+		if (!owner)
+		{
+			m_ActionState =
+				EnemyActionState::Finished;
+
+			return;
+		}
+
+		auto* characterAnimation =
+			owner->GetComponent<
+			CharacterAnimationComponent>();
+
+		if (!characterAnimation)
+		{
+			m_ActionState =
+				EnemyActionState::Finished;
+
+			return;
+		}
+
+		// Attack Animation終了後、
+		// CharacterAnimationComponentがIdleへ戻る。
+		if (!characterAnimation->
+			IsAttacking())
+		{
+			m_ActionState =
+				EnemyActionState::Finished;
+
+			m_Target =
+				nullptr;
+		}
+
 		return;
-	}
-
-	GameObject* owner =
-		GetOwner();
-
-	if (!owner)
-	{
-		m_ActionState =
-			EnemyActionState::Finished;
-
-		return;
-	}
-
-	auto* characterAnimation =
-		owner->GetComponent<
-		CharacterAnimationComponent>();
-
-	// AnimationComponentが無い場合でも
-	// EnemyTurnを停止させない。
-	if (!characterAnimation)
-	{
-		m_ActionState =
-			EnemyActionState::Finished;
-
-		return;
-	}
-
-	// CharacterAnimationComponent側で
-	// Attack終了後にIdleへ戻るため、
-	// Attack状態でなくなったら行動終了。
-	if (!characterAnimation->
-		IsAttacking())
-	{
-		m_ActionState =
-			EnemyActionState::Finished;
 	}
 }
 
@@ -80,14 +104,9 @@ void EnemyAIComponent::Draw()
 //=====================================================
 // Action
 //=====================================================
-
 bool EnemyAIComponent::Act(
 	const std::vector<GameObject*>& players)
 {
-	//=================================================
-	// 既に行動開始済み
-	//=================================================
-
 	if (m_ActionState !=
 		EnemyActionState::Ready)
 	{
@@ -109,20 +128,8 @@ bool EnemyAIComponent::Act(
 		owner->GetComponent<
 		CharacterStatusComponent>();
 
-	auto* enemyGrid =
-		owner->GetComponent<
-		GridPositionComponent>();
-
 	if (!enemyStatus ||
-		!enemyGrid)
-	{
-		m_ActionState =
-			EnemyActionState::Finished;
-
-		return false;
-	}
-
-	if (enemyStatus->IsDead())
+		enemyStatus->IsDead())
 	{
 		m_ActionState =
 			EnemyActionState::Finished;
@@ -131,14 +138,14 @@ bool EnemyAIComponent::Act(
 	}
 
 	//=================================================
-	// Target検索
+	// Target選択
 	//=================================================
 
-	GameObject* target =
+	m_Target =
 		FindNearestPlayer(
 			players);
 
-	if (!target)
+	if (!m_Target)
 	{
 		m_ActionState =
 			EnemyActionState::Finished;
@@ -146,80 +153,44 @@ bool EnemyAIComponent::Act(
 		return false;
 	}
 
-	const int agility =
+	//=================================================
+	// 移動可能回数
+	//=================================================
+
+	m_RemainingMovePoints =
 		enemyStatus->GetAgility();
 
-	bool acted =
-		false;
-
 	//=================================================
-	// Agility分行動
+	// 既に隣接していれば攻撃
 	//=================================================
 
-	for (int moveCount = 0;
-		moveCount < agility;
-		++moveCount)
+	if (IsAdjacent(
+		m_Target))
 	{
-		//=============================================
-		// 既に隣接していれば攻撃
-		//=============================================
-
-		if (IsAdjacent(
-			target))
-		{
-			return TryAttack(
-				target);
-		}
-
-		auto* playerGrid =
-			target->GetComponent<
-			GridPositionComponent>();
-
-		if (!playerGrid)
-		{
-			break;
-		}
-
-		const GridPosition playerPosition =
-			playerGrid->GetGridPosition();
-
-		//=============================================
-		// 1マス移動
-		//=============================================
-
-		if (!TryMoveToward(
-			playerPosition))
-		{
-			break;
-		}
-
-		acted =
-			true;
-
-		//=============================================
-		// 移動後に隣接したら攻撃
-		//=============================================
-
-		if (IsAdjacent(
-			target))
-		{
-			return TryAttack(
-				target);
-		}
+		return TryAttack(
+			m_Target);
 	}
 
-	// 攻撃しなかった場合は
-	// このEnemyの行動終了。
-	m_ActionState =
+	//=================================================
+	// 最初の移動開始
+	//=================================================
+
+	ContinueAction();
+
+	return
+		m_ActionState !=
 		EnemyActionState::Finished;
-
-	return acted;
 }
-
 void EnemyAIComponent::ResetAction()
 {
 	m_ActionState =
 		EnemyActionState::Ready;
+
+	m_Target =
+		nullptr;
+
+	m_RemainingMovePoints =
+		0;
 }
 
 //=====================================================
@@ -512,9 +483,9 @@ bool EnemyAIComponent::TryAttack(
 //=====================================================
 // Movement
 //=====================================================
-
-bool EnemyAIComponent::TryMoveToward(
-	const GridPosition& playerPosition)
+bool EnemyAIComponent::FindNextMovePosition(
+	const GridPosition& playerPosition,
+	GridPosition& outNextPosition)
 {
 	GameObject* owner =
 		GetOwner();
@@ -533,6 +504,14 @@ bool EnemyAIComponent::TryMoveToward(
 		return false;
 	}
 
+	GridMap* gridMap =
+		gridPosition->GetGridMap();
+
+	if (!gridMap)
+	{
+		return false;
+	}
+
 	const GridPosition enemyPosition =
 		gridPosition->GetGridPosition();
 
@@ -545,110 +524,412 @@ bool EnemyAIComponent::TryMoveToward(
 		enemyPosition.Y;
 
 	//=================================================
-	// 優先方向決定
+	// X方向優先
 	//=================================================
-	//
-	// Playerとの差が大きい軸を優先する。
-	//
-	// 現在はA*導入前の簡易追跡AIなので、
-	// 第一候補が塞がれていた場合は
-	// もう一方の軸を試す。
-	//
 
 	if (std::abs(dx) >
 		std::abs(dy))
 	{
-		//=============================================
-		// X方向を優先
-		//=============================================
-
 		if (dx != 0)
 		{
-			const GridPosition xDirection
+			const GridPosition candidate
 			{
-				dx > 0 ? 1 : -1,
-				0
+				enemyPosition.X +
+					(dx > 0 ? 1 : -1),
+
+				enemyPosition.Y
 			};
 
-			if (gridPosition->TryMove(
-				xDirection))
+			if (gridMap->CanMoveTo(
+				candidate))
 			{
+				outNextPosition =
+					candidate;
+
 				return true;
 			}
 		}
 
-		//=============================================
-		// Xが塞がれていればY
-		//=============================================
-
 		if (dy != 0)
 		{
-			const GridPosition yDirection
+			const GridPosition candidate
 			{
-				0,
-				dy > 0 ? 1 : -1
+				enemyPosition.X,
+
+				enemyPosition.Y +
+					(dy > 0 ? 1 : -1)
 			};
 
-			if (gridPosition->TryMove(
-				yDirection))
+			if (gridMap->CanMoveTo(
+				candidate))
 			{
+				outNextPosition =
+					candidate;
+
 				return true;
 			}
 		}
 	}
 	else
 	{
-		//=============================================
-		// Y方向を優先
-		//=============================================
+		//=================================================
+		// Y方向優先
+		//=================================================
 
 		if (dy != 0)
 		{
-			const GridPosition yDirection
+			const GridPosition candidate
 			{
-				0,
-				dy > 0 ? 1 : -1
+				enemyPosition.X,
+
+				enemyPosition.Y +
+					(dy > 0 ? 1 : -1)
 			};
 
-			if (gridPosition->TryMove(
-				yDirection))
+			if (gridMap->CanMoveTo(
+				candidate))
 			{
+				outNextPosition =
+					candidate;
+
 				return true;
 			}
 		}
 
-		//=============================================
-		// Yが塞がれていればX
-		//=============================================
-
 		if (dx != 0)
 		{
-			const GridPosition xDirection
+			const GridPosition candidate
 			{
-				dx > 0 ? 1 : -1,
-				0
+				enemyPosition.X +
+					(dx > 0 ? 1 : -1),
+
+				enemyPosition.Y
 			};
 
-			if (gridPosition->TryMove(
-				xDirection))
+			if (gridMap->CanMoveTo(
+				candidate))
 			{
+				outNextPosition =
+					candidate;
+
 				return true;
 			}
 		}
 	}
 
-	OutputDebugStringA(
-		"[EnemyAI] Move failed.\n");
-
 	return false;
+}
+
+bool EnemyAIComponent::BeginMove(
+	const GridPosition& nextPosition)
+{
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		return false;
+	}
+
+	auto* gridPosition =
+		owner->GetComponent<
+		GridPositionComponent>();
+
+	auto* transform =
+		owner->GetComponent<
+		TransformComponent>();
+
+	if (!gridPosition ||
+		!transform)
+	{
+		return false;
+	}
+
+	const GridPosition currentPosition =
+		gridPosition->GetGridPosition();
+
+	//=================================================
+	// 移動方向を向く
+	//=================================================
+
+	transform->
+		FaceGridPosition(
+			currentPosition,
+			nextPosition);
+
+	//=================================================
+	// Move Animation開始
+	//=================================================
+
+	auto* animation =
+		owner->GetComponent<
+		CharacterAnimationComponent>();
+
+	if (animation)
+	{
+		animation->
+			ChangeState(
+				CharacterAnimationState::Move);
+	}
+
+	m_NextGridPosition =
+		nextPosition;
+
+	m_ActionState =
+		EnemyActionState::Moving;
+
+	return true;
+}
+
+void EnemyAIComponent::UpdateMovement(
+	uint64_t delta)
+{
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		m_ActionState =
+			EnemyActionState::Finished;
+
+		return;
+	}
+
+	auto* gridPosition =
+		owner->GetComponent<
+		GridPositionComponent>();
+
+	auto* transform =
+		owner->GetComponent<
+		TransformComponent>();
+
+	if (!gridPosition ||
+		!transform)
+	{
+		m_ActionState =
+			EnemyActionState::Finished;
+
+		return;
+	}
+
+	GridMap* gridMap =
+		gridPosition->GetGridMap();
+
+	if (!gridMap)
+	{
+		m_ActionState =
+			EnemyActionState::Finished;
+
+		return;
+	}
+
+	//=================================================
+	// 移動先World座標
+	//=================================================
+
+	const Vector3 targetPosition =
+		gridMap->GridToWorld(
+			m_NextGridPosition);
+
+	Vector3 currentPosition =
+		transform->GetPosition();
+
+	Vector3 direction =
+		targetPosition -
+		currentPosition;
+
+	const float distance =
+		direction.Length();
+
+	constexpr float ARRIVE_EPSILON =
+		0.01f;
+
+	//=================================================
+	// 到着
+	//=================================================
+
+	if (distance <=
+		ARRIVE_EPSILON)
+	{
+		transform->SetPosition(
+			targetPosition);
+
+		// 論理Grid位置を更新。
+		if (!gridPosition->
+			SetGridPosition(
+				m_NextGridPosition))
+		{
+			m_ActionState =
+				EnemyActionState::Finished;
+
+			return;
+		}
+
+		--m_RemainingMovePoints;
+
+		// 次の行動を判断。
+		ContinueAction();
+
+		return;
+	}
+
+	//=================================================
+	// Transform補間
+	//=================================================
+
+	direction.Normalize();
+
+	// deltaがミリ秒の場合。
+	const float deltaSeconds =
+		static_cast<float>(
+			delta) /
+		1000.0f;
+
+	const float moveDistance =
+		m_MoveSpeed *
+		deltaSeconds;
+
+	if (moveDistance >=
+		distance)
+	{
+		transform->SetPosition(
+			targetPosition);
+	}
+	else
+	{
+		currentPosition +=
+			direction *
+			moveDistance;
+
+		transform->SetPosition(
+			currentPosition);
+	}
+}
+
+void EnemyAIComponent::ContinueAction()
+{
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner ||
+		!m_Target)
+	{
+		m_ActionState =
+			EnemyActionState::Finished;
+
+		return;
+	}
+
+	auto* targetStatus =
+		m_Target->GetComponent<
+		CharacterStatusComponent>();
+
+	auto* targetGrid =
+		m_Target->GetComponent<
+		GridPositionComponent>();
+
+	if (!targetStatus ||
+		!targetGrid ||
+		targetStatus->IsDead())
+	{
+		m_ActionState =
+			EnemyActionState::Finished;
+
+		m_Target =
+			nullptr;
+
+		return;
+	}
+
+	//=================================================
+	// Playerに隣接
+	//=================================================
+
+	if (IsAdjacent(
+		m_Target))
+	{
+		TryAttack(
+			m_Target);
+
+		return;
+	}
+
+	//=================================================
+	// MovePoint終了
+	//=================================================
+
+	if (m_RemainingMovePoints <= 0)
+	{
+		auto* animation =
+			owner->GetComponent<
+			CharacterAnimationComponent>();
+
+		if (animation)
+		{
+			animation->
+				ChangeState(
+					CharacterAnimationState::Idle);
+		}
+
+		m_ActionState =
+			EnemyActionState::Finished;
+
+		m_Target =
+			nullptr;
+
+		return;
+	}
+
+	//=================================================
+	// 次のGrid決定
+	//=================================================
+
+	const GridPosition playerPosition =
+		targetGrid->GetGridPosition();
+
+	GridPosition nextPosition{};
+
+	if (!FindNextMovePosition(
+		playerPosition,
+		nextPosition))
+	{
+		// 移動不可。
+		auto* animation =
+			owner->GetComponent<
+			CharacterAnimationComponent>();
+
+		if (animation)
+		{
+			animation->
+				ChangeState(
+					CharacterAnimationState::Idle);
+		}
+
+		m_ActionState =
+			EnemyActionState::Finished;
+
+		m_Target =
+			nullptr;
+
+		return;
+	}
+
+	BeginMove(
+		nextPosition);
 }
 
 //=====================================================
 // Debug UI
 //=====================================================
-
 void EnemyAIComponent::DrawDebugUI()
 {
+	GameObject* owner =
+		GetOwner();
+
+	//=================================================
+	// AI基本情報
+	//=================================================
+
 	ImGui::Text(
 		"AI Type: Nearest Player Chase");
 
@@ -657,4 +938,331 @@ void EnemyAIComponent::DrawDebugUI()
 
 	ImGui::Text(
 		"Attack Range: 1 Grid Cell");
+
+	ImGui::Separator();
+
+	//=================================================
+	// Action State
+	//=================================================
+
+	const char* actionStateName =
+		"Unknown";
+
+	switch (m_ActionState)
+	{
+	case EnemyActionState::Ready:
+		actionStateName =
+			"Ready";
+		break;
+
+	case EnemyActionState::Moving:
+		actionStateName =
+			"Moving";
+		break;
+
+	case EnemyActionState::Attacking:
+		actionStateName =
+			"Attacking";
+		break;
+
+	case EnemyActionState::Finished:
+		actionStateName =
+			"Finished";
+		break;
+
+	default:
+		break;
+	}
+
+	ImGui::Text(
+		"Action State: %s",
+		actionStateName);
+
+	ImGui::Text(
+		"Remaining Move Points: %d",
+		m_RemainingMovePoints);
+
+	ImGui::Text(
+		"Move Speed: %.2f",
+		m_MoveSpeed);
+
+	ImGui::Separator();
+
+	//=================================================
+	// Owner確認
+	//=================================================
+
+	if (!owner)
+	{
+		ImGui::Text(
+			"Owner: nullptr");
+
+		return;
+	}
+
+	//=================================================
+	// Enemy Grid Position
+	//=================================================
+
+	auto* enemyGrid =
+		owner->GetComponent<
+		GridPositionComponent>();
+
+	if (enemyGrid)
+	{
+		const GridPosition currentGrid =
+			enemyGrid->GetGridPosition();
+
+		ImGui::Text(
+			"Current Grid: (%d, %d)",
+			currentGrid.X,
+			currentGrid.Y);
+
+		ImGui::Text(
+			"Next Grid: (%d, %d)",
+			m_NextGridPosition.X,
+			m_NextGridPosition.Y);
+	}
+	else
+	{
+		ImGui::Text(
+			"GridPositionComponent: None");
+	}
+
+	//=================================================
+	// Transform
+	//=================================================
+
+	auto* transform =
+		owner->GetComponent<
+		TransformComponent>();
+
+	if (transform)
+	{
+		const Vector3 worldPosition =
+			transform->GetPosition();
+
+		ImGui::Text(
+			"World Position: "
+			"(%.2f, %.2f, %.2f)",
+			worldPosition.x,
+			worldPosition.y,
+			worldPosition.z);
+
+		//=============================================
+		// 移動中なら目的World座標までの距離も表示
+		//=============================================
+
+		if (enemyGrid &&
+			m_ActionState ==
+			EnemyActionState::Moving)
+		{
+			GridMap* gridMap =
+				enemyGrid->GetGridMap();
+
+			if (gridMap)
+			{
+				const Vector3 targetWorld =
+					gridMap->GridToWorld(
+						m_NextGridPosition);
+
+				const Vector3 difference =
+					targetWorld -
+					worldPosition;
+
+				const float distance =
+					difference.Length();
+
+				ImGui::Text(
+					"Target World: "
+					"(%.2f, %.2f, %.2f)",
+					targetWorld.x,
+					targetWorld.y,
+					targetWorld.z);
+
+				ImGui::Text(
+					"Distance To Next: %.4f",
+					distance);
+
+				ImGui::Text(
+					"Next Cell Movable: %s",
+					gridMap->CanMoveTo(
+						m_NextGridPosition)
+					? "true"
+					: "false");
+			}
+		}
+	}
+
+	ImGui::Separator();
+
+	//=================================================
+	// Target
+	//=================================================
+
+	if (m_Target)
+	{
+		ImGui::Text(
+			"Target: Valid");
+
+		auto* targetGrid =
+			m_Target->GetComponent<
+			GridPositionComponent>();
+
+		auto* targetStatus =
+			m_Target->GetComponent<
+			CharacterStatusComponent>();
+
+		if (targetGrid)
+		{
+			const GridPosition targetPosition =
+				targetGrid->GetGridPosition();
+
+			ImGui::Text(
+				"Target Grid: (%d, %d)",
+				targetPosition.X,
+				targetPosition.Y);
+		}
+
+		if (targetStatus)
+		{
+			ImGui::Text(
+				"Target Alive: %s",
+				targetStatus->IsDead()
+				? "false"
+				: "true");
+		}
+
+		ImGui::Text(
+			"Adjacent: %s",
+			IsAdjacent(
+				m_Target)
+			? "true"
+			: "false");
+	}
+	else
+	{
+		ImGui::Text(
+			"Target: nullptr");
+	}
+
+	ImGui::Separator();
+
+	//=================================================
+	// Animation
+	//=================================================
+
+	auto* characterAnimation =
+		owner->GetComponent<
+		CharacterAnimationComponent>();
+
+	if (characterAnimation)
+	{
+		const char* animationState =
+			"Unknown";
+
+		switch (
+			characterAnimation->GetState())
+		{
+		case CharacterAnimationState::Idle:
+			animationState =
+				"Idle";
+			break;
+
+		case CharacterAnimationState::Move:
+			animationState =
+				"Move";
+			break;
+
+		case CharacterAnimationState::Attack:
+			animationState =
+				"Attack";
+			break;
+
+		case CharacterAnimationState::Dead:
+			animationState =
+				"Dead";
+			break;
+
+		default:
+			break;
+		}
+
+		ImGui::Text(
+			"Animation State: %s",
+			animationState);
+	}
+	else
+	{
+		ImGui::Text(
+			"CharacterAnimation: None");
+	}
+
+	//=================================================
+// Animator
+//=================================================
+
+	auto* animator =
+		owner->GetComponent<
+		AnimatorComponent>();
+
+	if (animator)
+	{
+		ImGui::Separator();
+
+		ImGui::Text(
+			"Animator");
+
+		const AnimationID currentAnimation =
+			animator->GetCurrentAnimation();
+
+		ImGui::Text(
+			"Animation ID: %d",
+			static_cast<int>(
+				currentAnimation));
+
+		ImGui::Text(
+			"Playing: %s",
+			animator->IsPlaying()
+			? "true"
+			: "false");
+
+		ImGui::Text(
+			"Current Time: %.3f",
+			animator->GetCurrentTime());
+
+		ImGui::Text(
+			"Finished: %s",
+			animator->IsAnimationFinished()
+			? "true"
+			: "false");
+
+		const AnimationClip* clip =
+			animator->GetCurrentClip();
+
+		if (clip)
+		{
+			ImGui::Text(
+				"Clip Name: %s",
+				clip->Name.c_str());
+
+			ImGui::Text(
+				"Clip Duration: %.3f",
+				clip->Duration);
+
+			ImGui::Text(
+				"Ticks Per Second: %.3f",
+				clip->TicksPerSecond);
+		}
+		else
+		{
+			ImGui::Text(
+				"Clip: nullptr");
+		}
+	}
+	else
+	{
+		ImGui::Text(
+			"AnimatorComponent: None");
+	}
 }

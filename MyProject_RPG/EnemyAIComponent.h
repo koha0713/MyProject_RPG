@@ -17,18 +17,28 @@ class GameObject;
  */
 enum class EnemyActionState
 {
-	// 次の行動を開始できる
+	// 行動開始可能
 	Ready,
 
-	// Attack Animation再生中
+	// 移動Animation中
+	Moving,
+
+	// 攻撃Animation中
 	Attacking,
 
-	// このEnemyのTurn行動終了
+	// 今Turnの行動終了
 	Finished
 };
 
 /**
  * @brief Enemy AI Component
+ *
+ * @details
+ * 最も近いPlayerをターゲットとして、
+ * Agilityの範囲内で接近・攻撃する。
+ *
+ * 移動はTransformを時間補間し、
+ * 見た目上滑らかに1Gridずつ移動する。
  */
 class EnemyAIComponent :
 	public Component
@@ -55,23 +65,16 @@ public:
 	//====================
 
 	/**
-	 * @brief Enemyの1ターン分の行動を開始する
-	 *
-	 * @param players Player候補一覧
-	 *
-	 * @return 行動を実行した場合true
+	 * @brief Enemyの1Turn分の行動を開始する
 	 */
 	bool Act(
 		const std::vector<GameObject*>& players);
 
 	/**
-	 * @brief 次のEnemyTurnに備えて状態を初期化する
+	 * @brief 次のEnemyTurn用に状態を初期化する
 	 */
 	void ResetAction();
 
-	/**
-	 * @brief このEnemyの行動が終了したか
-	 */
 	bool IsActionFinished() const
 	{
 		return
@@ -79,9 +82,13 @@ public:
 			EnemyActionState::Finished;
 	}
 
-	/**
-	 * @brief 攻撃Animation待ちか
-	 */
+	bool IsMoving() const
+	{
+		return
+			m_ActionState ==
+			EnemyActionState::Moving;
+	}
+
 	bool IsAttacking() const
 	{
 		return
@@ -102,11 +109,52 @@ public:
 
 private:
 
+	//====================
+	// Target
+	//====================
+
+	/**
+	 * @brief 最も近い生存Playerを検索
+	 */
 	GameObject* FindNearestPlayer(
 		const std::vector<GameObject*>& players) const;
 
-	bool TryMoveToward(
-		const GridPosition& playerPosition);
+	//====================
+	// Movement
+	//====================
+
+	/**
+	 * @brief Target方向への次の1Gridを決定する
+	 *
+	 * @param playerPosition TargetのGrid座標
+	 * @param outNextPosition 次に進むGrid座標
+	 *
+	 * @return 移動可能なGridが見つかった場合true
+	 */
+	bool FindNextMovePosition(
+		const GridPosition& playerPosition,
+		GridPosition& outNextPosition);
+
+	/**
+	 * @brief 1マス分の移動Animationを開始する
+	 */
+	bool BeginMove(
+		const GridPosition& nextPosition);
+
+	/**
+	 * @brief 移動Animation更新
+	 */
+	void UpdateMovement(
+		uint64_t delta);
+
+	/**
+	 * @brief 次の移動または攻撃を判断する
+	 */
+	void ContinueAction();
+
+	//====================
+	// Attack
+	//====================
 
 	bool IsAdjacent(
 		GameObject* player) const;
@@ -121,4 +169,30 @@ private:
 	 */
 	EnemyActionState m_ActionState =
 		EnemyActionState::Ready;
+
+	/**
+	 * @brief 現在狙っているPlayer
+	 *
+	 * GameObjectManagerが所有するため非所有。
+	 * Enemyの1Turn中のみ使用する。
+	 */
+	GameObject* m_Target =
+		nullptr;
+
+	/**
+	 * @brief 今Turnで残っている移動回数
+	 */
+	int m_RemainingMovePoints =
+		0;
+
+	/**
+	 * @brief 現在向かっている次のGrid
+	 */
+	GridPosition m_NextGridPosition{};
+
+	/**
+	 * @brief 1秒あたりのWorld移動速度
+	 */
+	float m_MoveSpeed =
+		0.01f;
 };

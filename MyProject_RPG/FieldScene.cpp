@@ -313,7 +313,7 @@ void FieldScene::Initialize()
 			}
 
 			monk->SetName("Monk");
-			monk->SetTag(Tag::NPC);
+			monk->SetTag(Tag::Enemy);
 
 			//====================
 			// TransformComponent
@@ -377,6 +377,37 @@ void FieldScene::Initialize()
 					4,
 					4
 				});
+			monk->AddComponent<
+				EnemyAIComponent>();
+			auto* status =
+				monk->AddComponent<
+				CharacterStatusComponent>();
+
+			status->SetMaxHP(5);
+			status->SetAttackPower(2);
+			status->SetAgility(2);
+
+			//====================
+			// CharacterAnimation
+			//====================
+			auto* characterAnimation =
+				monk->AddComponent<
+				CharacterAnimationComponent>();
+			characterAnimation->
+				SetIdleAnimation(
+					AnimationID::Idle);
+
+			characterAnimation->
+				SetMoveAnimation(
+					AnimationID::Walk);
+
+			characterAnimation->
+				SetAttackAnimation(
+					AnimationID::Roll);
+
+			characterAnimation->
+				SetDeathAnimation(
+					AnimationID::Death);
 		}
 		{
 			auto* rogue =
@@ -902,9 +933,9 @@ void FieldScene::Update(
 	m_gameObjectManager.Update(
 		delta);
 
-	//=================
+	//=====================================================
 	// ãAä“îªíË
-	//=================
+	//=====================================================
 	std::vector<GameObject*> players =
 		m_gameObjectManager.FindByTag(
 			Tag::Player);
@@ -936,20 +967,18 @@ void FieldScene::Update(
 			const GridPosition exitPosition =
 				fieldExit->GetGridPosition();
 
+			// ExitÇÃGridÇ÷ìûíBÇµÇΩÇÁé©ìÆëJà⁄
 			if (playerPosition ==
 				exitPosition)
 			{
-				if (INPUT_MANAGER.IsKeyPressed(
-					KeyCode::E))
-				{
-					SceneManager::SetCurrentScene(
-						fieldExit->
-						GetTargetScene());
-				}
+				SceneManager::SetCurrentScene(
+					fieldExit->
+					GetTargetScene());
+
+				return;
 			}
 		}
 	}
-
 	//=====================================================
 	// EnemyéÄñSèàóù
 	//=====================================================

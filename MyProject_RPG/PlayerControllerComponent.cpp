@@ -45,6 +45,20 @@ void PlayerControllerComponent::Update(
 	}
 
 	//=================================================
+	// Moving
+	//=================================================
+
+	if (m_ActionState ==
+		PlayerActionState::Moving)
+	{
+		UpdateMovement(
+			delta);
+
+		return;
+	}
+
+
+	//=================================================
 	// Attack中
 	//=================================================
 
@@ -109,30 +123,11 @@ void PlayerControllerComponent::Update(
 	}
 
 	//=================================================
-	// Attack
-	//=================================================
-	//
-	// 現段階ではSpaceキーで、
-	// 隣接しているEnemyを攻撃する。
-	//
-	// 攻撃成功時は残り移動回数に関係なく
-	// PlayerTurnを終了する。
-	//
-
-	if (INPUT_MANAGER.IsKeyPressed(
-		KeyCode::Space))
-	{
-		RequestAttack();
-
-		return;
-	}
-
-	//=================================================
 	// Turn End
 	//=================================================
 	//
 	// 移動力を使い切る前でも、
-	// Enterで明示的にPlayerTurnを終了できる。
+	// EnterでlayerTurnを終了できる。
 	//
 
 	if (INPUT_MANAGER.IsKeyPressed(
@@ -314,28 +309,23 @@ bool PlayerControllerComponent::RequestMoveTo(
 		return false;
 	}
 
-	//=================================================
-	// PlayerTurn確認
-	//=================================================
-
 	if (!m_TurnManager ||
 		!m_TurnManager->IsPlayerTurn())
 	{
 		return false;
 	}
 
-	//=================================================
-	// 残り移動力確認
-	//=================================================
+	// 行動中は新しい移動要求を受け付けない。
+	if (m_ActionState !=
+		PlayerActionState::Idle)
+	{
+		return false;
+	}
 
 	if (m_RemainingMovePoints <= 0)
 	{
 		return false;
 	}
-
-	//=================================================
-	// GridPositionComponent
-	//=================================================
 
 	auto* gridPosition =
 		owner->GetComponent<
@@ -357,17 +347,13 @@ bool PlayerControllerComponent::RequestMoveTo(
 	const GridPosition start =
 		gridPosition->GetGridPosition();
 
-	//=================================================
-	// 同じCellをクリック
-	//=================================================
-
 	if (start == destination)
 	{
 		return false;
 	}
 
 	//=================================================
-	// A*経路探索
+	// A* Path探索
 	//=================================================
 
 	const std::vector<GridPosition> path =
@@ -376,106 +362,37 @@ bool PlayerControllerComponent::RequestMoveTo(
 			start,
 			destination);
 
-	//=================================================
-	// 経路なし
-	//=================================================
-
 	if (path.empty())
 	{
-		OutputDebugStringA(
-			"[PlayerController] "
-			"Move failed: Path not found.\n");
-
 		return false;
 	}
 
 	//=================================================
-	// 必要MovePoint計算
+	// 必要移動力確認
 	//=================================================
-	//
-	// pathにはStart自身も含まれる。
-	//
-	// 例:
-	//
-	// (2,2)
-	// (3,2)
-	// (4,2)
-	//
-	// path.size() = 3
-	// 必要移動力 = 2
-	//
 
 	const int requiredMovePoints =
 		static_cast<int>(
 			path.size()) - 1;
 
-	//=================================================
-	// 移動可能範囲外
-	//=================================================
-	//
-	// 誤クリック防止のため、
-	// 移動可能範囲を超えている場合は
-	// 途中まで移動せず完全にキャンセルする。
-	//
-
+	// 残り移動力で目的地まで届かない場合は
+	// 一切移動しない。
 	if (requiredMovePoints >
 		m_RemainingMovePoints)
 	{
-		char buffer[160]{};
-
-		sprintf_s(
-			buffer,
-			"[PlayerController] "
-			"Move failed: Out of range. "
-			"Required=%d Remaining=%d\n",
-			requiredMovePoints,
-			m_RemainingMovePoints);
-
 		OutputDebugStringA(
-			buffer);
+			"[PlayerController] "
+			"Move failed: Destination out of range.\n");
 
 		return false;
 	}
 
 	//=================================================
-	// 経路に沿って移動
+	// 移動開始
 	//=================================================
-	//
-	// index 0 はStartなので、
-	// index 1から移動する。
-	//
 
-	for (size_t i = 1;
-		i < path.size();
-		++i)
-	{
-		const GridPosition current =
-			gridPosition->
-			GetGridPosition();
-
-		const GridPosition direction
-		{
-			path[i].X -
-				current.X,
-
-			path[i].Y -
-				current.Y
-		};
-
-		// 実際の1マス移動処理は
-		// 既存RequestMove()へ委譲する。
-		if (!RequestMove(
-			direction))
-		{
-			OutputDebugStringA(
-				"[PlayerController] "
-				"Move interrupted.\n");
-
-			return false;
-		}
-	}
-
-	return true;
+	return BeginMove(
+		path);
 }
 
 //=====================================================
@@ -878,4 +795,260 @@ void PlayerControllerComponent::DrawDebugUI()
 		ImGui::Text(
 			"TurnManager: None");
 	}
+}
+
+void PlayerControllerComponent::UpdateMovement(
+	uint64_t delta)
+{
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		return;
+	}
+
+	auto* gridPosition =
+		owner->GetComponent<
+		GridPositionComponent>();
+
+	auto* transform =
+		owner->GetComponent<
+		TransformComponent>();
+
+	if (!gridPosition ||
+		!transform)
+	{
+		m_ActionState =
+			PlayerActionState::Idle;
+
+		return;
+	}
+
+	GridMap* gridMap =
+		gridPosition->GetGridMap();
+
+	if (!gridMap)
+	{
+		m_ActionState =
+			PlayerActionState::Idle;
+
+		return;
+	}
+
+	//=================================================
+	// Path終了確認
+	//=================================================
+
+	if (m_MovePathIndex >=
+		m_MovePath.size())
+	{
+		m_ActionState =
+			PlayerActionState::Idle;
+
+		m_MovePath.clear();
+
+		auto* animation =
+			owner->GetComponent<
+			CharacterAnimationComponent>();
+
+		if (animation)
+		{
+			animation->
+				ChangeState(
+					CharacterAnimationState::Idle);
+		}
+
+		return;
+	}
+
+	const GridPosition currentGrid =
+		gridPosition->GetGridPosition();
+
+	const GridPosition nextGrid =
+		m_MovePath[
+			m_MovePathIndex];
+
+	//=================================================
+	// 移動方向を向く
+	//=================================================
+
+	transform->
+		FaceGridPosition(
+			currentGrid,
+			nextGrid);
+
+	//=================================================
+	// Target World Position
+	//=================================================
+
+	const Vector3 targetPosition =
+		gridMap->GridToWorld(
+			nextGrid);
+
+	Vector3 currentPosition =
+		transform->GetPosition();
+
+	Vector3 direction =
+		targetPosition -
+		currentPosition;
+
+	const float distance =
+		direction.Length();
+
+	//=================================================
+	// 到着判定
+	//=================================================
+
+	constexpr float ARRIVE_EPSILON =
+		0.01f;
+
+	if (distance <=
+		ARRIVE_EPSILON)
+	{
+		// 座標誤差を消すため完全に合わせる。
+		transform->SetPosition(
+			targetPosition);
+
+		//=============================================
+		// Grid論理位置更新
+		//=============================================
+
+		if (!gridPosition->
+			SetGridPosition(
+				nextGrid))
+		{
+			// 何らかの理由でGrid更新失敗。
+			m_ActionState =
+				PlayerActionState::Idle;
+
+			return;
+		}
+
+		// 1マス分の移動力消費。
+		--m_RemainingMovePoints;
+
+		++m_MovePathIndex;
+
+		//=============================================
+		// Path終了
+		//=============================================
+
+		if (m_MovePathIndex >=
+			m_MovePath.size())
+		{
+			m_ActionState =
+				PlayerActionState::Idle;
+
+			m_MovePath.clear();
+
+			auto* animation =
+				owner->GetComponent<
+				CharacterAnimationComponent>();
+
+			if (animation)
+			{
+				animation->
+					ChangeState(
+						CharacterAnimationState::Idle);
+			}
+
+			// 移動力を使い切った場合のみ
+			// EnemyTurnへ進む。
+			if (m_RemainingMovePoints <= 0 &&
+				m_TurnManager)
+			{
+				m_TurnManager->
+					EndPlayerTurn();
+			}
+
+			return;
+		}
+
+		return;
+	}
+
+	//=================================================
+	// World座標補間
+	//=================================================
+
+	direction.Normalize();
+
+	// deltaは現在uint64_tなので、
+	// プロジェクト内で「何単位か」に合わせてください。
+	//
+	// もしdeltaがミリ秒なら /1000.0f。
+	// 既に秒換算済みならそのまま。
+	const float deltaSeconds =
+		static_cast<float>(
+			delta) /
+		1000.0f;
+
+	const float moveDistance =
+		m_MoveSpeed *
+		deltaSeconds;
+
+	// 次フレームでTargetを通り越す場合は
+	// TargetにClampする。
+	if (moveDistance >=
+		distance)
+	{
+		transform->SetPosition(
+			targetPosition);
+	}
+	else
+	{
+		currentPosition +=
+			direction *
+			moveDistance;
+
+		transform->SetPosition(
+			currentPosition);
+	}
+}
+
+bool PlayerControllerComponent::BeginMove(
+	const std::vector<GridPosition>& path)
+{
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		return false;
+	}
+
+	// StartだけしかないPathは移動不要。
+	if (path.size() <= 1)
+	{
+		return false;
+	}
+
+	m_MovePath =
+		path;
+
+	// index 0は現在地なので、
+	// index 1を最初の目的地とする。
+	m_MovePathIndex =
+		1;
+
+	m_ActionState =
+		PlayerActionState::Moving;
+
+	//=================================================
+	// 移動Animation開始
+	//=================================================
+
+	auto* animation =
+		owner->GetComponent<
+		CharacterAnimationComponent>();
+
+	if (animation)
+	{
+		animation->
+			ChangeState(
+				CharacterAnimationState::Move);
+	}
+
+	return true;
 }
