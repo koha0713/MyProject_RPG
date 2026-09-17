@@ -156,6 +156,14 @@ public:
 	const AnimationClip*
 		GetPreviousClip() const;
 
+	/**
+	 * @brief Œ»İ‚ÌAnimation‚ªÄ¶I—¹‚µ‚½‚©
+	 *
+	 * @return
+	 * ”ñLoop Animation‚ªÅŒã‚Ü‚Å“’B‚µ‚Ä‚¢‚éê‡true
+	 */
+	bool IsAnimationFinished() const;
+
 private:
 
 	/**

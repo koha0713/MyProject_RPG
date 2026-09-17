@@ -12,8 +12,11 @@
 #include "EnemyAIComponent.h"
 #include "CharacterStatusComponent.h"
 #include "FieldExitComponent.h"
+#include "CharacterAnimationComponent.h"
 
 #include <ModelLoader.h>
+#include "MousePicker.h"
+#include "Window.h"
 
 #include "InputManager.h"
 #include "SoundManager.h"
@@ -163,6 +166,29 @@ void FieldScene::Initialize()
 
 			status->SetMaxHP(10);
 			status->SetAttackPower(3);
+			status->SetAgility(
+				3);
+			//====================
+			// CharacterAnimation
+			//====================
+			auto* characterAnimation =
+				warrior->AddComponent<
+				CharacterAnimationComponent>();
+			characterAnimation->
+				SetIdleAnimation(
+					AnimationID::Idle);
+
+			characterAnimation->
+				SetMoveAnimation(
+					AnimationID::Walk);
+
+			characterAnimation->
+				SetAttackAnimation(
+					AnimationID::Attack);
+
+			characterAnimation->
+				SetDeathAnimation(
+					AnimationID::Death);
 		}
 		{
 			auto* enemy =
@@ -214,7 +240,18 @@ void FieldScene::Initialize()
 					// 使用するモデルの実際のパスに変更する
 					const bool result =
 						model->SetModel(
-							"Assets/Models/Enemy/Alien.fbx");
+							"Assets/Models/Player/Ranger.fbx");
+					// Material[0]へTextureを手動設定
+					const bool texture0Result =
+						model->SetTexture(
+							0,
+							"Assets/Models/Player/Ranger_Texture.png");
+					// Material[1]へTextureを手動設定
+					const bool texture1Result =
+						model->SetTexture(
+							1,
+							"Assets/Models/Player/Ranger_Bow_Texture.png");
+
 					// 初期Animation設定
 					model->PlayAnimation(AnimationID::Idle, true, 0.0f);
 				}
@@ -242,8 +279,30 @@ void FieldScene::Initialize()
 
 			status->SetMaxHP(5);
 			status->SetAttackPower(2);
-		}
+			status->SetAgility(2);
 
+			//====================
+			// CharacterAnimation
+			//====================
+			auto* characterAnimation =
+				enemy->AddComponent<
+				CharacterAnimationComponent>();
+			characterAnimation->
+				SetIdleAnimation(
+					AnimationID::Idle);
+
+			characterAnimation->
+				SetMoveAnimation(
+					AnimationID::Walk);
+
+			characterAnimation->
+				SetAttackAnimation(
+					AnimationID::Punch);
+
+			characterAnimation->
+				SetDeathAnimation(
+					AnimationID::Death);
+		}
 		{
 			auto* monk =
 				m_gameObjectManager.Create<GameObject>();
@@ -667,12 +726,6 @@ if (m_MainCamera)
 		exit->SetTargetScene(
 			"TownScene");
 	}
-	std::vector<GameObject*> m_Player =
-		m_gameObjectManager.FindByTag(Tag::Player);
-	auto* ctr = m_Player[0]->GetComponent<PlayerControllerComponent>();
-	std::vector<GameObject*> m_Enemy =
-		m_gameObjectManager.FindByTag(Tag::Enemy);
-	ctr->SetAttackTarget(m_Enemy[0]);
 
 	// クエスト初期化
 	m_CurrentQuest.Setup(
@@ -694,84 +747,152 @@ void FieldScene::Update(
 	uint64_t delta)
 {
 	//=====================================================
-	// Enemy Turn
+	// Mouse Picking
 	//=====================================================
 
-	if (m_TurnManager.IsEnemyTurn())
+	if (INPUT_MANAGER.IsMousePressed(
+		MouseButton::Left))
 	{
-		//=================================================
-		// Player取得
-		//=================================================
+		GameObject* cameraObject =
+			m_gameObjectManager.FindByName(
+				"MainCamera");
 
-		std::vector<GameObject*> players =
-			m_gameObjectManager.FindByTag(
-				Tag::Player);
-
-		//=================================================
-		// Enemy取得
-		//=================================================
-
-		std::vector<GameObject*> enemies =
-			m_gameObjectManager.FindByTag(
-				Tag::Enemy);
-
-		//=================================================
-		// Enemy全員の行動
-		//=================================================
-
-		if (!players.empty())
+		if (cameraObject)
 		{
-			GameObject* player =
-				players[0];
+			auto* camera =
+				cameraObject->GetComponent<
+				CameraComponent>();
 
-			for (GameObject* enemy :
-				enemies)
+			if (camera)
 			{
-				if (!enemy)
+				const Vector2 mousePosition =
+					INPUT_MANAGER.GetMousePosition();
+
+				const Matrix4x4 view =
+					camera->GetViewMatrix();
+
+				const Matrix4x4 projection =
+					camera->GetProjectionMatrix();
+
+				Vector3 worldPosition(
+					0.0f,
+					0.0f,
+					0.0f);
+
+				if (MousePicker::PickGround(
+					mousePosition,
+					static_cast<float>(
+						Window::GetWidth()),
+					static_cast<float>(
+						Window::GetHeight()),
+					view,
+					projection,
+					0.0f,
+					worldPosition))
 				{
-					continue;
-				}
+					//=====================================
+					// World → Grid
+					//=====================================
 
-				//=========================================
-				// 死亡確認
-				//=========================================
+					const GridPosition clickedGrid =
+						m_GridMap.WorldToGrid(
+							worldPosition);
 
-				auto* enemyStatus =
-					enemy->GetComponent<
-					CharacterStatusComponent>();
+					//=====================================
+					// Grid範囲確認
+					//=====================================
 
-				if (!enemyStatus)
-				{
-					continue;
-				}
+					if (!m_GridMap.IsInside(
+						clickedGrid))
+					{
+						return;
+					}
 
-				// 死亡済みEnemyは行動させない
-				if (enemyStatus->IsDead())
-				{
-					continue;
-				}
+					//=====================================
+					// Player取得
+					//=====================================
 
-				//=========================================
-				// Enemy AI
-				//=========================================
+					std::vector<GameObject*> players =
+						m_gameObjectManager.FindByTag(
+							Tag::Player);
 
-				auto* enemyAI =
-					enemy->GetComponent<
-					EnemyAIComponent>();
+					if (players.empty())
+					{
+						return;
+					}
 
-				if (enemyAI)
-				{
-					enemyAI->Act(
-						player);
+					GameObject* player =
+						players[0];
+
+					auto* controller =
+						player->GetComponent<
+						PlayerControllerComponent>();
+
+					if (!controller)
+					{
+						return;
+					}
+
+					//=====================================
+					// Clicked Cell取得
+					//=====================================
+
+					GridCell* cell =
+						m_GridMap.GetCell(
+							clickedGrid);
+
+					if (!cell)
+					{
+						return;
+					}
+
+					GameObject* occupant =
+						cell->Occupant;
+
+					//=====================================
+					// 空きマス
+					//=====================================
+
+					if (!occupant)
+					{
+						controller->
+							RequestMoveTo(
+								clickedGrid);
+
+						return;
+					}
+
+					//=====================================
+					// Enemy
+					//=====================================
+
+					if (occupant->GetTag() ==
+						Tag::Enemy)
+					{
+						controller->
+							RequestAttack(
+								occupant);
+
+						return;
+					}
+
+					//=====================================
+					// その他
+					//=====================================
+
+					OutputDebugStringA(
+						"[FieldScene] "
+						"Clicked occupied cell.\n");
 				}
 			}
 		}
-
-		//=================================================
-		// Enemy全員の行動終了
-		//=================================================
-
-		m_TurnManager.EndEnemyTurn();
+	}
+	//=====================================================
+	// Enemy Turn
+	//=====================================================
+	if (m_TurnManager.IsEnemyTurn())
+	{
+		UpdateEnemyTurnSequence();
 	}
 
 	//=====================================================
@@ -832,7 +953,6 @@ void FieldScene::Update(
 	//=====================================================
 	// Enemy死亡処理
 	//=====================================================
-
 	std::vector<GameObject*> enemies =
 		m_gameObjectManager.FindByTag(
 			Tag::Enemy);
@@ -841,6 +961,12 @@ void FieldScene::Update(
 		enemies)
 	{
 		if (!enemy)
+		{
+			continue;
+		}
+
+		// 既に削除予約済みなら処理しない。
+		if (enemy->IsDestroy())
 		{
 			continue;
 		}
@@ -858,47 +984,12 @@ void FieldScene::Update(
 		OutputDebugStringA(
 			"[FieldScene] Enemy defeated.\n");
 
-		//=============================================
-		// Questへ討伐通知
-		//=============================================
-
+		// Questへ討伐通知。
 		QUEST_MANAGER.
 			NotifyEnemyKilled();
 
-		//=============================================
-		// Playerが死亡Enemyをターゲットしている場合への
-		// 仮対応
-		//=============================================
-
-		std::vector<GameObject*> players =
-			m_gameObjectManager.FindByTag(
-				Tag::Player);
-
-		for (GameObject* player :
-			players)
-		{
-			if (!player)
-			{
-				continue;
-			}
-
-			auto* controller =
-				player->GetComponent<
-				PlayerControllerComponent>();
-
-			if (controller)
-			{
-				// 現在は単一ターゲット方式なので解除。
-				// Mouse選択方式へ移行した段階で変更予定。
-				controller->SetAttackTarget(
-					nullptr);
-			}
-		}
-
-		//=============================================
-		// 削除予約
-		//=============================================
-
+		// GameObjectManagerによる
+		// 遅延削除を予約する。
 		enemy->Destroy();
 	}
 }
@@ -975,4 +1066,180 @@ void FieldScene::Draw(uint64_t delta)
 			ImGui::End();
 		});
 
+}
+
+
+void FieldScene::BeginEnemyTurnSequence()
+{
+	m_EnemyTurnOrder =
+		m_gameObjectManager.FindByTag(
+			Tag::Enemy);
+
+	m_CurrentEnemyIndex =
+		0;
+
+	m_EnemyActionStarted =
+		false;
+
+	m_EnemyTurnSequenceActive =
+		true;
+
+	//=================================================
+	// 各Enemyを次の行動可能状態へ戻す
+	//=================================================
+
+	for (GameObject* enemy :
+		m_EnemyTurnOrder)
+	{
+		if (!enemy ||
+			enemy->IsDestroy())
+		{
+			continue;
+		}
+
+		auto* enemyAI =
+			enemy->GetComponent<
+			EnemyAIComponent>();
+
+		if (enemyAI)
+		{
+			enemyAI->
+				ResetAction();
+		}
+	}
+}
+
+void FieldScene::UpdateEnemyTurnSequence()
+{
+	if (!m_EnemyTurnSequenceActive)
+	{
+		BeginEnemyTurnSequence();
+	}
+
+	//=================================================
+	// 全Enemy終了
+	//=================================================
+
+	if (m_CurrentEnemyIndex >=
+		m_EnemyTurnOrder.size())
+	{
+		EndEnemyTurnSequence();
+
+		return;
+	}
+
+	//=================================================
+	// 現在Enemy取得
+	//=================================================
+
+	GameObject* enemy =
+		m_EnemyTurnOrder[
+			m_CurrentEnemyIndex];
+
+	// 無効なEnemyは次へ。
+	if (!enemy ||
+		enemy->IsDestroy())
+	{
+		++m_CurrentEnemyIndex;
+
+		m_EnemyActionStarted =
+			false;
+
+		return;
+	}
+
+	auto* enemyStatus =
+		enemy->GetComponent<
+		CharacterStatusComponent>();
+
+	if (!enemyStatus ||
+		enemyStatus->IsDead())
+	{
+		++m_CurrentEnemyIndex;
+
+		m_EnemyActionStarted =
+			false;
+
+		return;
+	}
+
+	auto* enemyAI =
+		enemy->GetComponent<
+		EnemyAIComponent>();
+
+	if (!enemyAI)
+	{
+		++m_CurrentEnemyIndex;
+
+		m_EnemyActionStarted =
+			false;
+
+		return;
+	}
+
+	//=================================================
+	// 行動開始
+	//=================================================
+
+	if (!m_EnemyActionStarted)
+	{
+		std::vector<GameObject*> players =
+			m_gameObjectManager.FindByTag(
+				Tag::Player);
+
+		enemyAI->Act(
+			players);
+
+		m_EnemyActionStarted =
+			true;
+	}
+
+	//=================================================
+	// 行動終了待ち
+	//=================================================
+	//
+	// Attack中ならEnemyAI::Update()が
+	// Animation終了までFinishedにしない。
+	//
+
+	if (!enemyAI->
+		IsActionFinished())
+	{
+		return;
+	}
+
+	//=================================================
+	// 次のEnemyへ
+	//=================================================
+
+	++m_CurrentEnemyIndex;
+
+	m_EnemyActionStarted =
+		false;
+
+	// 最後のEnemyまで終わった場合。
+	if (m_CurrentEnemyIndex >=
+		m_EnemyTurnOrder.size())
+	{
+		EndEnemyTurnSequence();
+	}
+}
+
+void FieldScene::EndEnemyTurnSequence()
+{
+	m_EnemyTurnOrder.clear();
+
+	m_CurrentEnemyIndex =
+		0;
+
+	m_EnemyActionStarted =
+		false;
+
+	m_EnemyTurnSequenceActive =
+		false;
+
+	// Enemy全員の行動完了後にのみ
+	// PlayerTurnへ戻す。
+	m_TurnManager.
+		EndEnemyTurn();
 }

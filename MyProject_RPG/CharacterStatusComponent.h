@@ -80,6 +80,22 @@ public:
 	}
 
 	//====================
+	// Agility
+	//====================
+
+	/**
+	 * @brief 敏捷値を設定
+	 * @details
+	 * 現在は1PlayerTurn中に移動できるマス数として使用する。
+	 */
+	void SetAgility(int agility);
+
+	int GetAgility() const
+	{
+		return m_Agility;
+	}
+
+	//====================
 	// Debug
 	//====================
 
@@ -99,5 +115,12 @@ private:
 		10;
 
 	int m_AttackPower =
+		1;
+
+	/**
+	 * @brief 敏捷値
+	 * 現段階では1PlayerTurn中の移動可能マス数
+	 */
+	int m_Agility =
 		1;
 };

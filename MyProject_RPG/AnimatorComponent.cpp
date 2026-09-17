@@ -1146,6 +1146,39 @@ AnimatorComponent::GetPreviousClip() const
 	return &it->second;
 }
 
+//=====================================================
+// Animation Finished
+//=====================================================
+
+bool AnimatorComponent::IsAnimationFinished() const
+{
+	// Animationが設定されていない
+	if (m_CurrentAnimation ==
+		AnimationID::None)
+	{
+		return true;
+	}
+
+	// Loop Animationは終了扱いにしない。
+	if (m_Loop)
+	{
+		return false;
+	}
+
+	const AnimationClip* clip =
+		GetCurrentClip();
+
+	if (!clip)
+	{
+		return true;
+	}
+
+	// 非Loop AnimationがDurationまで到達したら終了。
+	return
+		m_CurrentTime >=
+		clip->Duration;
+}
+
 void AnimatorComponent::DrawDebugUI()
 {
 	ImGui::Text(

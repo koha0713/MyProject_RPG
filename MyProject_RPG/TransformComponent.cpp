@@ -102,3 +102,49 @@ void TransformComponent::DrawDebugUI()
 	}
 
 }
+
+void TransformComponent::FaceGridPosition(
+	const GridPosition& from,
+	const GridPosition& to)
+{
+	const int dx =
+		to.X -
+		from.X;
+
+	const int dy =
+		to.Y -
+		from.Y;
+
+	if (dx == 0 &&
+		dy == 0)
+	{
+		return;
+	}
+
+	Vector3 rotation =
+		GetRotation();
+
+	if (dx > 0)
+	{
+		rotation.y =
+			DirectX::XM_PIDIV2;
+	}
+	else if (dx < 0)
+	{
+		rotation.y =
+			-DirectX::XM_PIDIV2;
+	}
+	else if (dy > 0)
+	{
+		rotation.y =
+			0.0f;
+	}
+	else
+	{
+		rotation.y =
+			DirectX::XM_PI;
+	}
+
+	SetRotation(
+		rotation);
+}

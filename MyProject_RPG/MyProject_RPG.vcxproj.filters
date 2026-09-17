@@ -73,6 +73,9 @@
     <Filter Include="ソース ファイル\Component\Map">
       <UniqueIdentifier>{3ae5395f-5c44-4e4d-b0c6-e0a928b9662f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\System\Map">
+      <UniqueIdentifier>{46c8326d-c899-4b0e-9d47-83d9f515305b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -240,6 +243,15 @@
     <ClInclude Include="FieldExitComponent.h">
       <Filter>ソース ファイル\Component\Map</Filter>
     </ClInclude>
+    <ClInclude Include="MousePicker.h">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="GridPathFinder.h">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="CharacterAnimationComponent.h">
+      <Filter>ソース ファイル\Component\Chara</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -355,6 +367,15 @@
     </ClCompile>
     <ClCompile Include="FieldExitComponent.cpp">
       <Filter>ソース ファイル\Component\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="MousePicker.cpp">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="GridPathFinder.cpp">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="CharacterAnimationComponent.cpp">
+      <Filter>ソース ファイル\Component\Chara</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -140,6 +140,7 @@
     <ClInclude Include="AnimatorComponent.h" />
     <ClInclude Include="AudioSourceComponent.h" />
     <ClInclude Include="CameraComponent.h" />
+    <ClInclude Include="CharacterAnimationComponent.h" />
     <ClInclude Include="CharacterStatusComponent.h" />
     <ClInclude Include="CommonType.h" />
     <ClInclude Include="Component.h" />
@@ -153,6 +154,7 @@
     <ClInclude Include="GameObjectManager.h" />
     <ClInclude Include="GridCell.h" />
     <ClInclude Include="GridMap.h" />
+    <ClInclude Include="GridPathFinder.h" />
     <ClInclude Include="GridPosition.h" />
     <ClInclude Include="GridPositionComponent.h" />
     <ClInclude Include="imgui\imconfig.h" />
@@ -168,6 +170,7 @@
     <ClInclude Include="ModelComponent.h" />
     <ClInclude Include="ModelData.h" />
     <ClInclude Include="ModelLoader.h" />
+    <ClInclude Include="MousePicker.h" />
     <ClInclude Include="NonCopyable.h" />
     <ClInclude Include="IScene.h" />
     <ClInclude Include="OutlineSetting.h" />
@@ -196,6 +199,7 @@
     <ClCompile Include="AnimatorComponent.cpp" />
     <ClCompile Include="AudioSourceComponent.cpp" />
     <ClCompile Include="CameraComponent.cpp" />
+    <ClCompile Include="CharacterAnimationComponent.cpp" />
     <ClCompile Include="CharacterStatusComponent.cpp" />
     <ClCompile Include="EnemyAIComponent.cpp" />
     <ClCompile Include="FieldExitComponent.cpp" />
@@ -203,6 +207,7 @@
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="GameObjectManager.cpp" />
     <ClCompile Include="GridMap.cpp" />
+    <ClCompile Include="GridPathFinder.cpp" />
     <ClCompile Include="GridPositionComponent.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
@@ -217,6 +222,7 @@
     <ClCompile Include="ModelComponent.cpp" />
     <ClCompile Include="ModelData.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
+    <ClCompile Include="MousePicker.cpp" />
     <ClCompile Include="PlayerControllerComponent.cpp" />
     <ClCompile Include="Quest.cpp" />
     <ClCompile Include="QuestManager.cpp" />

@@ -10,6 +10,9 @@
 #include "GridMap.h"
 #include "TurnManager.h"
 #include "Quest.h"
+#include <vector>
+
+class GameObject;
 
 
 class CameraComponent;
@@ -40,6 +43,54 @@ public:
 	SoundHandle m_BGMHandle;
 	GridMap m_GridMap;
 	Quest m_CurrentQuest;
+
+private:
+
+	//====================
+	// Enemy Turn Sequence
+	//====================
+
+	/**
+	 * @brief EnemyTurn開始処理
+	 */
+	void BeginEnemyTurnSequence();
+
+	/**
+	 * @brief EnemyTurn進行処理
+	 */
+	void UpdateEnemyTurnSequence();
+
+	/**
+	 * @brief EnemyTurn終了処理
+	 */
+	void EndEnemyTurnSequence();
+
+	/**
+	 * @brief 今回のEnemyTurnで行動するEnemy一覧
+	 *
+	 * GameObjectManagerが所有しているため、
+	 * ここでは非所有ポインタとして保持する。
+	 */
+	std::vector<GameObject*>
+		m_EnemyTurnOrder;
+
+	/**
+	 * @brief 現在行動中EnemyのIndex
+	 */
+	size_t m_CurrentEnemyIndex =
+		0;
+
+	/**
+	 * @brief 現在のEnemyがAct()を開始済みか
+	 */
+	bool m_EnemyActionStarted =
+		false;
+
+	/**
+	 * @brief EnemyTurnシーケンス実行中か
+	 */
+	bool m_EnemyTurnSequenceActive =
+		false;
 };
 // Scene登録
 REGISTER_CLASS(FieldScene)

@@ -4,6 +4,9 @@ void TurnManager::Initialize()
 {
 	m_Phase =
 		TurnPhase::Player;
+
+	m_TurnCount =
+		0;
 }
 
 void TurnManager::Update()
@@ -32,6 +35,7 @@ void TurnManager::EndEnemyTurn()
 	{
 		return;
 	}
+	m_TurnCount++;
 
 	m_Phase =
 		TurnPhase::Player;

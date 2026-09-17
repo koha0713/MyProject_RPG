@@ -48,19 +48,19 @@ void CameraComponent::Update(uint64_t delta)
 	//====================
 	// Camera‘€ì(‰¼)
 	//====================
-	if (INPUT_MANAGER.IsKeyDown(KeyCode::Up))
+	if (INPUT_MANAGER.IsKeyDown(KeyCode::W))
 	{
 		transform->Translate(Vector3(0.0f,0.0f,-0.1f));
 	}
-	if (INPUT_MANAGER.IsKeyDown(KeyCode::Down))
+	if (INPUT_MANAGER.IsKeyDown(KeyCode::S))
 	{
 		transform->Translate(Vector3(0.0f, 0.0f, 0.1f));
 	}
-	if (INPUT_MANAGER.IsKeyDown(KeyCode::Left))
+	if (INPUT_MANAGER.IsKeyDown(KeyCode::A))
 	{
 		transform->Translate(Vector3(-0.1f, 0.0f, 0.0f));
 	}
-	if (INPUT_MANAGER.IsKeyDown(KeyCode::Right))
+	if (INPUT_MANAGER.IsKeyDown(KeyCode::D))
 	{
 		transform->Translate(Vector3(0.1f, 0.0f, 0.0f));
 	}

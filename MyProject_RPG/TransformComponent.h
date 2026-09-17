@@ -2,6 +2,7 @@
 
 #include "Component.h"
 #include "CommonType.h"
+#include "GridPosition.h"
 
 /**
  * @brief GameObjectのTransformを管理するComponent
@@ -121,6 +122,27 @@ public:
 	{
 		return "TransformComponent";
 	}
+
+	/**
+	 * @brief Grid上の指定位置へ向きを合わせる
+	 *
+	 * @param from 現在のGrid座標
+	 * @param to 向きたい対象のGrid座標
+	 *
+	 * @details
+	 * Grid XをWorld X、
+	 * Grid YをWorld Zとして扱い、
+	 * Yaw回転のみ変更する。
+	 *
+	 * World座標系は
+	 * +X : 右
+	 * +Y : 上
+	 * +Z : 前
+	 * の左手座標系を前提とする。
+	 */
+	void FaceGridPosition(
+		const GridPosition& from,
+		const GridPosition& to);
 
 private:
 

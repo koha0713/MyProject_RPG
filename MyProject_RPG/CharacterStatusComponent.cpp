@@ -94,6 +94,18 @@ void CharacterStatusComponent::SetAttackPower(
 }
 
 //=====================================================
+// Agility
+//=====================================================
+void CharacterStatusComponent::SetAgility(
+	int agility)
+{
+	m_Agility =
+		(std::max)(
+			agility,
+			1);
+}
+
+//=====================================================
 // Debug UI
 //=====================================================
 
@@ -107,6 +119,10 @@ void CharacterStatusComponent::DrawDebugUI()
 	ImGui::Text(
 		"Attack Power: %d",
 		m_AttackPower);
+
+	ImGui::Text(
+		"Agility: %d",
+		m_Agility);
 
 	ImGui::Text(
 		"State: %s",
