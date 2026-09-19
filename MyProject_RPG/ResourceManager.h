@@ -6,6 +6,8 @@
 #include "ModelData.h"
 #include "Texture.h"
 
+class TextureResource;
+
 /**
  * @class ResourceManager
  * @brief リソース管理クラス

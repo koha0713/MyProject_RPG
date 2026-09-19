@@ -148,6 +148,14 @@ public:
 		return "PlayerControllerComponent";
 	}
 
+	/**
+	 * @brief Œ»İ‚Ìc‚èˆÚ“®—Í‚ğæ“¾
+	 */
+	int GetRemainingMovePoints() const
+	{
+		return m_RemainingMovePoints;
+	}
+
 private:
 
 	/**

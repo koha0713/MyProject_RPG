@@ -38,3 +38,23 @@ QuestManager::GetReportableQuests()
 
 	return result;
 }
+
+std::vector<Quest*>
+QuestManager::GetAcceptableQuests()
+{
+	std::vector<Quest*>
+		result;
+
+	for (Quest& quest :
+		m_Quests)
+	{
+		if (quest.GetState() ==
+			QuestState::Inactive)
+		{
+			result.push_back(
+				&quest);
+		}
+	}
+
+	return result;
+}

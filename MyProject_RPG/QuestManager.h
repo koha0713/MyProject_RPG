@@ -56,11 +56,24 @@ public:
 	std::vector<Quest*>
 		GetReportableQuests();
 
+	/**
+	 * @brief Œ»İó’‰Â”\‚ÈQuest‚ğæ“¾‚·‚é
+	 *
+	 * @details
+	 * Inactiveó‘Ô‚ÌQuest‚Ì‚İ‚ğ•Ô‚·B
+	 *
+	 * @return ó’‰Â”\Questˆê——
+	 */
+	std::vector<Quest*>
+		GetAcceptableQuests();
+
 	const std::vector<Quest>&
 		GetQuests() const
 	{
 		return m_Quests;
 	}
+
+
 
 private:
 

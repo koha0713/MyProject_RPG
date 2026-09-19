@@ -22,6 +22,12 @@
 #include "SoundManager.h"
 #include "QuestManager.h"
 #include "SceneManager.h"
+#include "GridRenderer.h"
+#include "GridRangeRenderer.h"
+#include "GridRangeCalculator.h"
+
+#include "CharaMapData.h"
+#include "CharaMapLoader.h"
 
 FieldScene::FieldScene()
 {
@@ -39,537 +45,60 @@ void FieldScene::Initialize()
 	}
 	// GameObjectの初期化
 	{
-		//====================
-		// Player生成
-		//====================
+		//=====================================================
+		// Character Map Load
+		//=====================================================
+		CharaMapData
+			charaMapData;
+
+		if (!CharaMapLoader::Load(
+			"Assets/Map/CharaMap.txt",
+			charaMapData))
 		{
-			auto* warrior =
-				m_gameObjectManager.Create<GameObject>();
-
-			if (!warrior)
-			{
-				return;
-			}
-
-			warrior->SetName("Warrior");
-			warrior->SetTag(Tag::Player);
-
-			//====================
-			// TransformComponent
-			//====================
-			{
-				auto* transform =
-					warrior->AddComponent<TransformComponent>();
-
-				if (transform)
-				{
-					// 仮カメラが原点を向いているため、
-					// まずはモデルを原点に配置して確認する
-					transform->SetPosition(
-						0.0f,
-						0.0f,
-						0.0f);
-
-					transform->SetRotation(
-						0.0f,
-						3.3f,
-						0.0f);
-
-					// モデルサイズに応じて調整する
-					transform->SetScale(
-						0.01f);
-				}
-			}
-			//====================
-			// ModelComponent
-			//====================
-			{
-				auto* model =
-					warrior->AddComponent<ModelComponent>();
-
-				if (model)
-				{
-					// 使用するモデルの実際のパスに変更する
-					const bool result =
-						model->SetModel(
-							"Assets/Models/Player/Warrior.fbx");
-					// Material[0]へTextureを手動設定
-					const bool texture0Result =
-						model->SetTexture(
-							0,
-							"Assets/Models/Player/Warrior_Texture.png");
-					// Material[1]へTextureを手動設定
-					const bool texture1Result =
-						model->SetTexture(
-							1,
-							"Assets/Models/Player/Warrior_Sword_Texture.png");
-
-					// 初期Animation設定
-					model->PlayAnimation(AnimationID::Idle, true, 0.0f);
-				}
-			}
-			//====================
-			// Audio
-			//====================
-			{
-				auto* audioSource =
-					warrior->AddComponent<
-					AudioSourceComponent>();
-
-				audioSource->SetSoundPath(
-					L"Assets/Sound/BGM.wav");
-
-				audioSource->Set3D(
-					true);
-
-				audioSource->SetLoop(
-					true);
-
-				audioSource->SetVolume(
-					1.0f);
-
-				audioSource->SetCategory(
-					SoundCategory::SE);
-
-				audioSource->SetDistanceScaler(
-					20.0f);
-
-				audioSource->Play();
-			}
-			//====================
-			// GridPosition
-			//====================
-			auto* gridPosition =
-				warrior->AddComponent<
-				GridPositionComponent>();
-
-			gridPosition->SetGridMap(
-				&m_GridMap);
-
-			const bool result =
-				gridPosition->SetGridPosition(
-					GridPosition
-					{
-						2,
-						2
-					});
-
-			auto* controller =
-				warrior->AddComponent<
-				PlayerControllerComponent>();
-			controller->SetTurnManager(
-				&m_TurnManager);
-
-			auto* status =
-				warrior->AddComponent<
-				CharacterStatusComponent>();
-
-			status->SetMaxHP(10);
-			status->SetAttackPower(3);
-			status->SetAgility(
-				3);
-			//====================
-			// CharacterAnimation
-			//====================
-			auto* characterAnimation =
-				warrior->AddComponent<
-				CharacterAnimationComponent>();
-			characterAnimation->
-				SetIdleAnimation(
-					AnimationID::Idle);
-
-			characterAnimation->
-				SetMoveAnimation(
-					AnimationID::Walk);
-
-			characterAnimation->
-				SetAttackAnimation(
-					AnimationID::Attack);
-
-			characterAnimation->
-				SetDeathAnimation(
-					AnimationID::Death);
-		}
-		{
-			auto* enemy =
-				m_gameObjectManager.Create<GameObject>();
-
-			if (!enemy)
-			{
-				return;
-			}
-
-			enemy->SetName("Enemy");
-			enemy->SetTag(Tag::Enemy);
-
-			//====================
-			// TransformComponent
-			//====================
-			{
-				auto* transform =
-					enemy->AddComponent<TransformComponent>();
-
-				if (transform)
-				{
-					// 仮カメラが原点を向いているため、
-					// まずはモデルを原点に配置して確認する
-					transform->SetPosition(
-						2.0f,
-						0.0f,
-						0.0f);
-
-					transform->SetRotation(
-						0.0f,
-						3.3f,
-						0.0f);
-
-					// モデルサイズに応じて調整する
-					transform->SetScale(
-						0.01f);
-				}
-			}
-			//====================
-			// ModelComponent
-			//====================
-			{
-				auto* model =
-					enemy->AddComponent<ModelComponent>();
-
-				if (model)
-				{
-					// 使用するモデルの実際のパスに変更する
-					const bool result =
-						model->SetModel(
-							"Assets/Models/Player/Ranger.fbx");
-					// Material[0]へTextureを手動設定
-					const bool texture0Result =
-						model->SetTexture(
-							0,
-							"Assets/Models/Player/Ranger_Texture.png");
-					// Material[1]へTextureを手動設定
-					const bool texture1Result =
-						model->SetTexture(
-							1,
-							"Assets/Models/Player/Ranger_Bow_Texture.png");
-
-					// 初期Animation設定
-					model->PlayAnimation(AnimationID::Idle, true, 0.0f);
-				}
-			}
-			//====================
-			// GridPosition
-			//====================
-			{
-				auto* gridPosition =
-					enemy->AddComponent<
-					GridPositionComponent>();
-				gridPosition->SetGridMap(&m_GridMap);
-				gridPosition->SetGridPosition(
-					GridPosition
-					{
-						4,
-						2
-					});
-			}
-			enemy->AddComponent<
-				EnemyAIComponent>();
-			auto* status =
-				enemy->AddComponent<
-				CharacterStatusComponent>();
-
-			status->SetMaxHP(5);
-			status->SetAttackPower(2);
-			status->SetAgility(2);
-
-			//====================
-			// CharacterAnimation
-			//====================
-			auto* characterAnimation =
-				enemy->AddComponent<
-				CharacterAnimationComponent>();
-			characterAnimation->
-				SetIdleAnimation(
-					AnimationID::Idle);
-
-			characterAnimation->
-				SetMoveAnimation(
-					AnimationID::Walk);
-
-			characterAnimation->
-				SetAttackAnimation(
-					AnimationID::Punch);
-
-			characterAnimation->
-				SetDeathAnimation(
-					AnimationID::Death);
-		}
-		{
-			auto* monk =
-				m_gameObjectManager.Create<GameObject>();
-
-			if (!monk)
-			{
-				return;
-			}
-
-			monk->SetName("Monk");
-			monk->SetTag(Tag::Enemy);
-
-			//====================
-			// TransformComponent
-			//====================
-			{
-				auto* transform =
-					monk->AddComponent<TransformComponent>();
-
-				if (transform)
-				{
-					// 仮カメラが原点を向いているため、
-					// まずはモデルを原点に配置して確認する
-					transform->SetPosition(
-						-2.0f,
-						0.0f,
-						0.0f);
-
-					transform->SetRotation(
-						0.0f,
-						3.3f,
-						0.0f);
-
-					// モデルサイズに応じて調整する
-					transform->SetScale(
-						0.01f);
-				}
-			}
-			//====================
-			// ModelComponent
-			//====================
-			{
-				auto* model =
-					monk->AddComponent<ModelComponent>();
-
-				if (model)
-				{
-					// 使用するモデルの実際のパスに変更する
-					const bool result =
-						model->SetModel(
-							"Assets/Models/Player/Monk.fbx");
-					// Material[0]へTextureを手動設定
-					const bool texture0Result =
-						model->SetTexture(
-							0,
-							"Assets/Models/Player/Monk_Texture.png");
-
-					// 初期Animation設定
-					model->PlayAnimation(AnimationID::Idle, true, 0.0f);
-				}
-			}
-			//====================
-			// GridPosition
-			//====================
-			auto* gridPosition =
-				monk->AddComponent<
-				GridPositionComponent>();
-			gridPosition->SetGridMap(&m_GridMap);
-			gridPosition->SetGridPosition(
-				GridPosition
-				{
-					4,
-					4
-				});
-			monk->AddComponent<
-				EnemyAIComponent>();
-			auto* status =
-				monk->AddComponent<
-				CharacterStatusComponent>();
-
-			status->SetMaxHP(5);
-			status->SetAttackPower(2);
-			status->SetAgility(2);
-
-			//====================
-			// CharacterAnimation
-			//====================
-			auto* characterAnimation =
-				monk->AddComponent<
-				CharacterAnimationComponent>();
-			characterAnimation->
-				SetIdleAnimation(
-					AnimationID::Idle);
-
-			characterAnimation->
-				SetMoveAnimation(
-					AnimationID::Walk);
-
-			characterAnimation->
-				SetAttackAnimation(
-					AnimationID::Roll);
-
-			characterAnimation->
-				SetDeathAnimation(
-					AnimationID::Death);
-		}
-		{
-			auto* rogue =
-				m_gameObjectManager.Create<GameObject>();
-
-			if (!rogue)
-			{
-				return;
-			}
-
-			rogue->SetName("Rogue");
-			rogue->SetTag(Tag::NPC);
-
-			//====================
-			// TransformComponent
-			//====================
-			{
-				auto* transform =
-					rogue->AddComponent<TransformComponent>();
-
-				if (transform)
-				{
-					// 仮カメラが原点を向いているため、
-					// まずはモデルを原点に配置して確認する
-					transform->SetPosition(
-						4.0f,
-						0.0f,
-						0.0f);
-
-					transform->SetRotation(
-						0.0f,
-						3.3f,
-						0.0f);
-
-					// モデルサイズに応じて調整する
-					transform->SetScale(
-						0.01f);
-				}
-			}
-			//====================
-			// ModelComponent
-			//====================
-			{
-				auto* model =
-					rogue->AddComponent<ModelComponent>();
-
-				if (model)
-				{
-					// 使用するモデルの実際のパスに変更する
-					const bool result =
-						model->SetModel(
-							"Assets/Models/Player/Rogue.fbx");
-					// Material[0]へTextureを手動設定
-					const bool texture0Result =
-						model->SetTexture(
-							0,
-							"Assets/Models/Player/Rogue_Texture.png");
-					// Material[1]へTextureを手動設定
-					const bool texture1Result =
-						model->SetTexture(
-							1,
-							"Assets/Models/Player/Rogue_Dagger_Texture.png");
-
-					// 初期Animation設定
-					model->PlayAnimation(AnimationID::Idle, true, 0.0f);
-				}
-			}
-			//====================
-			// GridPosition
-			//====================
-			auto* gridPosition =
-				rogue->AddComponent<
-				GridPositionComponent>();
-			gridPosition->SetGridMap(&m_GridMap);
-			gridPosition->SetGridPosition(
-				GridPosition
-				{
-					7,
-					7
-				});
-		}
-		{
-			auto* wizard =
-				m_gameObjectManager.Create<GameObject>();
-
-			if (!wizard)
-			{
-				return;
-			}
-
-			wizard->SetName("Wizard");
-			wizard->SetTag(Tag::NPC);
-
-			//====================
-			// TransformComponent
-			//====================
-			{
-				auto* transform =
-					wizard->AddComponent<TransformComponent>();
-
-				if (transform)
-				{
-					// 仮カメラが原点を向いているため、
-					// まずはモデルを原点に配置して確認する
-					transform->SetPosition(
-						-4.0f,
-						0.0f,
-						0.0f);
-
-					transform->SetRotation(
-						0.0f,
-						3.3f,
-						0.0f);
-
-					// モデルサイズに応じて調整する
-					transform->SetScale(
-						0.01f);
-				}
-			}
-			//====================
-			// ModelComponent
-			//====================
-			{
-				auto* model =
-					wizard->AddComponent<ModelComponent>();
-
-				if (model)
-				{
-					// 使用するモデルの実際のパスに変更する
-					const bool result =
-						model->SetModel(
-							"Assets/Models/Player/Wizard.fbx");
-					// Material[0]へTextureを手動設定
-					const bool texture0Result =
-						model->SetTexture(
-							0,
-							"Assets/Models/Player/Wizard_Texture.png");
-					// Material[1]へTextureを手動設定
-					const bool texture1Result =
-						model->SetTexture(
-							1,
-							"Assets/Models/Player/Wizard_Staff_Texture.png");
-
-					// 初期Animation設定
-					model->PlayAnimation(AnimationID::Idle, true, 0.0f);
-				}
-			}
-			//====================
-			// GridPosition
-			//====================
-			auto* gridPosition =
-				wizard->AddComponent<
-				GridPositionComponent>();
-			gridPosition->SetGridMap(&m_GridMap);
-			gridPosition->SetGridPosition(
-				GridPosition
-				{
-					9,
-					9
-				});
+			OutputDebugStringA(
+				"[FieldScene] "
+				"Failed to load CharaMap.\n");
+
+			return;
 		}
 
+		//=====================================================
+		// Character生成
+		//=====================================================
+
+		for (const CharacterSpawnData& spawnData :
+			charaMapData.Characters)
+		{
+			switch (spawnData.Kind)
+			{
+			case CharacterSpawnKind::Player:
+
+				if (!CreatePlayer(
+					spawnData))
+				{
+					OutputDebugStringA(
+						"[FieldScene] "
+						"Failed to create Player.\n");
+				}
+
+				break;
+
+			case CharacterSpawnKind::Enemy:
+
+				if (!CreateEnemy(
+					spawnData))
+				{
+					OutputDebugStringA(
+						"[FieldScene] "
+						"Failed to create Enemy.\n");
+				}
+
+				break;
+
+			default:
+				break;
+			}
+		}
 		//====================
 		// Camera生成
 		//====================
@@ -608,24 +137,25 @@ void FieldScene::Initialize()
 				// Camera
 				//====================
 
-m_MainCamera =
-cameraObject->
-AddComponent<CameraComponent>();
+				m_MainCamera =
+				cameraObject->
+				AddComponent<CameraComponent>();
 
-if (m_MainCamera)
-{
-	m_MainCamera->
-		SetFieldOfView(
-			60.0f);
+				if (m_MainCamera)
+				{
+					m_MainCamera->
+						SetFieldOfView(
+							60.0f);
 
-	m_MainCamera->
-		SetNearClip(
-			0.1f);
+					m_MainCamera->
+						SetNearClip(
+							0.1f);
 
-	m_MainCamera->
-		SetFarClip(
-			1000.0f);
-}
+					m_MainCamera->
+						SetFarClip(
+							1000.0f);
+
+				}
 			}
 		}
 
@@ -757,12 +287,6 @@ if (m_MainCamera)
 		exit->SetTargetScene(
 			"TownScene");
 	}
-
-	// クエスト初期化
-	m_CurrentQuest.Setup(
-		"Enemy Hunt",
-		QuestType::KillEnemy,
-		1);
 	m_TurnManager.Initialize();
 	m_gameObjectManager.Initialize();
 
@@ -1038,7 +562,97 @@ void FieldScene::Draw(uint64_t delta)
 			m_MainCamera->
 			GetProjectionMatrix());
 	}
+	//=================================================
+	// Grid
+	//=================================================
 
+	GridRenderer::Draw(
+		m_GridMap,
+		Color(
+			1.0f,
+			1.0f,
+			1.0f,
+			0.35f),
+		0.02f);
+
+	//=================================================
+	// Player Range
+	//=================================================
+
+	if (m_TurnManager.IsPlayerTurn())
+	{
+		std::vector<GameObject*> players =
+			m_gameObjectManager.FindByTag(
+				Tag::Player);
+
+		if (!players.empty())
+		{
+			GameObject* player =
+				players[0];
+
+			auto* gridPosition =
+				player->GetComponent<
+				GridPositionComponent>();
+
+			auto* controller =
+				player->GetComponent<
+				PlayerControllerComponent>();
+
+			if (gridPosition &&
+				controller)
+			{
+				const GridPosition playerGrid =
+					gridPosition->
+					GetGridPosition();
+
+				const int movePoints =
+					controller->
+					GetRemainingMovePoints();
+
+				//=====================================
+				// Move Range
+				//=====================================
+
+				const auto moveRange =
+					GridRangeCalculator::
+					CalculateMoveRange(
+						m_GridMap,
+						playerGrid,
+						movePoints);
+
+				GridRangeRenderer::DrawCells(
+					m_GridMap,
+					moveRange,
+					Color(
+						0.2f,
+						0.5f,
+						1.0f,
+						0.30f),
+					0.03f);
+
+				//=====================================
+				// Attack Range
+				//=====================================
+
+				const auto attackRange =
+					GridRangeCalculator::
+					CalculateAttackRange(
+						m_GridMap,
+						playerGrid,
+						1);
+
+				GridRangeRenderer::DrawCells(
+					m_GridMap,
+					attackRange,
+					Color(
+						1.0f,
+						0.2f,
+						0.2f,
+						0.35f),
+					0.04f);
+			}
+		}
+	}
 	// GameObjectの描画
 	m_gameObjectManager.Draw();
 
@@ -1271,4 +885,378 @@ void FieldScene::EndEnemyTurnSequence()
 	// PlayerTurnへ戻す。
 	m_TurnManager.
 		EndEnemyTurn();
+}
+
+
+// キャラクター生成関数
+GameObject* FieldScene::CreatePlayer(
+	const CharacterSpawnData& data)
+{
+	//=================================================
+	// 現在対応しているPlayerType確認
+	//=================================================
+
+	if (data.Type != "Warrior")
+	{
+		OutputDebugStringA(
+			"[FieldScene] "
+			"Unknown Player Type.\n");
+
+		return nullptr;
+	}
+
+	auto* warrior =
+		m_gameObjectManager.Create<
+		GameObject>();
+
+	if (!warrior)
+	{
+		return nullptr;
+	}
+
+	// IDをGameObject名として使用する。
+	// MapData上で各Characterを一意に識別できる。
+	warrior->SetName(
+		data.ID);
+
+	warrior->SetTag(
+		Tag::Player);
+
+	//=================================================
+	// Transform
+	//=================================================
+
+	auto* transform =
+		warrior->AddComponent<
+		TransformComponent>();
+
+	if (transform)
+	{
+		transform->SetRotation(
+			0.0f,
+			3.3f,
+			0.0f);
+
+		transform->SetScale(
+			0.01f);
+	}
+
+	//=================================================
+	// Model
+	//=================================================
+
+	auto* model =
+		warrior->AddComponent<
+		ModelComponent>();
+
+	if (model)
+	{
+		model->SetModel(
+			"Assets/Models/Player/Warrior.fbx");
+
+		model->SetTexture(
+			0,
+			"Assets/Models/Player/Warrior_Texture.png");
+
+		model->SetTexture(
+			1,
+			"Assets/Models/Player/Warrior_Sword_Texture.png");
+
+		model->PlayAnimation(
+			AnimationID::Idle,
+			true,
+			0.0f);
+	}
+
+	//=================================================
+	// Audio
+	//=================================================
+
+	auto* audioSource =
+		warrior->AddComponent<
+		AudioSourceComponent>();
+
+	if (audioSource)
+	{
+		audioSource->SetSoundPath(
+			L"Assets/Sound/BGM.wav");
+
+		audioSource->Set3D(
+			true);
+
+		audioSource->SetLoop(
+			true);
+
+		audioSource->SetVolume(
+			1.0f);
+
+		audioSource->SetCategory(
+			SoundCategory::SE);
+
+		audioSource->SetDistanceScaler(
+			20.0f);
+
+		audioSource->Play();
+	}
+
+	//=================================================
+	// GridPosition
+	//=================================================
+
+	auto* gridPosition =
+		warrior->AddComponent<
+		GridPositionComponent>();
+
+	if (!gridPosition)
+	{
+		warrior->Destroy();
+
+		return nullptr;
+	}
+
+	gridPosition->SetGridMap(
+		&m_GridMap);
+
+	if (!gridPosition->
+		SetGridPosition(
+			data.Position))
+	{
+		OutputDebugStringA(
+			"[FieldScene] "
+			"Player spawn position is invalid.\n");
+
+		warrior->Destroy();
+
+		return nullptr;
+	}
+
+	//=================================================
+	// Controller
+	//=================================================
+
+	auto* controller =
+		warrior->AddComponent<
+		PlayerControllerComponent>();
+
+	if (controller)
+	{
+		controller->SetTurnManager(
+			&m_TurnManager);
+	}
+
+	//=================================================
+	// Status
+	//=================================================
+
+	auto* status =
+		warrior->AddComponent<
+		CharacterStatusComponent>();
+
+	if (status)
+	{
+		status->SetMaxHP(
+			10);
+
+		status->SetAttackPower(
+			3);
+
+		status->SetAgility(
+			3);
+	}
+
+	//=================================================
+	// CharacterAnimation
+	//=================================================
+
+	auto* characterAnimation =
+		warrior->AddComponent<
+		CharacterAnimationComponent>();
+
+	if (characterAnimation)
+	{
+		characterAnimation->
+			SetIdleAnimation(
+				AnimationID::Idle);
+
+		characterAnimation->
+			SetMoveAnimation(
+				AnimationID::Walk);
+
+		characterAnimation->
+			SetAttackAnimation(
+				AnimationID::Attack);
+
+		characterAnimation->
+			SetDeathAnimation(
+				AnimationID::Death);
+	}
+
+	return warrior;
+}
+
+GameObject* FieldScene::CreateEnemy(
+	const CharacterSpawnData& data)
+{
+	//=================================================
+	// 現在対応しているEnemyType確認
+	//=================================================
+
+	if (data.Type != "Ranger")
+	{
+		OutputDebugStringA(
+			"[FieldScene] "
+			"Unknown Enemy Type.\n");
+
+		return nullptr;
+	}
+
+	auto* enemy =
+		m_gameObjectManager.Create<
+		GameObject>();
+
+	if (!enemy)
+	{
+		return nullptr;
+	}
+
+	// 敵が複数いても識別できるよう、
+	// MapDataのIDを使用する。
+	enemy->SetName(
+		data.ID);
+
+	enemy->SetTag(
+		Tag::Enemy);
+
+	//=================================================
+	// Transform
+	//=================================================
+
+	auto* transform =
+		enemy->AddComponent<
+		TransformComponent>();
+
+	if (transform)
+	{
+		transform->SetRotation(
+			0.0f,
+			3.3f,
+			0.0f);
+
+		transform->SetScale(
+			0.01f);
+	}
+
+	//=================================================
+	// Model
+	//=================================================
+
+	auto* model =
+		enemy->AddComponent<
+		ModelComponent>();
+
+	if (model)
+	{
+		model->SetModel(
+			"Assets/Models/Player/Ranger.fbx");
+
+		model->SetTexture(
+			0,
+			"Assets/Models/Player/Ranger_Texture.png");
+
+		model->SetTexture(
+			1,
+			"Assets/Models/Player/Ranger_Bow_Texture.png");
+
+		model->PlayAnimation(
+			AnimationID::Idle,
+			true,
+			0.0f);
+	}
+
+	//=================================================
+	// GridPosition
+	//=================================================
+
+	auto* gridPosition =
+		enemy->AddComponent<
+		GridPositionComponent>();
+
+	if (!gridPosition)
+	{
+		enemy->Destroy();
+
+		return nullptr;
+	}
+
+	gridPosition->SetGridMap(
+		&m_GridMap);
+
+	if (!gridPosition->
+		SetGridPosition(
+			data.Position))
+	{
+		OutputDebugStringA(
+			"[FieldScene] "
+			"Enemy spawn position is invalid.\n");
+
+		enemy->Destroy();
+
+		return nullptr;
+	}
+
+	//=================================================
+	// AI
+	//=================================================
+
+	enemy->AddComponent<
+		EnemyAIComponent>();
+
+	//=================================================
+	// Status
+	//=================================================
+
+	auto* status =
+		enemy->AddComponent<
+		CharacterStatusComponent>();
+
+	if (status)
+	{
+		status->SetMaxHP(
+			5);
+
+		status->SetAttackPower(
+			2);
+
+		status->SetAgility(
+			2);
+	}
+
+	//=================================================
+	// CharacterAnimation
+	//=================================================
+
+	auto* characterAnimation =
+		enemy->AddComponent<
+		CharacterAnimationComponent>();
+
+	if (characterAnimation)
+	{
+		characterAnimation->
+			SetIdleAnimation(
+				AnimationID::Idle);
+
+		characterAnimation->
+			SetMoveAnimation(
+				AnimationID::Walk);
+
+		characterAnimation->
+			SetAttackAnimation(
+				AnimationID::Punch);
+
+		characterAnimation->
+			SetDeathAnimation(
+				AnimationID::Death);
+	}
+
+	return enemy;
 }

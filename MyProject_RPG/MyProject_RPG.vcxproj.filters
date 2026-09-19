@@ -34,9 +34,6 @@
     <Filter Include="ソース ファイル\Renderer">
       <UniqueIdentifier>{8ae1c8e0-d55f-43d8-966a-7e38b6191f12}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\新規作成ファイル">
-      <UniqueIdentifier>{4258e661-fcfb-4fb0-8493-6de21a78b9d7}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ソース ファイル\Graphics">
       <UniqueIdentifier>{4857e728-c4d9-496a-8c74-5a2e3a381500}</UniqueIdentifier>
     </Filter>
@@ -75,6 +72,9 @@
     </Filter>
     <Filter Include="ソース ファイル\System\Map">
       <UniqueIdentifier>{46c8326d-c899-4b0e-9d47-83d9f515305b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Component\UI">
+      <UniqueIdentifier>{7ec29b21-050f-45fa-8fec-dd3c5c900783}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -143,24 +143,6 @@
     </ClInclude>
     <ClInclude Include="CommonType.h">
       <Filter>ソース ファイル\System</Filter>
-    </ClInclude>
-    <ClInclude Include="ResourceManager.h">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="ModelData.h">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Texture.h">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MeshBuffer.h">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="ModelLoader.h">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="stb_image.h">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
     </ClInclude>
     <ClInclude Include="TransformComponent.h">
       <Filter>ソース ファイル\Component</Filter>
@@ -252,6 +234,57 @@
     <ClInclude Include="CharacterAnimationComponent.h">
       <Filter>ソース ファイル\Component\Chara</Filter>
     </ClInclude>
+    <ClInclude Include="PrimitiveRenderer.h">
+      <Filter>ソース ファイル\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="GridRenderer.h">
+      <Filter>ソース ファイル\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="CharaMapData.h">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="CharaMapLoader.h">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="UIRectComponent.h">
+      <Filter>ソース ファイル\Component\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UIButtonComponent.h">
+      <Filter>ソース ファイル\Component\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="SpriteRenderer.h">
+      <Filter>ソース ファイル\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="UIImageComponent.h">
+      <Filter>ソース ファイル\Component\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="TitleScene.h">
+      <Filter>ソース ファイル\Scene\scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshBuffer.h">
+      <Filter>ソース ファイル\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelData.h">
+      <Filter>ソース ファイル\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelLoader.h">
+      <Filter>ソース ファイル\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_image.h">
+      <Filter>ソース ファイル\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>ソース ファイル\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="ResourceManager.h">
+      <Filter>ソース ファイル\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="GridRangeRenderer.h">
+      <Filter>ソース ファイル\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="GridRangeCalculator.h">
+      <Filter>ソース ファイル\Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -298,21 +331,6 @@
     </ClCompile>
     <ClCompile Include="Renderer.cpp">
       <Filter>ソース ファイル\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="ResourceManager.cpp">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="ModelLoader.cpp">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MeshBuffer.cpp">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="ModelData.cpp">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Texture.cpp">
-      <Filter>ソース ファイル\新規作成ファイル</Filter>
     </ClCompile>
     <ClCompile Include="TransformComponent.cpp">
       <Filter>ソース ファイル\Component</Filter>
@@ -377,6 +395,48 @@
     <ClCompile Include="CharacterAnimationComponent.cpp">
       <Filter>ソース ファイル\Component\Chara</Filter>
     </ClCompile>
+    <ClCompile Include="PrimitiveRenderer.cpp">
+      <Filter>ソース ファイル\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="GridRenderer.cpp">
+      <Filter>ソース ファイル\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="CharaMapLoader.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="UIButtonComponent.cpp">
+      <Filter>ソース ファイル\Component\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="TitleScene.cpp">
+      <Filter>ソース ファイル\Scene\scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="SpriteRenderer.cpp">
+      <Filter>ソース ファイル\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="UIImageComponent.cpp">
+      <Filter>ソース ファイル\Component\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="MeshBuffer.cpp">
+      <Filter>ソース ファイル\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelData.cpp">
+      <Filter>ソース ファイル\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelLoader.cpp">
+      <Filter>ソース ファイル\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>ソース ファイル\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="ResourceManager.cpp">
+      <Filter>ソース ファイル\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="GridRangeRenderer.cpp">
+      <Filter>ソース ファイル\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="GridRangeCalculator.cpp">
+      <Filter>ソース ファイル\Renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="VS_Model.hlsl">
@@ -389,6 +449,18 @@
       <Filter>リソース ファイル\VS</Filter>
     </FxCompile>
     <FxCompile Include="PS_Outline.hlsl">
+      <Filter>リソース ファイル\PS</Filter>
+    </FxCompile>
+    <FxCompile Include="VS_Primitive.hlsl">
+      <Filter>リソース ファイル\VS</Filter>
+    </FxCompile>
+    <FxCompile Include="PS_Primitive.hlsl">
+      <Filter>リソース ファイル\PS</Filter>
+    </FxCompile>
+    <FxCompile Include="VS_Sprite.hlsl">
+      <Filter>リソース ファイル\VS</Filter>
+    </FxCompile>
+    <FxCompile Include="PS_Sprite.hlsl">
       <Filter>リソース ファイル\PS</Filter>
     </FxCompile>
   </ItemGroup>

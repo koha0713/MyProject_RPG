@@ -2,6 +2,8 @@
 #include "Fpscontrol.h"
 
 #include "Renderer.h"
+#include "PrimitiveRenderer.h"
+#include "SpriteRenderer.h"
 #include "DebugUI.h"
 #include "SceneManager.h"
 #include "InputManager.h"
@@ -80,6 +82,15 @@ bool Game::Initialize()
 	{
 		return false;
 	}
+	if (!PrimitiveRenderer::Initialize())
+	{
+		return false;
+	}
+
+	if (!SpriteRenderer::Initialize())
+	{
+		return false;
+	}
 
 	//=================
 	// デバッグUIの初期化
@@ -133,7 +144,7 @@ bool Game::Initialize()
 
 	// Scene
 	SceneManager::Initialize();
-	SceneManager::SetCurrentScene("FieldScene");
+	SceneManager::SetCurrentScene("TitleScene");
 
 	return true;
 }
@@ -164,6 +175,9 @@ void Game::Finalize()
 	//====================
 	// Renderer
 	//====================
+	SpriteRenderer::Finalize();
+
+	PrimitiveRenderer::Finalize();
 
 	Renderer::Dispose();
 

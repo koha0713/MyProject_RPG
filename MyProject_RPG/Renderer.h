@@ -138,6 +138,22 @@ public:
 		const Matrix4x4& viewMatrix,
 		const Matrix4x4& projectionMatrix);
 
+	/**
+	 * @brief Œ»İRenderer‚Éİ’è‚³‚ê‚Ä‚¢‚éViews—ñ‚ğæ“¾‚·‚é
+	 */
+	static const Matrix4x4& GetViewMatrix()
+	{
+		return m_ViewMatrix;
+	}
+
+	/**
+	 * @brief Œ»İRenderer‚Éİ’è‚³‚ê‚Ä‚¢‚éProjections—ñ‚ğæ“¾‚·‚é
+	 */
+	static const Matrix4x4& GetProjectionMatrix()
+	{
+		return m_ProjectionMatrix;
+	}
+
 	//====================
 	// Getter
 	//====================

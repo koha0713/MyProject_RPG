@@ -107,7 +107,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <AdditionalIncludeDirectories>
       </AdditionalIncludeDirectories>
       <ShowIncludes>false</ShowIncludes>
@@ -142,6 +142,8 @@
     <ClInclude Include="CameraComponent.h" />
     <ClInclude Include="CharacterAnimationComponent.h" />
     <ClInclude Include="CharacterStatusComponent.h" />
+    <ClInclude Include="CharaMapData.h" />
+    <ClInclude Include="CharaMapLoader.h" />
     <ClInclude Include="CommonType.h" />
     <ClInclude Include="Component.h" />
     <ClInclude Include="DirectionalLight.h" />
@@ -157,6 +159,9 @@
     <ClInclude Include="GridPathFinder.h" />
     <ClInclude Include="GridPosition.h" />
     <ClInclude Include="GridPositionComponent.h" />
+    <ClInclude Include="GridRangeCalculator.h" />
+    <ClInclude Include="GridRangeRenderer.h" />
+    <ClInclude Include="GridRenderer.h" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />
@@ -175,6 +180,7 @@
     <ClInclude Include="IScene.h" />
     <ClInclude Include="OutlineSetting.h" />
     <ClInclude Include="PlayerControllerComponent.h" />
+    <ClInclude Include="PrimitiveRenderer.h" />
     <ClInclude Include="Quest.h" />
     <ClInclude Include="QuestManager.h" />
     <ClInclude Include="Renderer.h" />
@@ -185,12 +191,17 @@
     <ClInclude Include="SoundData.h" />
     <ClInclude Include="SoundHandle.h" />
     <ClInclude Include="SoundManager.h" />
+    <ClInclude Include="SpriteRenderer.h" />
     <ClInclude Include="stb_image.h" />
+    <ClInclude Include="TitleScene.h" />
     <ClInclude Include="TownScene.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="ToonShading.h" />
     <ClInclude Include="TransformComponent.h" />
     <ClInclude Include="TurnManager.h" />
+    <ClInclude Include="UIButtonComponent.h" />
+    <ClInclude Include="UIImageComponent.h" />
+    <ClInclude Include="UIRectComponent.h" />
     <ClInclude Include="WavLoader.h" />
     <ClInclude Include="Window.h" />
     <ClInclude Include="DebugUI.h" />
@@ -201,6 +212,7 @@
     <ClCompile Include="CameraComponent.cpp" />
     <ClCompile Include="CharacterAnimationComponent.cpp" />
     <ClCompile Include="CharacterStatusComponent.cpp" />
+    <ClCompile Include="CharaMapLoader.cpp" />
     <ClCompile Include="EnemyAIComponent.cpp" />
     <ClCompile Include="FieldExitComponent.cpp" />
     <ClCompile Include="FieldScene.cpp" />
@@ -209,6 +221,9 @@
     <ClCompile Include="GridMap.cpp" />
     <ClCompile Include="GridPathFinder.cpp" />
     <ClCompile Include="GridPositionComponent.cpp" />
+    <ClCompile Include="GridRangeCalculator.cpp" />
+    <ClCompile Include="GridRangeRenderer.cpp" />
+    <ClCompile Include="GridRenderer.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
@@ -224,16 +239,21 @@
     <ClCompile Include="ModelLoader.cpp" />
     <ClCompile Include="MousePicker.cpp" />
     <ClCompile Include="PlayerControllerComponent.cpp" />
+    <ClCompile Include="PrimitiveRenderer.cpp" />
     <ClCompile Include="Quest.cpp" />
     <ClCompile Include="QuestManager.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SoundManager.cpp" />
+    <ClCompile Include="SpriteRenderer.cpp" />
+    <ClCompile Include="TitleScene.cpp" />
     <ClCompile Include="TownScene.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="TransformComponent.cpp" />
     <ClCompile Include="TurnManager.cpp" />
+    <ClCompile Include="UIButtonComponent.cpp" />
+    <ClCompile Include="UIImageComponent.cpp" />
     <ClCompile Include="WavLoader.cpp" />
     <ClCompile Include="Window.cpp" />
     <ClCompile Include="DebugUI.cpp" />
@@ -253,6 +273,18 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
     </FxCompile>
+    <FxCompile Include="PS_Primitive.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="PS_Sprite.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
     <FxCompile Include="VS_Model.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
@@ -266,6 +298,18 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="VS_Primitive.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="VS_Sprite.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -13,8 +13,7 @@
 #include <vector>
 
 class GameObject;
-
-
+struct CharacterSpawnData;
 class CameraComponent;
 
 class FieldScene : public IScene
@@ -65,6 +64,20 @@ private:
 	 */
 	void EndEnemyTurnSequence();
 
+	// キャラクター生成関数
+	/**
+	 * @brief MapDataからPlayerを生成する
+	 */
+	GameObject* CreatePlayer(
+		const CharacterSpawnData& data);
+
+	/**
+	 * @brief MapDataからEnemyを生成する
+	 */
+	GameObject* CreateEnemy(
+		const CharacterSpawnData& data);
+
+private:
 	/**
 	 * @brief 今回のEnemyTurnで行動するEnemy一覧
 	 *
