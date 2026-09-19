@@ -12,6 +12,8 @@
 #include "Quest.h"
 #include <vector>
 
+#include "TerrainMapData.h"
+
 class GameObject;
 struct CharacterSpawnData;
 class CameraComponent;
@@ -77,6 +79,12 @@ private:
 	GameObject* CreateEnemy(
 		const CharacterSpawnData& data);
 
+	/**
+	 * @brief Terrain1ƒ}ƒX•ª‚ÌGameObject‚ğ¶¬
+	 */
+	void CreateTerrainTile(
+		const TerrainCellData& terrainData);
+
 private:
 	/**
 	 * @brief ¡‰ñ‚ÌEnemyTurn‚Ås“®‚·‚éEnemyˆê——
@@ -104,6 +112,12 @@ private:
 	 */
 	bool m_EnemyTurnSequenceActive =
 		false;
+
+	TerrainMapData
+		m_TerrainMapData;
+
+	std::vector<GameObject*>
+		m_TerrainObjects;
 };
 // Scene“o˜^
 REGISTER_CLASS(FieldScene)

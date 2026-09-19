@@ -13,6 +13,7 @@
 #include "CharacterStatusComponent.h"
 #include "FieldExitComponent.h"
 #include "CharacterAnimationComponent.h"
+#include "TerrainTileComponent.h"
 
 #include <ModelLoader.h>
 #include "MousePicker.h"
@@ -29,6 +30,8 @@
 #include "CharaMapData.h"
 #include "CharaMapLoader.h"
 
+#include "TerrainMapLoader.h"
+
 FieldScene::FieldScene()
 {
 
@@ -43,6 +46,30 @@ void FieldScene::Initialize()
 	{
 		return;
 	}
+
+	//=====================================================
+	// TerrainMap
+	//=====================================================
+
+	if (!TerrainMapLoader::Load(
+		"Assets/Map/TerrainMap.txt",
+		m_TerrainMapData))
+	{
+		OutputDebugStringA(
+			"[FieldScene] "
+			"TerrainMap Load Failed.\n");
+	}
+	else
+	{
+		for (const TerrainCellData& cell :
+			m_TerrainMapData.Cells)
+		{
+			CreateTerrainTile(
+				cell);
+		}
+	}
+	
+
 	// GameObject‚Ì‰Šú‰»
 	{
 		//=====================================================
@@ -294,6 +321,9 @@ void FieldScene::Initialize()
 
 void FieldScene::Finalize()
 {
+	m_TerrainObjects.clear();
+
+	m_TerrainMapData.Clear();
 	// GameObject‚ÌI—¹ˆ—
 	m_gameObjectManager.Clear();
 }
@@ -562,6 +592,10 @@ void FieldScene::Draw(uint64_t delta)
 			m_MainCamera->
 			GetProjectionMatrix());
 	}
+
+	// GameObject‚Ì•`‰æ
+	m_gameObjectManager.Draw();
+
 	//=================================================
 	// Grid
 	//=================================================
@@ -653,8 +687,6 @@ void FieldScene::Draw(uint64_t delta)
 			}
 		}
 	}
-	// GameObject‚Ì•`‰æ
-	m_gameObjectManager.Draw();
 
 	// ƒfƒoƒbƒOUI‚Ì•`‰æ
 	DebugUI::RegisterDebugFunction([this]()
@@ -1259,4 +1291,133 @@ GameObject* FieldScene::CreateEnemy(
 	}
 
 	return enemy;
+}
+
+void FieldScene::CreateTerrainTile(
+	const TerrainCellData& terrainData)
+{
+	//=================================================
+	// GameObject¶¬
+	//=================================================
+
+	GameObject* terrainObject =
+		m_gameObjectManager.Create<
+		GameObject>();
+
+	if (!terrainObject)
+	{
+		return;
+	}
+
+	terrainObject->SetName(
+		"TerrainTile");
+
+	//=================================================
+	// Transform
+	//=================================================
+
+	auto* transform =
+		terrainObject->
+		AddComponent<
+		TransformComponent>();
+
+	if (transform)
+	{
+		Vector3 worldPosition =
+			m_GridMap.GridToWorld(
+				terrainData.Position);
+		worldPosition.y = -1.0f;
+		transform->SetPosition(
+			worldPosition);
+
+		transform->SetScale(
+			Vector3(
+				0.01f,
+				0.01f,
+				0.01f));
+	}
+
+	//=================================================
+	// Terrainî•ñ
+	//=================================================
+
+	auto* terrain =
+		terrainObject->
+		AddComponent<
+		TerrainTileComponent>();
+
+	if (terrain)
+	{
+		terrain->SetTerrainType(
+			terrainData.Type);
+
+		terrain->SetGridPosition(
+			terrainData.Position);
+	}
+
+	//=================================================
+	// Model
+	//=================================================
+
+	auto* model =
+		terrainObject->
+		AddComponent<
+		ModelComponent>();
+
+	if (!model)
+	{
+		return;
+	}
+
+	// TerrainType‚É‰‚¶‚Ä
+	// •`‰æModel‚ğİ’è‚·‚éB
+	switch (terrainData.Type)
+	{
+	case TerrainType::Grass:
+
+		model->SetModel(
+			"Assets/Models/field/block-grass-large.fbx");
+		model->SetTexture(
+			0, "Assets/Models/field/colormap.png");
+		break;
+
+	case TerrainType::Dirt:
+
+		model->SetModel(
+			"Assets/Models/field/block-grass-large.fbx");
+		model->SetTexture(
+			0, "Assets/Models/field/colormap.png");
+		break;
+
+	case TerrainType::Rock:
+
+		model->SetModel(
+			"Assets/Models/field/block-grass-large.fbx");
+		model->SetTexture(
+			0, "Assets/Models/field/colormap.png");
+		break;
+
+	case TerrainType::Water:
+
+		model->SetModel(
+			"Assets/Models/field/block-grass-large.fbx");
+		model->SetTexture(
+			0, "Assets/Models/field/colormap.png");
+		break;
+
+	default:
+		return;
+	}
+
+	//=================================================
+	// Terrainˆê——‚Ö“o˜^
+	//=================================================
+	//
+	// «—ˆ“I‚È•`‰æ‹——£”»’è‚Å‚Í
+	// GameObjectManager‘S‘Ì‚Å‚Í‚È‚­
+	// Terrain‚¾‚¯‚ğ‘–¸‚Å‚«‚éB
+	//=================================================
+
+	m_TerrainObjects.push_back(
+		terrainObject);
 }

@@ -76,6 +76,9 @@
     <Filter Include="ソース ファイル\Component\UI">
       <UniqueIdentifier>{7ec29b21-050f-45fa-8fec-dd3c5c900783}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\Game\Map\Terrain">
+      <UniqueIdentifier>{3e51ac12-8ef4-4b24-be32-77a8a8cf2e80}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -285,6 +288,15 @@
     <ClInclude Include="GridRangeCalculator.h">
       <Filter>ソース ファイル\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="TerrainMapData.h">
+      <Filter>ソース ファイル\Game\Map\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="TerrainMapLoader.h">
+      <Filter>ソース ファイル\Game\Map\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="TerrainTileComponent.h">
+      <Filter>ソース ファイル\Component\Map</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -436,6 +448,12 @@
     </ClCompile>
     <ClCompile Include="GridRangeCalculator.cpp">
       <Filter>ソース ファイル\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="TerrainMapLoader.cpp">
+      <Filter>ソース ファイル\Game\Map\Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="TerrainTileComponent.cpp">
+      <Filter>ソース ファイル\Component\Map</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
