@@ -46,6 +46,16 @@ public:
 	Quest m_CurrentQuest;
 
 private:
+	//====================
+	// Update分割
+	//====================
+
+	void UpdatePlayerInput();
+	void CheckPlayerTurnEnd();
+	void UpdateNextTurnButton();
+	void UpdateButtonVisual(
+		GameObject* buttonObject);
+	bool CheckNextTurnButtonClick();
 
 	//====================
 	// Enemy Turn Sequence
@@ -85,7 +95,19 @@ private:
 	void CreateTerrainTile(
 		const TerrainCellData& terrainData);
 
+	/**
+	 * @brief 操作キャラの行動済み確認
+	 */
+	bool AreAllPlayersActed();
+	bool AreAllPlayerActionsFinished() const;
+	bool AreAllPlayersOutOfMovePoints();
+
 private:
+	// 現在操作対象として選択されているPlayer。
+	// GameObjectManagerが所有しているため、
+	// FieldSceneでは非所有ポインタとして保持する。
+	GameObject* m_SelectedPlayer = nullptr;
+
 	/**
 	 * @brief 今回のEnemyTurnで行動するEnemy一覧
 	 *
@@ -118,6 +140,9 @@ private:
 
 	std::vector<GameObject*>
 		m_TerrainObjects;
+
+	// UI
+	GameObject* m_NextTurnButton = nullptr;
 };
 // Scene登録
 REGISTER_CLASS(FieldScene)

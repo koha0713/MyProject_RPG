@@ -39,6 +39,40 @@ void GameObjectManager::Draw()
 	}
 }
 
+void GameObjectManager::DrawWorld()
+{
+	for (const auto& object :
+		m_GameObjects)
+	{
+
+		// UI‚ÍWorld•`‰æ‚©‚çœŠO‚·‚éB
+		if (object->GetTag() ==
+			Tag::UI)
+		{
+			continue;
+		}
+
+		object->Draw();
+	}
+}
+
+void GameObjectManager::DrawUI()
+{
+	for (const auto& object :
+		m_GameObjects)
+	{
+
+		// UIˆÈŠO‚Í•`‰æ‚µ‚È‚¢B
+		if (object->GetTag() !=
+			Tag::UI)
+		{
+			continue;
+		}
+
+		object->Draw();
+	}
+}
+
 void GameObjectManager::Clear()
 {
 	for(auto& object : m_GameObjects)

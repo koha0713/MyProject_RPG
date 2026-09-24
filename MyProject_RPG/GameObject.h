@@ -15,7 +15,8 @@ enum class Tag
 	Player,
 	Enemy,
 	NPC,
-	Stage
+	Stage,
+	UI
 };
 
 /**

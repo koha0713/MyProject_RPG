@@ -37,6 +37,22 @@ public:
 	void Draw();
 
 	/**
+	 * @brief UIˆÈŠO‚ÌGameObject‚ğ•`‰æ
+	 *
+	 * @details
+	 * 3D Model‚È‚ÇAWorld‘¤‚ÌGameObject‚ğ•`‰æ‚·‚éB
+	 */
+	void DrawWorld();
+
+	/**
+	 * @brief UI GameObject‚Ì‚İ•`‰æ
+	 *
+	 * @details
+	 * Tag::UI‚ªİ’è‚³‚ê‚Ä‚¢‚éGameObject‚Ì‚İ•`‰æ‚·‚éB
+	 */
+	void DrawUI();
+
+	/**
 	 * @brief ‘SGameObject‚Ì”jŠü
 	 */
 	void Clear();

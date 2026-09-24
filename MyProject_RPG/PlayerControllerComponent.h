@@ -137,6 +137,48 @@ public:
 	bool RequestAttack(
 		GameObject* target);
 
+	//=====================================================
+	// Turn Action
+	//=====================================================
+
+	bool HasActed() const
+	{
+		return m_HasActed;
+	}
+
+	/**
+	 * @brief 現在の行動が終了しているか
+	 *
+	 * @return
+	 * Idleならtrue
+	 *
+	 * @details
+	 * Moving / Attacking中はfalseを返す。
+	 * Scene側がTurnを切り替えてよいか判断するために使用する。
+	 */
+	bool IsActionFinished() const
+	{
+		return
+			m_ActionState ==
+			PlayerActionState::Idle;
+	}
+
+	void SetActed(
+		bool acted)
+	{
+		m_HasActed = acted;
+	}
+
+	/**
+	 * @brief 新しいPlayerTurnの開始準備
+	 *
+	 * @details
+	 * FieldSceneからPlayerTurn開始時に呼び出す。
+	 * 移動力と行動済み状態を初期化する。
+	 */
+	void StartPlayerTurn(
+		uint64_t turnCount);
+
 	//====================
 	// Debug
 	//====================
@@ -228,4 +270,9 @@ private:
 	 */
 	float m_MoveSpeed =
 		0.01f;
+
+	/**
+	 * @brief このターンで行動済みか
+	 */
+	bool m_HasActed = false;
 };

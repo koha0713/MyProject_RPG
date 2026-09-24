@@ -58,14 +58,14 @@ void DebugUI::BeginFrame()
 
 void DebugUI::EndFrame()
 {
-	ImGui::Begin("Debug UI"); // デバッグUIウィンドウの開
+	//ImGui::Begin("Debug UI"); // デバッグUIウィンドウの開
 
-	ImGuiIO& io = ImGui::GetIO();	// ImGuiのIO構造体を取得
-	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-		1000.0f / io.Framerate,
-		io.Framerate);
+	//ImGuiIO& io = ImGui::GetIO();	// ImGuiのIO構造体を取得
+	//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+	//	1000.0f / io.Framerate,
+	//	io.Framerate);
 
-	ImGui::End(); // デバッグUIウィンドウの終了
+	//ImGui::End(); // デバッグUIウィンドウの終了
 
 	// 登録されたデバッグUI関数を呼び出す
 	for(const auto& func : m_debugUIFunctions)

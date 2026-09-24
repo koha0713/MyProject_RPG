@@ -7,6 +7,7 @@
 
 #include "Component.h"
 #include "CommonType.h"
+#include "DebugUI.h"
 
  /**
   * @brief UI‹éŒ`Component
@@ -100,6 +101,51 @@ public:
 	const char* GetComponentName() const override
 	{
 		return "UIRectComponent";
+	}
+
+	void DrawDebugUI() override
+	{
+		//=====================================
+		// Position
+		//=====================================
+
+		float position[2] =
+		{
+			m_Position.x,
+			m_Position.y
+		};
+
+		if (ImGui::DragFloat2(
+			"Position",
+			position,
+			1.0f))
+		{
+			SetPosition(
+				position[0],
+				position[1]);
+		}
+
+		//=====================================
+		// Size
+		//=====================================
+
+		float size[2] =
+		{
+			m_Size.x,
+			m_Size.y
+		};
+
+		if (ImGui::DragFloat2(
+			"Size",
+			size,
+			1.0f,
+			1.0f,
+			2000.0f))
+		{
+			SetSize(
+				size[0],
+				size[1]);
+		}
 	}
 
 private:

@@ -70,6 +70,34 @@ public:
 		return "UIButtonComponent";
 	}
 
+	/**
+	 * @brief Button“ü—Í‚Ì—LŒø/–³Œø‚ğİ’è‚·‚é
+	 */
+	void SetEnabled(
+		bool enabled)
+	{
+		m_Enabled = enabled;
+
+		// –³Œø‰»‚³‚ê‚½ê‡‚Í
+		// Button‚Ì“à•”ó‘Ô‚à‰Šú‰»‚·‚éB
+		if (!m_Enabled)
+		{
+			m_State =
+				UIButtonState::Normal;
+
+			m_PressedInside =
+				false;
+
+			m_Clicked =
+				false;
+		}
+	}
+
+	bool IsEnabled() const
+	{
+		return m_Enabled;
+	}
+
 private:
 
 	UIButtonState m_State =
@@ -86,4 +114,10 @@ private:
 	 */
 	bool m_Clicked =
 		false;
+
+	/**
+	 * @brief Button‚ª“ü—Í‚ğó‚¯•t‚¯‚é‚©
+	 */
+	bool m_Enabled =
+		true;
 };

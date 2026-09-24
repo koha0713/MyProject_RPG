@@ -38,71 +38,9 @@ void PlayerControllerComponent::Update(
 		return;
 	}
 
-	// PlayerTurn以外では入力を受け付けない。
+	// PlayerTurn以外では処理しない。
 	if (!m_TurnManager->IsPlayerTurn())
 	{
-		return;
-	}
-
-	//=================================================
-	// Moving
-	//=================================================
-
-	if (m_ActionState ==
-		PlayerActionState::Moving)
-	{
-		UpdateMovement(
-			delta);
-
-		return;
-	}
-
-
-	//=================================================
-	// Attack中
-	//=================================================
-
-	if (m_ActionState ==
-		PlayerActionState::Attacking)
-	{
-		GameObject* owner =
-			GetOwner();
-
-		if (!owner)
-		{
-			return;
-		}
-
-		auto* characterAnimation =
-			owner->GetComponent<
-			CharacterAnimationComponent>();
-
-		if (!characterAnimation)
-		{
-			// AnimationComponentが無い場合は
-			// 行動を停止させないためターン終了。
-			m_ActionState =
-				PlayerActionState::Idle;
-
-			m_TurnManager->
-				EndPlayerTurn();
-
-			return;
-		}
-
-		// CharacterAnimationComponentは
-		// Attack Animation終了時にIdleへ戻る。
-		if (!characterAnimation->
-			IsAttacking())
-		{
-			m_ActionState =
-				PlayerActionState::Idle;
-
-			m_TurnManager->
-				EndPlayerTurn();
-		}
-
-		// Attack中は追加入力を受け付けない。
 		return;
 	}
 
@@ -123,33 +61,74 @@ void PlayerControllerComponent::Update(
 	}
 
 	//=================================================
-	// Turn End
+	// Moving
 	//=================================================
-	//
-	// 移動力を使い切る前でも、
-	// EnterでlayerTurnを終了できる。
-	//
 
-	if (INPUT_MANAGER.IsKeyPressed(
-		KeyCode::Enter))
+	if (m_ActionState ==
+		PlayerActionState::Moving)
 	{
-		m_RemainingMovePoints =
-			0;
-
-		m_TurnManager->
-			EndPlayerTurn();
+		UpdateMovement(
+			delta);
 
 		return;
 	}
 
 	//=================================================
-	// 移動力を使い切った
+	// Attacking
+	//=================================================
+
+	if (m_ActionState ==
+		PlayerActionState::Attacking)
+	{
+		GameObject* owner =
+			GetOwner();
+
+		if (!owner)
+		{
+			return;
+		}
+
+		auto* characterAnimation =
+			owner->GetComponent<
+			CharacterAnimationComponent>();
+
+		if (!characterAnimation)
+		{
+			// AnimationComponentが無い場合でも
+			// Player全体のTurnは終了させず、
+			// このPlayerの行動だけ終了する。
+			m_ActionState =
+				PlayerActionState::Idle;
+
+			return;
+		}
+
+		// Attack Animation終了後、
+		// このPlayerを再びIdle状態へ戻す。
+		if (!characterAnimation->
+			IsAttacking())
+		{
+			m_ActionState =
+				PlayerActionState::Idle;
+		}
+
+		// Attack中は追加入力を受け付けない。
+		return;
+	}
+
+	//=================================================
+	// 移動力を使い切った場合
+	//=================================================
+	//
+	// PlayerController側ではTurn終了させない。
+	// 複数Player全体のTurn終了判定は
+	// FieldScene::CheckPlayerTurnEnd()へ委譲する。
 	//=================================================
 
 	if (m_RemainingMovePoints <= 0)
 	{
-		m_TurnManager->
-			EndPlayerTurn();
+		m_RemainingMovePoints =
+			0;
 
 		return;
 	}
@@ -301,6 +280,7 @@ bool PlayerControllerComponent::RequestMove(
 bool PlayerControllerComponent::RequestMoveTo(
 	const GridPosition& destination)
 {
+
 	GameObject* owner =
 		GetOwner();
 
@@ -390,7 +370,7 @@ bool PlayerControllerComponent::RequestMoveTo(
 	//=================================================
 	// 移動開始
 	//=================================================
-
+	m_HasActed = true;
 	return BeginMove(
 		path);
 }
@@ -586,6 +566,7 @@ bool PlayerControllerComponent::RequestAttack()
 bool PlayerControllerComponent::RequestAttack(
 	GameObject* target)
 {
+
 	GameObject* owner =
 		GetOwner();
 
@@ -748,7 +729,25 @@ bool PlayerControllerComponent::RequestAttack(
 	m_ActionState =
 		PlayerActionState::Attacking;
 
+	m_HasActed = true;
+
 	return true;
+}
+
+
+void PlayerControllerComponent::StartPlayerTurn(
+	uint64_t turnCount)
+{
+	// このTurnを初期化済みとして記録する。
+	m_LastTurnCount =
+		turnCount;
+
+	// 新しいTurnなので未行動状態へ戻す。
+	m_HasActed =
+		false;
+
+	// 敏捷値から移動力を再設定する。
+	BeginPlayerTurn();
 }
 
 //=====================================================

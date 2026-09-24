@@ -14,6 +14,9 @@
 #include "FieldExitComponent.h"
 #include "CharacterAnimationComponent.h"
 #include "TerrainTileComponent.h"
+#include "UIImageComponent.h"
+#include "UIRectComponent.h"
+#include "UIButtonComponent.h"
 
 #include <ModelLoader.h>
 #include "MousePicker.h"
@@ -26,6 +29,7 @@
 #include "GridRenderer.h"
 #include "GridRangeRenderer.h"
 #include "GridRangeCalculator.h"
+#include "SpriteRenderer.h"
 
 #include "CharaMapData.h"
 #include "CharaMapLoader.h"
@@ -187,6 +191,78 @@ void FieldScene::Initialize()
 		}
 
 		//====================
+		// UI生成
+		//====================
+		{
+			m_NextTurnButton =
+				m_gameObjectManager.Create<GameObject>();
+
+			if (!m_NextTurnButton)
+			{
+				return;
+			}
+
+			m_NextTurnButton->SetName(
+				"NextTurnButton");
+
+			m_NextTurnButton->SetTag(
+				Tag::UI);
+
+			//====================
+			// UI Rect
+			//====================
+			auto* rect =
+				m_NextTurnButton->AddComponent<UIRectComponent>();
+
+			if (rect)
+			{
+				const float buttonWidth =
+					150.0f;
+
+				const float buttonHeight =
+					150.0f;
+
+				// 画面中央より少し下
+				const float x = 1100.0f;
+
+				const float y = 550.0f;
+
+				rect->SetPosition(
+					x,
+					y);
+
+				rect->SetSize(
+					buttonWidth,
+					buttonHeight);
+			}
+
+			//====================
+			// Image
+			//====================
+			auto* image =
+				m_NextTurnButton->AddComponent<UIImageComponent>();
+
+			if (image)
+			{
+				image->SetTexture(
+					"Assets/Textures/Field/Next.png");
+				image->SetColor(Color(1.0f,1.0f,1.0f,0.0f));
+			}
+
+			//====================
+			// Button
+			//====================
+			auto* buttom = 
+				m_NextTurnButton->AddComponent<UIButtonComponent>();
+			if (buttom)
+			{
+				// 初期状態では操作不可。
+				buttom->SetEnabled(
+					false);
+			}
+		}
+
+		//====================
 		// Directional Light
 		//====================
 		{
@@ -331,165 +407,56 @@ void FieldScene::Finalize()
 void FieldScene::Update(
 	uint64_t delta)
 {
-	//=====================================================
-	// Mouse Picking
-	//=====================================================
+	//=====================================
+	// UI表示状態更新
+	//=====================================
+	UpdateNextTurnButton();
 
-	if (INPUT_MANAGER.IsMousePressed(
-		MouseButton::Left))
+	//=====================================
+	// GameObject Update
+	//=====================================
+
+	m_gameObjectManager.Update(
+		delta);
+
+	//=====================================
+	// NextTurn Button
+	//=====================================
+
+	if (CheckNextTurnButtonClick())
 	{
-		GameObject* cameraObject =
-			m_gameObjectManager.FindByName(
-				"MainCamera");
-
-		if (cameraObject)
-		{
-			auto* camera =
-				cameraObject->GetComponent<
-				CameraComponent>();
-
-			if (camera)
-			{
-				const Vector2 mousePosition =
-					INPUT_MANAGER.GetMousePosition();
-
-				const Matrix4x4 view =
-					camera->GetViewMatrix();
-
-				const Matrix4x4 projection =
-					camera->GetProjectionMatrix();
-
-				Vector3 worldPosition(
-					0.0f,
-					0.0f,
-					0.0f);
-
-				if (MousePicker::PickGround(
-					mousePosition,
-					static_cast<float>(
-						Window::GetWidth()),
-					static_cast<float>(
-						Window::GetHeight()),
-					view,
-					projection,
-					0.0f,
-					worldPosition))
-				{
-					//=====================================
-					// World → Grid
-					//=====================================
-
-					const GridPosition clickedGrid =
-						m_GridMap.WorldToGrid(
-							worldPosition);
-
-					//=====================================
-					// Grid範囲確認
-					//=====================================
-
-					if (!m_GridMap.IsInside(
-						clickedGrid))
-					{
-						return;
-					}
-
-					//=====================================
-					// Player取得
-					//=====================================
-
-					std::vector<GameObject*> players =
-						m_gameObjectManager.FindByTag(
-							Tag::Player);
-
-					if (players.empty())
-					{
-						return;
-					}
-
-					GameObject* player =
-						players[0];
-
-					auto* controller =
-						player->GetComponent<
-						PlayerControllerComponent>();
-
-					if (!controller)
-					{
-						return;
-					}
-
-					//=====================================
-					// Clicked Cell取得
-					//=====================================
-
-					GridCell* cell =
-						m_GridMap.GetCell(
-							clickedGrid);
-
-					if (!cell)
-					{
-						return;
-					}
-
-					GameObject* occupant =
-						cell->Occupant;
-
-					//=====================================
-					// 空きマス
-					//=====================================
-
-					if (!occupant)
-					{
-						controller->
-							RequestMoveTo(
-								clickedGrid);
-
-						return;
-					}
-
-					//=====================================
-					// Enemy
-					//=====================================
-
-					if (occupant->GetTag() ==
-						Tag::Enemy)
-					{
-						controller->
-							RequestAttack(
-								occupant);
-
-						return;
-					}
-
-					//=====================================
-					// その他
-					//=====================================
-
-					OutputDebugStringA(
-						"[FieldScene] "
-						"Clicked occupied cell.\n");
-				}
-			}
-		}
+		// 同じMouse入力を
+		// Field操作へ流さない。
+		return;
 	}
-	//=====================================================
+
+	//=====================================
+	// PlayerTurn中の処理
+	//=====================================
+
+	if (m_TurnManager.IsPlayerTurn())
+	{
+		UpdatePlayerInput();
+	}
+
+	//=====================================
 	// Enemy Turn
-	//=====================================================
+	//=====================================
+
 	if (m_TurnManager.IsEnemyTurn())
 	{
 		UpdateEnemyTurnSequence();
 	}
 
-	//=====================================================
-	// GameObject Update
-	//=====================================================
+	//=====================================
+	// Player Turn End
+	//=====================================
 
-	m_gameObjectManager.Update(
-		delta);
+	CheckPlayerTurnEnd();
 
-	//=====================================================
+	//=====================================
 	// 帰還判定
-	//=====================================================
+	//=====================================
 	std::vector<GameObject*> players =
 		m_gameObjectManager.FindByTag(
 			Tag::Player);
@@ -533,9 +500,10 @@ void FieldScene::Update(
 			}
 		}
 	}
-	//=====================================================
+
+	//=====================================
 	// Enemy死亡処理
-	//=====================================================
+	//=====================================
 	std::vector<GameObject*> enemies =
 		m_gameObjectManager.FindByTag(
 			Tag::Enemy);
@@ -592,9 +560,8 @@ void FieldScene::Draw(uint64_t delta)
 			m_MainCamera->
 			GetProjectionMatrix());
 	}
-
 	// GameObjectの描画
-	m_gameObjectManager.Draw();
+	m_gameObjectManager.DrawWorld();
 
 	//=================================================
 	// Grid
@@ -613,40 +580,34 @@ void FieldScene::Draw(uint64_t delta)
 	// Player Range
 	//=================================================
 
-	if (m_TurnManager.IsPlayerTurn())
+	if (m_TurnManager.IsPlayerTurn() &&
+		m_SelectedPlayer)
 	{
-		std::vector<GameObject*> players =
-			m_gameObjectManager.FindByTag(
-				Tag::Player);
+		auto* gridPosition =
+			m_SelectedPlayer->GetComponent<
+			GridPositionComponent>();
 
-		if (!players.empty())
+		auto* controller =
+			m_SelectedPlayer->GetComponent<
+			PlayerControllerComponent>();
+
+		if (gridPosition &&
+			controller &&
+			controller->IsActionFinished())
 		{
-			GameObject* player =
-				players[0];
+			const GridPosition playerGrid =
+				gridPosition->
+				GetGridPosition();
 
-			auto* gridPosition =
-				player->GetComponent<
-				GridPositionComponent>();
+			const int movePoints =
+				controller->
+				GetRemainingMovePoints();
 
-			auto* controller =
-				player->GetComponent<
-				PlayerControllerComponent>();
-
-			if (gridPosition &&
-				controller)
+			//=====================================
+			// Move Range
+			//=====================================
+			if (movePoints > 0)
 			{
-				const GridPosition playerGrid =
-					gridPosition->
-					GetGridPosition();
-
-				const int movePoints =
-					controller->
-					GetRemainingMovePoints();
-
-				//=====================================
-				// Move Range
-				//=====================================
-
 				const auto moveRange =
 					GridRangeCalculator::
 					CalculateMoveRange(
@@ -663,30 +624,33 @@ void FieldScene::Draw(uint64_t delta)
 						1.0f,
 						0.30f),
 					0.03f);
-
-				//=====================================
-				// Attack Range
-				//=====================================
-
-				const auto attackRange =
-					GridRangeCalculator::
-					CalculateAttackRange(
-						m_GridMap,
-						playerGrid,
-						1);
-
-				GridRangeRenderer::DrawCells(
-					m_GridMap,
-					attackRange,
-					Color(
-						1.0f,
-						0.2f,
-						0.2f,
-						0.35f),
-					0.04f);
 			}
+
+			//=====================================
+			// Attack Range
+			//=====================================
+
+			const auto attackRange =
+				GridRangeCalculator::
+				CalculateAttackRange(
+					m_GridMap,
+					playerGrid,
+					1);
+
+			GridRangeRenderer::DrawCells(
+				m_GridMap,
+				attackRange,
+				Color(
+					1.0f,
+					0.2f,
+					0.2f,
+					0.35f),
+				0.04f);
 		}
 	}
+	SpriteRenderer::Begin();
+	m_gameObjectManager.DrawUI();
+	SpriteRenderer::End();
 
 	// デバッグUIの描画
 	DebugUI::RegisterDebugFunction([this]()
@@ -731,7 +695,7 @@ void FieldScene::Draw(uint64_t delta)
 					stateText = "Completed";
 					break;
 				}
-
+				
 				ImGui::Text(
 					"State: %s",
 					stateText);
@@ -743,7 +707,199 @@ void FieldScene::Draw(uint64_t delta)
 
 }
 
+//====================
+// Player処理
+//====================
+void FieldScene::UpdatePlayerInput()
+{
+	//=====================================
+	// Mouse Picking
+	// クリックしたマス目を取得・判定・処理
+	//=====================================
+	
+	if (!INPUT_MANAGER.IsMousePressed(
+		MouseButton::Left))
+	{
+		return;
+	}
 
+	// Camera取得
+	GameObject* cameraObject =
+		m_gameObjectManager.FindByName(
+			"MainCamera");
+	if (!cameraObject)
+	{
+		return;
+	}
+
+	// CameraComponent取得
+	auto* camera =
+		cameraObject->GetComponent<
+		CameraComponent>();
+	if (!camera)
+	{
+		return;
+	}
+
+	// どのセルをクリックしたかの計算処理
+	const Vector2 mousePosition =
+		INPUT_MANAGER.GetMousePosition();
+
+	const Matrix4x4 view =
+		camera->GetViewMatrix();
+
+	const Matrix4x4 projection =
+		camera->GetProjectionMatrix();
+
+	Vector3 worldPosition(
+		0.0f,
+		0.0f,
+		0.0f);
+
+	if (!MousePicker::PickGround(
+		mousePosition,
+		static_cast<float>(
+			Window::GetWidth()),
+		static_cast<float>(
+			Window::GetHeight()),
+		view,
+		projection,
+		0.0f,
+		worldPosition))
+	{
+		return;
+	}
+
+	//=====================================
+	// World → Grid
+	//=====================================
+
+	const GridPosition clickedGrid =
+		m_GridMap.WorldToGrid(
+			worldPosition);
+
+	//=====================================
+	// Grid範囲確認
+	//=====================================
+
+	if (!m_GridMap.IsInside(
+		clickedGrid))
+	{
+		return;
+	}
+
+	//=====================================
+	// Clicked Cell取得
+	//=====================================
+
+	GridCell* cell =
+		m_GridMap.GetCell(
+			clickedGrid);
+
+	if (!cell)
+	{
+		return;
+	}
+
+	// 選択セルにいるキャラを取得
+	GameObject* occupant =
+		cell->Occupant;
+
+	//=====================================
+	// 1:Player選択
+	//=====================================
+
+	if (occupant &&
+		occupant->GetTag() ==
+		Tag::Player)
+	{
+		auto* controller =
+			occupant->GetComponent<
+			PlayerControllerComponent>();
+
+		if (!controller)
+		{
+			return;
+		}
+
+		// 行動中のPlayerは選択しない。
+		if (!controller->IsActionFinished())
+		{
+			return;
+		}
+
+		m_SelectedPlayer =
+			occupant;
+
+		OutputDebugStringA(
+			"[FieldScene] "
+			"Player selected.\n");
+
+		return;
+	}
+
+	if (!m_SelectedPlayer)
+	{
+		return;
+	}
+
+	//=====================================
+	// 2:実行処理
+	//=====================================
+
+	auto* controller =
+		m_SelectedPlayer->GetComponent<
+		PlayerControllerComponent>();
+
+	if (!controller)
+	{
+		return;
+	}
+
+	//=====================================
+	// 空きマス
+	//=====================================
+
+	if (!occupant)
+	{
+		if (controller->RequestMoveTo(
+			clickedGrid))
+		{
+			// 行動を開始時に選択状態を解除する
+			m_SelectedPlayer = nullptr;
+		}
+
+		return;
+	}
+
+	//=====================================
+	// Enemy
+	//=====================================
+
+	if (occupant->GetTag() ==
+		Tag::Enemy)
+	{
+		if (controller->RequestAttack(
+			occupant))
+		{
+			m_SelectedPlayer = nullptr;
+		}
+
+		return;
+	}
+
+	//=====================================
+	// その他
+	//=====================================
+
+	OutputDebugStringA(
+		"[FieldScene] "
+		"Clicked occupied cell.\n");
+}
+
+//====================
+// EnemyTurn
+//====================
 void FieldScene::BeginEnemyTurnSequence()
 {
 	m_EnemyTurnOrder =
@@ -917,6 +1073,40 @@ void FieldScene::EndEnemyTurnSequence()
 	// PlayerTurnへ戻す。
 	m_TurnManager.
 		EndEnemyTurn();
+
+	{
+		std::vector<GameObject*> players =
+			m_gameObjectManager.FindByTag(
+				Tag::Player);
+
+		for (GameObject* player :
+			players)
+		{
+			if (!player)
+			{
+				continue;
+			}
+
+			auto* controller =
+				player->GetComponent<
+				PlayerControllerComponent>();
+
+			if (!controller)
+			{
+				continue;
+			}
+
+			// PlayerTurn開始時に
+			// MovePointsと行動状態を明示的に初期化する。
+			controller->StartPlayerTurn(
+				m_TurnManager.GetTurnCount());
+		}
+
+		// 新しいPlayerTurnでは
+		// 誰も選択されていない状態にする。
+		m_SelectedPlayer =
+			nullptr;
+	}
 }
 
 
@@ -1420,4 +1610,313 @@ void FieldScene::CreateTerrainTile(
 
 	m_TerrainObjects.push_back(
 		terrainObject);
+}
+
+/**
+ * @brief 操作キャラの行動済み確認
+ * @return false:未行動キャラあり
+ */
+bool FieldScene::AreAllPlayersActed()
+{
+	std::vector<GameObject*> players =
+		m_gameObjectManager.FindByTag(
+			Tag::Player);
+
+	if (players.empty())
+	{
+		return false;
+	}
+
+	for (GameObject* player :
+		players)
+	{
+		if (!player)
+		{
+			continue;
+		}
+
+		auto* controller =
+			player->GetComponent<
+			PlayerControllerComponent>();
+
+		if (!controller)
+		{
+			continue;
+		}
+
+		if (!controller->HasActed())
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool FieldScene::AreAllPlayerActionsFinished() const
+{
+	std::vector<GameObject*> players =
+		m_gameObjectManager.FindByTag(
+			Tag::Player);
+
+	for (GameObject* player :
+		players)
+	{
+		if (!player)
+		{
+			continue;
+		}
+
+		auto* controller =
+			player->GetComponent<
+			PlayerControllerComponent>();
+
+		if (!controller)
+		{
+			continue;
+		}
+
+		if (!controller->
+			IsActionFinished())
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool FieldScene::AreAllPlayersOutOfMovePoints()
+{
+	std::vector<GameObject*> players =
+		m_gameObjectManager.FindByTag(
+			Tag::Player);
+
+	if (players.empty())
+	{
+		return false;
+	}
+
+	for (GameObject* player :
+		players)
+	{
+		if (!player)
+		{
+			continue;
+		}
+
+		auto* controller =
+			player->GetComponent<
+			PlayerControllerComponent>();
+
+		if (!controller)
+		{
+			continue;
+		}
+
+		// 1人でも移動力が残っていれば、
+		// 強制Turn終了はしない。
+		if (controller->
+			GetRemainingMovePoints() > 0)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void FieldScene::CheckPlayerTurnEnd()
+{
+	if (!m_TurnManager.IsPlayerTurn())
+	{
+		return;
+	}
+
+	// Playerの移動・攻撃演出中は
+	// Turnを切り替えない。
+	if (!AreAllPlayerActionsFinished())
+	{
+		return;
+	}
+
+	// 全Playerが行動不能になった場合のみ
+	// 強制的にEnemyTurnへ移行する。
+	if (!AreAllPlayersOutOfMovePoints())
+	{
+		return;
+	}
+
+	m_SelectedPlayer =
+		nullptr;
+
+	m_TurnManager.EndPlayerTurn();
+}
+
+void FieldScene::UpdateNextTurnButton()
+{
+	if (!m_NextTurnButton)
+	{
+		return;
+	}
+
+	auto* image =
+		m_NextTurnButton->
+		GetComponent<UIImageComponent>();
+
+	auto* button =
+		m_NextTurnButton->
+		GetComponent<UIButtonComponent>();
+
+	if (!image ||
+		!button)
+	{
+		return;
+	}
+
+	//=================================================
+	// Button表示条件
+	//=================================================
+
+	const bool canEndTurn =
+		m_TurnManager.IsPlayerTurn() &&
+		AreAllPlayersActed() &&
+		AreAllPlayerActionsFinished() &&
+		!AreAllPlayersOutOfMovePoints();
+
+	if (!canEndTurn)
+	{
+		// 見えなくする。
+		image->SetColor(
+			Color(
+				1.0f,
+				1.0f,
+				1.0f,
+				0.0f));
+
+		// 見えないButtonがクリックされないよう
+		// 入力受付も停止する。
+		button->SetEnabled(
+			false);
+
+		return;
+	}
+
+	// Buttonを表示し、
+	// 入力受付を有効にする。
+	button->SetEnabled(
+		true);
+
+	// TitleSceneと同様に
+	// Button状態で見た目を変更する。
+	UpdateButtonVisual(
+		m_NextTurnButton);
+}
+
+void FieldScene::UpdateButtonVisual(
+	GameObject* buttonObject)
+{
+	if (!buttonObject)
+	{
+		return;
+	}
+
+	auto* button =
+		buttonObject->
+		GetComponent<UIButtonComponent>();
+
+	auto* image =
+		buttonObject->
+		GetComponent<UIImageComponent>();
+
+	if (!button ||
+		!image)
+	{
+		return;
+	}
+
+	if (!button->IsEnabled())
+	{
+		return;
+	}
+
+	switch (button->GetState())
+	{
+	case UIButtonState::Normal:
+
+		image->SetColor(
+			Color(
+				1.0f,
+				1.0f,
+				1.0f,
+				1.0f));
+
+		break;
+
+	case UIButtonState::Hovered:
+
+		image->SetColor(
+			Color(
+				0.9f,
+				0.9f,
+				0.9f,
+				1.0f));
+
+		break;
+
+	case UIButtonState::Pressed:
+
+		image->SetColor(
+			Color(
+				0.7f,
+				0.7f,
+				0.7f,
+				1.0f));
+
+		break;
+
+	default:
+		break;
+	}
+}
+
+bool FieldScene::CheckNextTurnButtonClick()
+{
+	if (!m_NextTurnButton)
+	{
+		return false;
+	}
+
+	auto* button =
+		m_NextTurnButton->
+		GetComponent<UIButtonComponent>();
+
+	if (!button ||
+		!button->IsEnabled())
+	{
+		return false;
+	}
+
+	if (!button->IsClicked())
+	{
+		return false;
+	}
+
+	//=================================================
+	// 念のためTurn終了条件を再確認
+	//=================================================
+
+	if (!m_TurnManager.IsPlayerTurn() ||
+		!AreAllPlayersActed() ||
+		!AreAllPlayerActionsFinished())
+	{
+		return false;
+	}
+
+	m_SelectedPlayer =
+		nullptr;
+
+	m_TurnManager.EndPlayerTurn();
+
+	return true;
 }

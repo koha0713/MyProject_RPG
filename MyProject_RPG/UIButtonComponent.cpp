@@ -35,6 +35,22 @@ void UIButtonComponent::Finalize()
 void UIButtonComponent::Update(
 	uint64_t delta)
 {
+
+	// –³Œøó‘Ô‚Å‚ÍMouse“ü—Í‚ğˆ—‚µ‚È‚¢B
+	if (!m_Enabled)
+	{
+		m_Clicked =
+			false;
+
+		m_State =
+			UIButtonState::Normal;
+
+		m_PressedInside =
+			false;
+
+		return;
+	}
+
 	GameObject* owner =
 		GetOwner();
 
