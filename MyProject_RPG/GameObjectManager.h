@@ -52,6 +52,8 @@ public:
 	 */
 	void DrawUI();
 
+	void DrawFont();
+
 	/**
 	 * @brief ‘SGameObject‚Ì”jŠü
 	 */

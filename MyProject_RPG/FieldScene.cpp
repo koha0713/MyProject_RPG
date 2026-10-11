@@ -17,6 +17,7 @@
 #include "UIImageComponent.h"
 #include "UIRectComponent.h"
 #include "UIButtonComponent.h"
+#include "UIFontComponent.h"
 
 #include <ModelLoader.h>
 #include "MousePicker.h"
@@ -30,6 +31,7 @@
 #include "GridRangeRenderer.h"
 #include "GridRangeCalculator.h"
 #include "SpriteRenderer.h"
+#include "FontRenderer.h"
 
 #include "CharaMapData.h"
 #include "CharaMapLoader.h"
@@ -260,6 +262,50 @@ void FieldScene::Initialize()
 				buttom->SetEnabled(
 					false);
 			}
+		}
+
+		GameObject* textObject =
+			m_gameObjectManager.Create<GameObject>();
+
+		textObject->SetName(
+			"TestText");
+
+		textObject->SetTag(
+			Tag::Font);
+
+		auto* rect =
+			textObject->AddComponent<
+			UIRectComponent>();
+
+		if (rect)
+		{
+			rect->SetPosition(
+				50.0f,
+				50.0f);
+
+			rect->SetSize(
+				600.0f,
+				100.0f);
+		}
+
+		auto* font =
+			textObject->AddComponent<
+			UIFontComponent>();
+
+		if (font)
+		{
+			font->SetText(
+				L"ŽŸ‚Ìƒ^[ƒ“‚Ö");
+
+			font->SetFontSize(
+				40.0f);
+
+			font->SetColor(
+				Color(
+					1.0f,
+					1.0f,
+					1.0f,
+					1.0f));
 		}
 
 		//====================
@@ -652,57 +698,15 @@ void FieldScene::Draw(uint64_t delta)
 	m_gameObjectManager.DrawUI();
 	SpriteRenderer::End();
 
+	FontRenderer::Begin();
+	m_gameObjectManager.DrawFont();
+	FontRenderer::End();
+
 	// ƒfƒoƒbƒOUI‚Ì•`‰æ
 	DebugUI::RegisterDebugFunction([this]()
 		{
 			// GameObject‚ÌDebugUI•`‰æ
 			m_gameObjectManager.DrawDebugUI();
-
-			// QuestŠÖŒW‚ÌDebugUI•`‰æ
-			ImGui::Begin("Quest");
-			ImGui::SeparatorText(
-				"Quests");
-			for (const Quest& quest :
-				QUEST_MANAGER.GetQuests())
-			{
-				ImGui::Text(
-					"%s",
-					quest.GetName().c_str());
-
-				ImGui::Text(
-					"Progress: %d / %d",
-					quest.GetCurrentCount(),
-					quest.GetRequiredCount());
-
-				const char* stateText =
-					"Unknown";
-
-				switch (quest.GetState())
-				{
-				case QuestState::Inactive:
-					stateText = "Inactive";
-					break;
-
-				case QuestState::Active:
-					stateText = "Active";
-					break;
-
-				case QuestState::ReadyToReport:
-					stateText = "Ready To Report";
-					break;
-
-				case QuestState::Completed:
-					stateText = "Completed";
-					break;
-				}
-				
-				ImGui::Text(
-					"State: %s",
-					stateText);
-
-				ImGui::Separator();
-			}
-			ImGui::End();
 		});
 
 }
@@ -1174,15 +1178,15 @@ GameObject* FieldScene::CreatePlayer(
 	if (model)
 	{
 		model->SetModel(
-			"Assets/Models/Player/Warrior.fbx");
+			"Assets/Models/Character/Player/Warrior.fbx");
 
 		model->SetTexture(
 			0,
-			"Assets/Models/Player/Warrior_Texture.png");
+			"Assets/Models/Character/Player/Warrior_Texture.png");
 
 		model->SetTexture(
 			1,
-			"Assets/Models/Player/Warrior_Sword_Texture.png");
+			"Assets/Models/Character/Player/Warrior_Sword_Texture.png");
 
 		model->PlayAnimation(
 			AnimationID::Idle,
@@ -1379,15 +1383,15 @@ GameObject* FieldScene::CreateEnemy(
 	if (model)
 	{
 		model->SetModel(
-			"Assets/Models/Player/Ranger.fbx");
+			"Assets/Models/Character/Player/Ranger.fbx");
 
 		model->SetTexture(
 			0,
-			"Assets/Models/Player/Ranger_Texture.png");
+			"Assets/Models/Character/Player/Ranger_Texture.png");
 
 		model->SetTexture(
 			1,
-			"Assets/Models/Player/Ranger_Bow_Texture.png");
+			"Assets/Models/Character/Player/Ranger_Bow_Texture.png");
 
 		model->PlayAnimation(
 			AnimationID::Idle,

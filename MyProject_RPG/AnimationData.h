@@ -25,32 +25,58 @@ constexpr size_t MAX_BONES = 128;
   * @details
   * FBX内のAnimation名とは分離する。
   *
-  * AnimationID::Walkのような値はゲーム側の意味であり、
-  * FBXリソースそのものの情報ではない。
+ * AnimationIDはゲーム側で使用する識別子であり、
+ * 実際のFBX Animation名との対応は
+ * AnimatorComponent側で管理する。
   */
 enum class AnimationID
 {
 	None = 0,
 
 	//====================
-	// Locomotion
+	// Idle
 	//====================
 
+	// 通常Idle
 	Idle,
+
+	// 戦闘時Idle
 	IdleAttacking,
+
+	// 武器構えIdle
 	IdleWeapon,
+
+	//====================
+	// Locomotion
+	//====================
 
 	Walk,
 	Run,
 	RunWeapon,
 
 	//====================
+	// Attack
+	//====================
+
+	// 基本攻撃
+	Attack,
+
+	// 2つ目の攻撃
+	Attack2,
+
+	// 3つ目の攻撃
+	Attack3,
+
+	// 高速攻撃
+	// 弓などではAttack後の後動作にも使用する。
+	AttackFast,
+
+	Punch,
+
+	//====================
 	// Action
 	//====================
 
-	Attack,
-	AttackFast,
-	Punch,
 	PickUp,
 	Roll,
 
@@ -58,12 +84,17 @@ enum class AnimationID
 	// Damage / Death
 	//====================
 
+	// 通常時Damage
+	// 現状では基本的に使用しない。
 	Damage,
+
+	// 戦闘時Damage
 	Damage2,
+
 	Death,
 
 	//====================
-	// Other
+	// Legacy
 	//====================
 
 	Mixamo

@@ -79,6 +79,9 @@
     <Filter Include="ソース ファイル\Game\Map\Terrain">
       <UniqueIdentifier>{3e51ac12-8ef4-4b24-be32-77a8a8cf2e80}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\Font実装">
+      <UniqueIdentifier>{57858834-1855-45ed-86d8-f4c76615c35f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -297,6 +300,12 @@
     <ClInclude Include="TerrainTileComponent.h">
       <Filter>ソース ファイル\Component\Map</Filter>
     </ClInclude>
+    <ClInclude Include="FontRenderer.h">
+      <Filter>ソース ファイル\Font実装</Filter>
+    </ClInclude>
+    <ClInclude Include="UIFontComponent.h">
+      <Filter>ソース ファイル\Font実装</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -454,6 +463,12 @@
     </ClCompile>
     <ClCompile Include="TerrainTileComponent.cpp">
       <Filter>ソース ファイル\Component\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="FontRenderer.cpp">
+      <Filter>ソース ファイル\Font実装</Filter>
+    </ClCompile>
+    <ClCompile Include="UIFontComponent.cpp">
+      <Filter>ソース ファイル\Font実装</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

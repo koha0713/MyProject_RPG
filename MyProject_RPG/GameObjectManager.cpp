@@ -47,7 +47,9 @@ void GameObjectManager::DrawWorld()
 
 		// UI‚ÍWorld•`‰æ‚©‚çœŠO‚·‚éB
 		if (object->GetTag() ==
-			Tag::UI)
+			Tag::UI ||
+			object->GetTag() ==
+			Tag::Font)
 		{
 			continue;
 		}
@@ -69,6 +71,21 @@ void GameObjectManager::DrawUI()
 			continue;
 		}
 
+		object->Draw();
+	}
+}
+
+void GameObjectManager::DrawFont()
+{
+	for (const auto& object :
+		m_GameObjects)
+	{
+		// FontˆÈŠO‚Í•`‰æ‚µ‚È‚¢B
+		if (object->GetTag() !=
+			Tag::Font)
+		{
+			continue;
+		}
 		object->Draw();
 	}
 }

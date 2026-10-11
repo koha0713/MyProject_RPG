@@ -909,8 +909,8 @@ std::shared_ptr<ModelData> ModelLoader::LoadModel(
 		skeleton);
 
 	//=====================================================
-// Mesh ¨ Node ‘Î‰
-//=====================================================
+	// Mesh ¨ Node ‘Î‰
+	//=====================================================
 
 	std::vector<int> meshNodeIndices(
 		scene->mNumMeshes,

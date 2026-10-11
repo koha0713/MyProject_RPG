@@ -4,6 +4,7 @@
 #include "Renderer.h"
 #include "PrimitiveRenderer.h"
 #include "SpriteRenderer.h"
+#include "FontRenderer.h"
 #include "DebugUI.h"
 #include "SceneManager.h"
 #include "InputManager.h"
@@ -77,11 +78,17 @@ bool Game::Initialize()
 	//====================
 	// Renderer‰Šú‰»
 	//====================
-
 	if (!Renderer::Init())
 	{
 		return false;
 	}
+
+	if (!FontRenderer::Initialize(
+		L"Assets/Fonts/KaiseiOpti-Medium.ttf"))
+	{
+		return false;
+	}
+
 	if (!PrimitiveRenderer::Initialize())
 	{
 		return false;
@@ -178,7 +185,7 @@ void Game::Finalize()
 	SpriteRenderer::Finalize();
 
 	PrimitiveRenderer::Finalize();
-
+	FontRenderer::Finalize();
 	Renderer::Dispose();
 
 	//====================

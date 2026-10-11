@@ -345,23 +345,26 @@ AnimatorComponent::GetCurrentClip() const
 //=====================================================
 // Animation検索
 //=====================================================
-
 const AnimationClip*
 AnimatorComponent::FindClip(
 	AnimationID id,
 	const std::vector<AnimationClip>& clips) const
 {
 	const std::string targetName =
-		GetAnimationName(id);
+		GetAnimationName(
+			id);
 
 	if (targetName.empty())
 	{
 		return nullptr;
 	}
 
-	//====================
-	// 大文字小文字を無視して検索
-	//====================
+	//=================================================
+	// 小文字変換
+	//=================================================
+	// FBX Exporterによる大文字小文字の差異には
+	// 対応しつつ、文字列そのものは完全一致で判定する。
+	//=================================================
 
 	auto toLower =
 		[](std::string text)
@@ -383,19 +386,56 @@ AnimatorComponent::FindClip(
 		toLower(
 			targetName);
 
-	for (const auto& clip : clips)
+	//=================================================
+	// Animation検索
+	//=================================================
+
+	for (const auto& clip :
+		clips)
 	{
+		std::string clipName =
+			clip.Name;
+
+		//=============================================
+		// FBX Prefixを除去
+		//=============================================
+		//
+		// FBXによって、
+		//
+		// CharacterArmature|Walk
+		//
+		// のようにArmature名が付く場合がある。
+		//
+		// 最後の'|'より後ろを
+		// 実際のAnimation名として扱う。
+		//=============================================
+
+		const size_t separatorPosition =
+			clipName.find_last_of(
+				'|');
+
+		if (separatorPosition !=
+			std::string::npos)
+		{
+			clipName =
+				clipName.substr(
+					separatorPosition + 1);
+		}
+
 		const std::string clipLower =
 			toLower(
-				clip.Name);
+				clipName);
 
-		// 例:
-		// "CharacterArmature|Walk"
-		//             ↓
-		// "walk"を含む
-		if (clipLower.find(
-			targetLower) !=
-			std::string::npos)
+		//=============================================
+		// 完全一致
+		//=============================================
+		//
+		// AttackとAttackFast等を
+		// 誤認しないため部分一致は使用しない。
+		//=============================================
+
+		if (clipLower ==
+			targetLower)
 		{
 			return &clip;
 		}
@@ -407,13 +447,16 @@ AnimatorComponent::FindClip(
 //=====================================================
 // AnimationID名称
 //=====================================================
-
 const char*
 AnimatorComponent::GetAnimationName(
 	AnimationID id)
 {
 	switch (id)
 	{
+		//=================================================
+		// Idle
+		//=================================================
+
 	case AnimationID::Idle:
 		return "Idle";
 
@@ -422,6 +465,10 @@ AnimatorComponent::GetAnimationName(
 
 	case AnimationID::IdleWeapon:
 		return "Idle_Weapon";
+
+		//=================================================
+		// Locomotion
+		//=================================================
 
 	case AnimationID::Walk:
 		return "Walk";
@@ -432,14 +479,28 @@ AnimatorComponent::GetAnimationName(
 	case AnimationID::RunWeapon:
 		return "Run_Weapon";
 
+		//=================================================
+		// Attack
+		//=================================================
+
 	case AnimationID::Attack:
-		return "Sword_Attack";
+		return "Attack";
+
+	case AnimationID::Attack2:
+		return "Attack2";
+
+	case AnimationID::Attack3:
+		return "Attack3";
 
 	case AnimationID::AttackFast:
-		return "Sword_AttackFast";
+		return "AttackFast";
 
 	case AnimationID::Punch:
 		return "Punch";
+
+		//=================================================
+		// Action
+		//=================================================
 
 	case AnimationID::PickUp:
 		return "PickUp";
@@ -447,19 +508,31 @@ AnimatorComponent::GetAnimationName(
 	case AnimationID::Roll:
 		return "Roll";
 
+		//=================================================
+		// Damage / Death
+		//=================================================
+
 	case AnimationID::Damage:
-		// 元FBX側のスペルに合わせる
+
+		// FBX側で統一した名称に合わせる。
 		return "RecieveHit";
 
 	case AnimationID::Damage2:
+
+		// 戦闘時Damage。
 		return "RecieveHit_2";
 
 	case AnimationID::Death:
 		return "Death";
 
+		//=================================================
+		// Legacy
+		//=================================================
+
 	case AnimationID::Mixamo:
 		return "mixamo.com";
 
+	case AnimationID::None:
 	default:
 		break;
 	}
@@ -1082,28 +1155,46 @@ bool AnimatorComponent::SetAnimations(
 		return false;
 	}
 
-	bool registered = false;
+	bool registered =
+		false;
+
+	//=================================================
+	// 登録対象Animation
+	//=================================================
+	//
+	// すべてのModelが全Animationを持っているとは
+	// 限らないため、存在するものだけ登録する。
+	//=================================================
 
 	constexpr AnimationID animationIDs[] =
 	{
+		// Idle
 		AnimationID::Idle,
 		AnimationID::IdleAttacking,
 		AnimationID::IdleWeapon,
 
+		// Locomotion
 		AnimationID::Walk,
 		AnimationID::Run,
 		AnimationID::RunWeapon,
 
+		// Attack
 		AnimationID::Attack,
+		AnimationID::Attack2,
+		AnimationID::Attack3,
 		AnimationID::AttackFast,
 		AnimationID::Punch,
+
+		// Action
 		AnimationID::PickUp,
 		AnimationID::Roll,
 
+		// Damage / Death
 		AnimationID::Damage,
 		AnimationID::Damage2,
 		AnimationID::Death,
 
+		// Legacy
 		AnimationID::Mixamo
 	};
 
@@ -1125,7 +1216,8 @@ bool AnimatorComponent::SetAnimations(
 		m_Animations[id] =
 			*clip;
 
-		registered = true;
+		registered =
+			true;
 	}
 
 	return registered;

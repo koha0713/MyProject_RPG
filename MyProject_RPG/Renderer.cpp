@@ -643,8 +643,10 @@ bool Renderer::CreateDevice()
 	desc.BufferDesc.Height =
 		Window::GetHeight();
 
+	// Direct2Dとの共有を行うため、
+	// BGRA形式のBackBufferを使用する。
 	desc.BufferDesc.Format =
-		DXGI_FORMAT_R8G8B8A8_UNORM;
+		DXGI_FORMAT_B8G8R8A8_UNORM;
 
 	desc.BufferDesc.RefreshRate.Numerator =
 		60;

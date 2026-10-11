@@ -9,6 +9,7 @@
 #include "QuestManager.h"
 #include "SceneManager.h"
 #include "SpriteRenderer.h"
+#include "FontRenderer.h"
 #include "Window.h"
 
 #include "DebugUI.h"
@@ -160,6 +161,10 @@ void TownScene::Draw(
 
 	SpriteRenderer::End();
 
+	FontRenderer::Begin();
+	m_GameObjectManager.DrawFont();
+	FontRenderer::End();
+
 	//=================================================
 	// (‰¼)Guild Quest List
 	//=================================================
@@ -172,6 +177,14 @@ void TownScene::Draw(
 				DrawGuildQuestListUI();
 			});
 	}
+
+
+	// ƒfƒoƒbƒOUI‚Ì•`‰æ
+	DebugUI::RegisterDebugFunction([this]()
+		{
+			// GameObject‚ÌDebugUI•`‰æ
+			m_GameObjectManager.DrawDebugUI();
+		});
 }
 
 //=====================================================
