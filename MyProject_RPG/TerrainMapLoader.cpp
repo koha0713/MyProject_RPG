@@ -125,5 +125,81 @@ bool TerrainMapLoader::Load(
 		++y;
 	}
 
+	// 全TerrainCellDataの読み込みが完了したあと
+	UpdateRoadConnections(outData);
+
 	return true;
+}
+
+/**
+ * @brief 指定位置に道路が存在するか確認
+ */
+bool TerrainMapLoader::IsRoadAt(
+	const TerrainMapData& mapData,
+	int x,
+	int y)
+{
+	for (const auto& cell : mapData.Cells)
+	{
+		if (cell.Position.X == x &&
+			cell.Position.Y == y)
+		{
+			return cell.Type == TerrainType::Dirt;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * @brief 全Terrainの道路接続情報を更新
+ */
+void TerrainMapLoader::UpdateRoadConnections(
+	TerrainMapData& mapData)
+{
+	for (auto& cell : mapData.Cells)
+	{
+		cell.RoadConnections = 0;
+
+		// 道路以外は判定しない
+		if (cell.Type != TerrainType::Dirt)
+		{
+			continue;
+		}
+
+		const int x = cell.Position.X;
+		const int y = cell.Position.Y;
+
+		// 上
+		if (IsRoadAt(mapData, x, y - 1))
+		{
+			cell.RoadConnections |=
+				static_cast<uint8_t>(
+					RoadConnection::Up);
+		}
+
+		// 右
+		if (IsRoadAt(mapData, x + 1, y))
+		{
+			cell.RoadConnections |=
+				static_cast<uint8_t>(
+					RoadConnection::Right);
+		}
+
+		// 下
+		if (IsRoadAt(mapData, x, y + 1))
+		{
+			cell.RoadConnections |=
+				static_cast<uint8_t>(
+					RoadConnection::Down);
+		}
+
+		// 左
+		if (IsRoadAt(mapData, x - 1, y))
+		{
+			cell.RoadConnections |=
+				static_cast<uint8_t>(
+					RoadConnection::Left);
+		}
+	}
 }

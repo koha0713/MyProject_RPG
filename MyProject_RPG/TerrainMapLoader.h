@@ -22,4 +22,12 @@ public:
 	static bool Load(
 		const std::string& filePath,
 		TerrainMapData& outData);
+
+	static bool IsRoadAt(
+		const TerrainMapData& mapData,
+		int x,
+		int y);
+
+	static void UpdateRoadConnections(
+		TerrainMapData& mapData);
 };

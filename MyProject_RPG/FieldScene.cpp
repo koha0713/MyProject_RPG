@@ -29,6 +29,7 @@
 #include "ClericClassComponent.h"
 
 #include <ModelLoader.h>
+#include <DirectXMath.h>
 #include "MousePicker.h"
 #include "Window.h"
 
@@ -1615,15 +1616,15 @@ void FieldScene::CreateTerrainTile(
 		Vector3 worldPosition =
 			m_GridMap.GridToWorld(
 				terrainData.Position);
-		worldPosition.y = -1.0f;
+		worldPosition.y = 0.0f;
 		transform->SetPosition(
 			worldPosition);
 
 		transform->SetScale(
 			Vector3(
-				0.01f,
-				0.01f,
-				0.01f));
+				0.5f,
+				0.5f,
+				0.5f));
 	}
 
 	//=================================================
@@ -1665,19 +1666,128 @@ void FieldScene::CreateTerrainTile(
 	case TerrainType::Grass:
 
 		model->SetModel(
-			"Assets/Models/field/block-grass-large.fbx");
+			"Assets/Models/field/Grass.obj");
 		model->SetTexture(
-			0, "Assets/Models/field/colormap.png");
+			0, "Assets/Models/field/Grass_Albedo.png");
 		break;
 
 	case TerrainType::Dirt:
+	{
+		const uint8_t connection =
+			terrainData.RoadConnections;
 
-		model->SetModel(
-			"Assets/Models/field/block-grass-large.fbx");
-		model->SetTexture(
-			0, "Assets/Models/field/colormap.png");
+		const char* modelPath = nullptr;
+		const char* texturePath = nullptr;
+
+		float rotationY = 0.0f;
+
+		switch (connection)
+		{
+			// 終端：上を基準
+		case 0:
+		case 1:
+			modelPath = "Assets/Models/field/Road_End.obj";
+			texturePath = "Assets/Models/field/Road_End_Albedo.png";
+			rotationY = 180.0f;
+			break;
+
+		case 2:
+			modelPath = "Assets/Models/field/Road_End.obj";
+			texturePath = "Assets/Models/field/Road_End_Albedo.png";
+			rotationY = 90.0f;
+			break;
+
+		case 4:
+			modelPath = "Assets/Models/field/Road_End.obj";
+			texturePath = "Assets/Models/field/Road_End_Albedo.png";
+			break;
+
+		case 8:
+			modelPath = "Assets/Models/field/Road_End.obj";
+			texturePath = "Assets/Models/field/Road_End_Albedo.png";
+			rotationY = 270.0f;
+			break;
+
+			// 直線
+		case 5:
+		case 10:
+			modelPath = "Assets/Models/field/Road_Straight.obj";
+			texturePath = "Assets/Models/field/Road_Straight_Albedo.png";
+			rotationY = (connection == 10) ? -90.0f : 0.0f;
+			break;
+
+			// 曲がり角：上＋右を基準
+		case 3:
+		case 6:
+		case 12:
+		case 9:
+			modelPath = "Assets/Models/field/Road_Corner.obj";
+			texturePath = "Assets/Models/field/Road_Corner_Albedo.png";
+
+			switch (connection)
+			{
+			case 3:  rotationY = 90.0f; break;
+			case 12: rotationY = 270.0f; break;
+			case 9:  rotationY = 180.0f; break;
+			default: break;
+			}
+			break;
+
+			// T字路：上＋右＋左を基準
+		case 11:
+		case 7:
+		case 14:
+		case 13:
+			modelPath = "Assets/Models/field/Road_T.obj";
+			texturePath = "Assets/Models/field/Road_T_Albedo.png";
+
+			switch (connection)
+			{
+			case 7:  rotationY = 90.0f; break;
+			case 11: rotationY = 180.0f; break;
+			case 13: rotationY = 270.0f; break;
+			default: break;
+			}
+			break;
+
+			// 十字路
+		case 15:
+			modelPath = "Assets/Models/field/Road_Cross.obj";
+			texturePath = "Assets/Models/field/Road_Cross_Albedo.png";
+			break;
+
+		default:
+			break;
+		}
+
+		if (!modelPath || !texturePath)
+		{
+			break;
+		}
+
+		//=============================================
+		// モデルとテクスチャの設定
+		//=============================================
+
+		model->SetModel(modelPath);
+		model->SetTexture(0, texturePath);
+
+		//=============================================
+		// 回転設定
+		//=============================================
+
+		if (transform)
+		{
+			// 度数からラジアンに変換する。
+			transform->SetRotation(
+				Vector3(
+					0.0f,
+					DirectX::XMConvertToRadians(rotationY),
+					0.0f));
+		}
+
 		break;
-
+	}
 	case TerrainType::Rock:
 
 		model->SetModel(
