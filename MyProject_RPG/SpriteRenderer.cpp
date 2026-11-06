@@ -389,6 +389,7 @@ void SpriteRenderer::Draw(
 		return;
 	}
 
+
 	if (size.x <= 0.0f ||
 		size.y <= 0.0f)
 	{

@@ -18,8 +18,23 @@
 enum class CharacterAnimationState
 {
 	Idle,
+
 	Move,
+
+	/**
+	 * @brief 通常の単発Attack
+	 */
 	Attack,
+
+	/**
+	 * @brief 職業固有Animation
+	 *
+	 * Rangerの
+	 * Draw -> Release
+	 * などに使用する。
+	 */
+	CustomAction,
+
 	Dead
 };
 
@@ -142,6 +157,33 @@ public:
 		m_DeathAnimation =
 			id;
 	}
+
+	//=================================================
+	// Custom Action
+	//=================================================
+
+	/**
+	 * @brief 職業固有Animationを再生する
+	 *
+	 * @details
+	 * Rangerの弓など、
+	 * CharacterAnimationComponent標準の
+	 * Attack 1本では表現できない処理に使用する。
+	 */
+	void PlayCustomAnimation(
+		AnimationID id,
+		bool loop = false,
+		float blendTime = 0.10f);
+
+	/**
+	 * @brief 現在再生しているAnimationが終了したか
+	 */
+	bool IsCurrentAnimationFinished() const;
+
+	/**
+	 * @brief CustomActionなどからIdleへ戻す
+	 */
+	void ReturnToIdle();
 
 	//====================
 	// Debug

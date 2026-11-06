@@ -144,12 +144,14 @@
     <ClInclude Include="CharacterStatusComponent.h" />
     <ClInclude Include="CharaMapData.h" />
     <ClInclude Include="CharaMapLoader.h" />
+    <ClInclude Include="ClericClassComponent.h" />
     <ClInclude Include="CommonType.h" />
     <ClInclude Include="Component.h" />
     <ClInclude Include="DirectionalLight.h" />
     <ClInclude Include="EnemyAIComponent.h" />
     <ClInclude Include="FieldExitComponent.h" />
     <ClInclude Include="FieldScene.h" />
+    <ClInclude Include="FieldSceneUI.h" />
     <ClInclude Include="FontRenderer.h" />
     <ClInclude Include="FpsControl.h" />
     <ClInclude Include="Game.h" />
@@ -163,6 +165,8 @@
     <ClInclude Include="GridRangeCalculator.h" />
     <ClInclude Include="GridRangeRenderer.h" />
     <ClInclude Include="GridRenderer.h" />
+    <ClInclude Include="GuildQuestBoardUI.h" />
+    <ClInclude Include="GuildQuestUI.h" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />
@@ -176,16 +180,21 @@
     <ClInclude Include="ModelComponent.h" />
     <ClInclude Include="ModelData.h" />
     <ClInclude Include="ModelLoader.h" />
+    <ClInclude Include="MonkClassComponent.h" />
     <ClInclude Include="MousePicker.h" />
     <ClInclude Include="NonCopyable.h" />
     <ClInclude Include="IScene.h" />
     <ClInclude Include="OutlineSetting.h" />
+    <ClInclude Include="PlayerClassComponent.h" />
+    <ClInclude Include="PlayerClassType.h" />
     <ClInclude Include="PlayerControllerComponent.h" />
     <ClInclude Include="PrimitiveRenderer.h" />
     <ClInclude Include="Quest.h" />
     <ClInclude Include="QuestManager.h" />
+    <ClInclude Include="RangerClassComponent.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="ResourceManager.h" />
+    <ClInclude Include="RogueClassComponent.h" />
     <ClInclude Include="SceneClassFactory.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="SoundCategory.h" />
@@ -201,15 +210,19 @@
     <ClInclude Include="TownScene.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="ToonShading.h" />
+    <ClInclude Include="TownSceneState.h" />
+    <ClInclude Include="TownSceneUI.h" />
     <ClInclude Include="TransformComponent.h" />
     <ClInclude Include="TurnManager.h" />
     <ClInclude Include="UIButtonComponent.h" />
     <ClInclude Include="UIFontComponent.h" />
     <ClInclude Include="UIImageComponent.h" />
     <ClInclude Include="UIRectComponent.h" />
+    <ClInclude Include="WarriorClassComponent.h" />
     <ClInclude Include="WavLoader.h" />
     <ClInclude Include="Window.h" />
     <ClInclude Include="DebugUI.h" />
+    <ClInclude Include="WizardClassComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AnimatorComponent.cpp" />
@@ -221,6 +234,7 @@
     <ClCompile Include="EnemyAIComponent.cpp" />
     <ClCompile Include="FieldExitComponent.cpp" />
     <ClCompile Include="FieldScene.cpp" />
+    <ClCompile Include="FieldSceneUI.cpp" />
     <ClCompile Include="FontRenderer.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="GameObjectManager.cpp" />
@@ -230,6 +244,8 @@
     <ClCompile Include="GridRangeCalculator.cpp" />
     <ClCompile Include="GridRangeRenderer.cpp" />
     <ClCompile Include="GridRenderer.cpp" />
+    <ClCompile Include="GuildQuestBoardUI.cpp" />
+    <ClCompile Include="GuildQuestUI.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
@@ -244,6 +260,7 @@
     <ClCompile Include="ModelData.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
     <ClCompile Include="MousePicker.cpp" />
+    <ClCompile Include="PlayerClassComponent.cpp" />
     <ClCompile Include="PlayerControllerComponent.cpp" />
     <ClCompile Include="PrimitiveRenderer.cpp" />
     <ClCompile Include="Quest.cpp" />
@@ -258,6 +275,7 @@
     <ClCompile Include="TitleScene.cpp" />
     <ClCompile Include="TownScene.cpp" />
     <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="TownSceneUI.cpp" />
     <ClCompile Include="TransformComponent.cpp" />
     <ClCompile Include="TurnManager.cpp" />
     <ClCompile Include="UIButtonComponent.cpp" />

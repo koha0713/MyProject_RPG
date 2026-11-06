@@ -130,7 +130,7 @@ bool Game::Initialize()
 			QuestType::KillEnemy,
 			1);
 
-		questA.Accept();
+		//questA.Accept();
 
 		QUEST_MANAGER.AddQuest(
 			questA);
@@ -143,7 +143,7 @@ bool Game::Initialize()
 			QuestType::KillEnemy,
 			3);
 
-		questB.Accept();
+		//questB.Accept();
 
 		QUEST_MANAGER.AddQuest(
 			questB);

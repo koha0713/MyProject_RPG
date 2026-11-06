@@ -43,6 +43,10 @@ void CharacterStatusComponent::SetMaxHP(
 		m_MaxHP;
 }
 
+//=====================================================
+// Damage
+//=====================================================
+
 void CharacterStatusComponent::TakeDamage(
 	int damage)
 {
@@ -81,6 +85,91 @@ void CharacterStatusComponent::TakeDamage(
 }
 
 //=====================================================
+// Recover HP
+//=====================================================
+
+void CharacterStatusComponent::RecoverHP(
+	int amount)
+{
+	if (amount <= 0 ||
+		IsDead())
+	{
+		return;
+	}
+
+	m_HP +=
+		amount;
+
+	if (m_HP > m_MaxHP)
+	{
+		m_HP =
+			m_MaxHP;
+	}
+}
+
+//=====================================================
+// MP
+//=====================================================
+
+void CharacterStatusComponent::SetMaxMP(
+	int mp)
+{
+	// MPÇégópÇµÇ»Ç¢CharacterÇÕ0Çãñâ¬Ç∑ÇÈÅB
+	m_MaxMP =
+		(std::max)(
+			mp,
+			0);
+
+	m_MP =
+		m_MaxMP;
+}
+
+//=====================================================
+// Consume MP
+//=====================================================
+
+bool CharacterStatusComponent::ConsumeMP(
+	int amount)
+{
+	if (amount <= 0)
+	{
+		return false;
+	}
+
+	if (m_MP < amount)
+	{
+		return false;
+	}
+
+	m_MP -=
+		amount;
+
+	return true;
+}
+
+//=====================================================
+// Recover MP
+//=====================================================
+
+void CharacterStatusComponent::RecoverMP(
+	int amount)
+{
+	if (amount <= 0)
+	{
+		return;
+	}
+
+	m_MP +=
+		amount;
+
+	if (m_MP > m_MaxMP)
+	{
+		m_MP =
+			m_MaxMP;
+	}
+}
+
+//=====================================================
 // Attack
 //=====================================================
 
@@ -96,6 +185,7 @@ void CharacterStatusComponent::SetAttackPower(
 //=====================================================
 // Agility
 //=====================================================
+
 void CharacterStatusComponent::SetAgility(
 	int agility)
 {
@@ -115,6 +205,11 @@ void CharacterStatusComponent::DrawDebugUI()
 		"HP: %d / %d",
 		m_HP,
 		m_MaxHP);
+
+	ImGui::Text(
+		"MP: %d / %d",
+		m_MP,
+		m_MaxMP);
 
 	ImGui::Text(
 		"Attack Power: %d",

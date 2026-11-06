@@ -66,6 +66,22 @@ void CharacterAnimationComponent::Update(
 	}
 
 	//=================================================
+	// Custom Action
+	//=================================================
+	//
+	// 職業固有Component側がAnimation遷移を管理する。
+	//
+	// そのためCharacterAnimationComponent側では
+	// 自動的にIdleへ戻さない。
+	//=================================================
+
+	if (m_State ==
+		CharacterAnimationState::CustomAction)
+	{
+		return;
+	}
+
+	//=================================================
 	// Dead
 	//=================================================
 	//
@@ -110,6 +126,84 @@ void CharacterAnimationComponent::ChangeState(
 		state;
 
 	PlayStateAnimation();
+}
+
+//=====================================================
+// Custom Animation
+//=====================================================
+
+void CharacterAnimationComponent::
+PlayCustomAnimation(
+	AnimationID id,
+	bool loop,
+	float blendTime)
+{
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		return;
+	}
+
+	auto* animator =
+		owner->GetComponent<
+		AnimatorComponent>();
+
+	if (!animator)
+	{
+		return;
+	}
+
+	m_State =
+		CharacterAnimationState::
+		CustomAction;
+
+	animator->PlayAnimation(
+		id,
+		loop,
+		blendTime);
+}
+
+//=====================================================
+// Animation Finished
+//=====================================================
+
+bool CharacterAnimationComponent::
+IsCurrentAnimationFinished() const
+{
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		return true;
+	}
+
+	auto* animator =
+		owner->GetComponent<
+		AnimatorComponent>();
+
+	if (!animator)
+	{
+		return true;
+	}
+
+	return animator->
+		IsAnimationFinished();
+}
+
+//=====================================================
+// Return Idle
+//=====================================================
+
+void CharacterAnimationComponent::
+ReturnToIdle()
+{
+	// CustomActionからIdleへ変更するので、
+	// ChangeState()によってIdle Animationが再生される。
+	ChangeState(
+		CharacterAnimationState::Idle);
 }
 
 //=====================================================
@@ -229,6 +323,9 @@ CharacterAnimationComponent::GetStateName(
 
 	case CharacterAnimationState::Attack:
 		return "Attack";
+
+	case CharacterAnimationState::CustomAction:
+		return "CustomAction";
 
 	case CharacterAnimationState::Dead:
 		return "Dead";

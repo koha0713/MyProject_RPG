@@ -82,6 +82,15 @@
     <Filter Include="ソース ファイル\Font実装">
       <UniqueIdentifier>{57858834-1855-45ed-86d8-f4c76615c35f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\Scene\Town">
+      <UniqueIdentifier>{8fe7dfe4-8863-4f06-a5e1-da5a93edc5ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Field">
+      <UniqueIdentifier>{7d9069d7-3d3b-4d07-a3e4-0562447ed416}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Component\Chara\Class">
+      <UniqueIdentifier>{fc745cd8-075d-4d9a-af16-f16da170ceaa}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -306,6 +315,45 @@
     <ClInclude Include="UIFontComponent.h">
       <Filter>ソース ファイル\Font実装</Filter>
     </ClInclude>
+    <ClInclude Include="TownSceneState.h">
+      <Filter>ソース ファイル\Scene\Town</Filter>
+    </ClInclude>
+    <ClInclude Include="TownSceneUI.h">
+      <Filter>ソース ファイル\Scene\Town</Filter>
+    </ClInclude>
+    <ClInclude Include="GuildQuestBoardUI.h">
+      <Filter>ソース ファイル\Scene\Town</Filter>
+    </ClInclude>
+    <ClInclude Include="GuildQuestUI.h">
+      <Filter>ソース ファイル\Scene\Town</Filter>
+    </ClInclude>
+    <ClInclude Include="FieldSceneUI.h">
+      <Filter>ソース ファイル\Scene\Field</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerClassType.h">
+      <Filter>ソース ファイル\Component\Chara</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerClassComponent.h">
+      <Filter>ソース ファイル\Component\Chara</Filter>
+    </ClInclude>
+    <ClInclude Include="MonkClassComponent.h">
+      <Filter>ソース ファイル\Component\Chara\Class</Filter>
+    </ClInclude>
+    <ClInclude Include="WarriorClassComponent.h">
+      <Filter>ソース ファイル\Component\Chara\Class</Filter>
+    </ClInclude>
+    <ClInclude Include="RangerClassComponent.h">
+      <Filter>ソース ファイル\Component\Chara\Class</Filter>
+    </ClInclude>
+    <ClInclude Include="WizardClassComponent.h">
+      <Filter>ソース ファイル\Component\Chara\Class</Filter>
+    </ClInclude>
+    <ClInclude Include="RogueClassComponent.h">
+      <Filter>ソース ファイル\Component\Chara\Class</Filter>
+    </ClInclude>
+    <ClInclude Include="ClericClassComponent.h">
+      <Filter>ソース ファイル\Component\Chara\Class</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -469,6 +517,21 @@
     </ClCompile>
     <ClCompile Include="UIFontComponent.cpp">
       <Filter>ソース ファイル\Font実装</Filter>
+    </ClCompile>
+    <ClCompile Include="TownSceneUI.cpp">
+      <Filter>ソース ファイル\Scene\Town</Filter>
+    </ClCompile>
+    <ClCompile Include="GuildQuestBoardUI.cpp">
+      <Filter>ソース ファイル\Scene\Town</Filter>
+    </ClCompile>
+    <ClCompile Include="GuildQuestUI.cpp">
+      <Filter>ソース ファイル\Scene\Town</Filter>
+    </ClCompile>
+    <ClCompile Include="FieldSceneUI.cpp">
+      <Filter>ソース ファイル\Scene\Field</Filter>
+    </ClCompile>
+    <ClCompile Include="PlayerClassComponent.cpp">
+      <Filter>ソース ファイル\Component\Chara</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

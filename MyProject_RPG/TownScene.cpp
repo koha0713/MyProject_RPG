@@ -1,43 +1,24 @@
 #include "TownScene.h"
 
-// Component
-#include "UIRectComponent.h"
-#include "UIImageComponent.h"
-#include "UIButtonComponent.h"
+#include "TownSceneUI.h"
+#include "GuildQuestUI.h"
 
-#include "GameObject.h"
 #include "QuestManager.h"
 #include "SceneManager.h"
+
 #include "SpriteRenderer.h"
 #include "FontRenderer.h"
-#include "Window.h"
 
 #include "DebugUI.h"
 
-namespace
-{
-	const char* GetQuestStateName(
-		QuestState state)
-	{
-		switch (state)
-		{
-		case QuestState::Inactive:
-			return "Not Accepted";
+#include <memory>
 
-		case QuestState::Active:
-			return "Active";
+//=====================================================
+// Destructor
+//=====================================================
 
-		case QuestState::ReadyToReport:
-			return "Ready To Report";
-
-		case QuestState::Completed:
-			return "Completed";
-
-		default:
-			return "Unknown";
-		}
-	}
-}
+TownScene::~TownScene() =
+default;
 
 //=====================================================
 // Initialize
@@ -46,31 +27,52 @@ namespace
 void TownScene::Initialize()
 {
 	//=================================================
-	// Background
+	// Town UI
 	//=================================================
 
-	CreateBackground();
+	m_UI =
+		std::make_unique<
+		TownSceneUI>();
+
+	m_UI->Initialize(
+		m_GameObjectManager);
 
 	//=================================================
-	// Buttons
+	// Guild Quest UI
 	//=================================================
 
-	CreateButtons();
+	m_GuildQuestUI =
+		std::make_unique<
+		GuildQuestUI>();
+
+	m_GuildQuestUI->Initialize(
+		m_GameObjectManager);
 
 	//=================================================
-	// GameObject Initialize
+	// GameObject
 	//=================================================
 
 	m_GameObjectManager.Initialize();
 
 	//=================================================
-	// 初期位置
+	// Initial State
 	//=================================================
 
-	m_CurrentLocation =
-		TownLocation::Overview;
+	m_CurrentState =
+		TownSceneState::Overview;
 
-	RefreshLocationUI();
+	m_SelectedQuest =
+		nullptr;
+
+	m_IsQuestAcceptPending =
+		false;
+
+	m_UI->ApplyState(
+		m_CurrentState);
+
+	m_GuildQuestUI->ApplyState(
+		m_CurrentState,
+		nullptr);
 }
 
 //=====================================================
@@ -79,17 +81,26 @@ void TownScene::Initialize()
 
 void TownScene::Finalize()
 {
-	m_Background =
+	m_SelectedQuest =
 		nullptr;
 
-	m_PrimaryButton =
-		nullptr;
+	m_IsQuestAcceptPending =
+		false;
 
-	m_SecondaryButton =
-		nullptr;
+	if (m_GuildQuestUI)
+	{
+		m_GuildQuestUI->
+			Finalize();
 
-	m_BackButton =
-		nullptr;
+		m_GuildQuestUI.reset();
+	}
+
+	if (m_UI)
+	{
+		m_UI->Finalize();
+
+		m_UI.reset();
+	}
 
 	m_GameObjectManager.Clear();
 }
@@ -101,41 +112,90 @@ void TownScene::Finalize()
 void TownScene::Update(
 	uint64_t delta)
 {
-	//=================================================
-	// Component Update
-	//=================================================
-
 	m_GameObjectManager.Update(
 		delta);
 
 	//=================================================
-	// Button Visual
+	// UI Visual
 	//=================================================
 
-	UpdateButtonVisual(
-		m_PrimaryButton);
-
-	UpdateButtonVisual(
-		m_SecondaryButton);
-
-	UpdateButtonVisual(
-		m_BackButton);
-
-	//=================================================
-	// Location別処理
-	//=================================================
-
-	switch (m_CurrentLocation)
+	if (m_UI)
 	{
-	case TownLocation::Overview:
+		m_UI->UpdateVisuals(
+			m_CurrentState);
+	}
+
+	if (m_GuildQuestUI)
+	{
+		m_GuildQuestUI->Update(
+			delta,
+			m_CurrentState);
+	}
+
+	//=================================================
+	// State
+	//=================================================
+
+	switch (m_CurrentState)
+	{
+	case TownSceneState::Overview:
 
 		UpdateTownOverview();
 
 		break;
 
-	case TownLocation::Guild:
+	case TownSceneState::GuildInterior:
 
-		UpdateGuild();
+		UpdateGuildInterior();
+
+		break;
+
+	case TownSceneState::Reception:
+
+		UpdateReception();
+
+		break;
+
+	case TownSceneState::Shop:
+
+		UpdateShop();
+
+		break;
+
+	case TownSceneState::QuestBoard:
+
+		UpdateQuestBoard();
+
+		break;
+
+	case TownSceneState::QuestDetail:
+
+		UpdateQuestDetail(
+			delta);
+
+		break;
+
+	case TownSceneState::Inn:
+
+		UpdateInn();
+
+		break;
+
+	case TownSceneState::Tavern:
+
+		UpdateTavern();
+
+		break;
+
+	case TownSceneState::Market:
+
+		UpdateMarket();
+
+		break;
+
+	case TownSceneState::Castle:
+
+		UpdateCastle();
 
 		break;
 
@@ -153,509 +213,88 @@ void TownScene::Draw(
 {
 	(void)delta;
 
-	// Townは完全2D表示なので
-	// Camera設定は不要。
+	//=================================================
+	// Sprite
+	//=================================================
+
 	SpriteRenderer::Begin();
 
 	m_GameObjectManager.Draw();
 
 	SpriteRenderer::End();
 
+	//=================================================
+	// Font
+	//=================================================
+
 	FontRenderer::Begin();
+
 	m_GameObjectManager.DrawFont();
+
 	FontRenderer::End();
 
 	//=================================================
-	// (仮)Guild Quest List
+	// Debug
 	//=================================================
-	if (m_CurrentLocation ==
-		TownLocation::Guild)
-	{
-		DebugUI::RegisterDebugFunction(
-			[this]()
-			{
-				DrawGuildQuestListUI();
-			});
-	}
 
-
-	// デバッグUIの描画
-	DebugUI::RegisterDebugFunction([this]()
+	DebugUI::RegisterDebugFunction(
+		[this]()
 		{
-			// GameObjectのDebugUI描画
-			m_GameObjectManager.DrawDebugUI();
+			m_GameObjectManager.
+				DrawDebugUI();
 		});
 }
 
 //=====================================================
-// Create Background
+// Change State
 //=====================================================
-
-void TownScene::CreateBackground()
+void TownScene::ChangeState(
+	TownSceneState state)
 {
-	m_Background =
-		m_GameObjectManager.Create<
-		GameObject>();
-
-	if (!m_Background)
+	if (m_CurrentState ==
+		state)
 	{
 		return;
 	}
 
-	m_Background->SetName(
-		"TownBackground");
+	m_CurrentState =
+		state;
 
 	//=================================================
-	// Rect
+	// Quest Selection
 	//=================================================
 
-	auto* rect =
-		m_Background->AddComponent<
-		UIRectComponent>();
-
-	if (rect)
+	// QuestDetailへ移動するときだけ
+	// QuestBoardで選択したQuestを保持する。
+	if (state !=
+		TownSceneState::QuestDetail)
 	{
-		rect->SetPosition(
-			0.0f,
-			0.0f);
-
-		rect->SetSize(
-			static_cast<float>(
-				Window::GetWidth()),
-			static_cast<float>(
-				Window::GetHeight()));
+		m_SelectedQuest =
+			nullptr;
 	}
 
+	m_IsQuestAcceptPending =
+		false;
+
 	//=================================================
-	// Image
+	// Town UI
 	//=================================================
 
-	auto* image =
-		m_Background->AddComponent<
-		UIImageComponent>();
-
-	if (image)
+	if (m_UI)
 	{
-		image->SetTexture(
-			"Assets/Textures/Town/TownBackground.png");
-	}
-}
-
-//=====================================================
-// Create Buttons
-//=====================================================
-
-void TownScene::CreateButtons()
-{
-	//=================================================
-	// Primary
-	//=================================================
-
-	m_PrimaryButton =
-		m_GameObjectManager.Create<
-		GameObject>();
-
-	if (m_PrimaryButton)
-	{
-		m_PrimaryButton->SetName(
-			"TownPrimaryButton");
-
-		m_PrimaryButton->
-			AddComponent<
-			UIRectComponent>();
-
-		m_PrimaryButton->
-			AddComponent<
-			UIImageComponent>();
-
-		m_PrimaryButton->
-			AddComponent<
-			UIButtonComponent>();
+		m_UI->ApplyState(
+			state);
 	}
 
 	//=================================================
-	// Secondary
+	// Guild Quest UI
 	//=================================================
 
-	m_SecondaryButton =
-		m_GameObjectManager.Create<
-		GameObject>();
-
-	if (m_SecondaryButton)
+	if (m_GuildQuestUI)
 	{
-		m_SecondaryButton->SetName(
-			"TownSecondaryButton");
-
-		m_SecondaryButton->
-			AddComponent<
-			UIRectComponent>();
-
-		m_SecondaryButton->
-			AddComponent<
-			UIImageComponent>();
-
-		m_SecondaryButton->
-			AddComponent<
-			UIButtonComponent>();
-	}
-
-	//=================================================
-	// Back
-	//=================================================
-
-	m_BackButton =
-		m_GameObjectManager.Create<
-		GameObject>();
-
-	if (m_BackButton)
-	{
-		m_BackButton->SetName(
-			"TownBackButton");
-
-		m_BackButton->
-			AddComponent<
-			UIRectComponent>();
-
-		m_BackButton->
-			AddComponent<
-			UIImageComponent>();
-
-		m_BackButton->
-			AddComponent<
-			UIButtonComponent>();
-	}
-}
-
-//=====================================================
-// Change Location
-//=====================================================
-
-void TownScene::ChangeLocation(
-	TownLocation location)
-{
-	if (m_CurrentLocation ==
-		location)
-	{
-		return;
-	}
-
-	m_CurrentLocation =
-		location;
-
-	RefreshLocationUI();
-}
-
-//=====================================================
-// Refresh UI
-//=====================================================
-
-void TownScene::RefreshLocationUI()
-{
-	const float screenWidth =
-		static_cast<float>(
-			Window::GetWidth());
-
-	const float screenHeight =
-		static_cast<float>(
-			Window::GetHeight());
-
-	//=================================================
-	// Town Overview
-	//=================================================
-
-	if (m_CurrentLocation ==
-		TownLocation::Overview)
-	{
-		//=============================================
-		// Background
-		//=============================================
-
-		if (m_Background)
-		{
-			auto* image =
-				m_Background->GetComponent<
-				UIImageComponent>();
-
-			if (image)
-			{
-				image->SetTexture(
-					"Assets/Textures/Town/TownBackground.png");
-			}
-		}
-
-		const float buttonWidth =
-			400.0f;
-
-		const float buttonHeight =
-			100.0f;
-
-		const float x =
-			(
-				screenWidth -
-				buttonWidth
-				) *
-			0.5f;
-
-		//=============================================
-		// Guild
-		//=============================================
-
-		ConfigureButton(
-			m_PrimaryButton,
-			"Assets/Textures/Town/GuildButton.png",
-			x,
-			screenHeight * 0.62f,
-			buttonWidth,
-			buttonHeight);
-
-		//=============================================
-		// Town Exit
-		//=============================================
-
-		ConfigureButton(
-			m_SecondaryButton,
-			"Assets/Textures/Town/TownExitButton.png",
-			x,
-			screenHeight * 0.78f,
-			buttonWidth,
-			buttonHeight);
-
-		// OverviewではBack不要
-		HideButton(
-			m_BackButton);
-
-		return;
-	}
-
-	//=================================================
-	// Guild
-	//=================================================
-
-	if (m_CurrentLocation ==
-		TownLocation::Guild)
-	{
-		//=============================================
-		// Guild Background
-		//=============================================
-
-		if (m_Background)
-		{
-			auto* image =
-				m_Background->GetComponent<
-				UIImageComponent>();
-
-			if (image)
-			{
-				image->SetTexture(
-					"Assets/Textures/Town/GuildBackground.png");
-			}
-		}
-
-		const float buttonWidth =
-			400.0f;
-
-		const float buttonHeight =
-			100.0f;
-
-		const float x =
-			(
-				screenWidth -
-				buttonWidth
-				) *
-			0.5f;
-
-		//=============================================
-		// Quest Accept
-		//=============================================
-
-		ConfigureButton(
-			m_PrimaryButton,
-			"Assets/Textures/Town/QuestAcceptButton.png",
-			x,
-			screenHeight * 0.58f,
-			buttonWidth,
-			buttonHeight);
-
-		//=============================================
-		// Quest Report
-		//=============================================
-
-		ConfigureButton(
-			m_SecondaryButton,
-			"Assets/Textures/Town/QuestReportButton.png",
-			x,
-			screenHeight * 0.72f,
-			buttonWidth,
-			buttonHeight);
-
-		//=============================================
-		// Back
-		//=============================================
-
-		ConfigureButton(
-			m_BackButton,
-			"Assets/Textures/Town/BackButton.png",
-			40.0f,
-			screenHeight - 110.0f,
-			240.0f,
-			70.0f);
-	}
-}
-
-//=====================================================
-// Configure Button
-//=====================================================
-
-void TownScene::ConfigureButton(
-	GameObject* buttonObject,
-	const char* texturePath,
-	float x,
-	float y,
-	float width,
-	float height)
-{
-	if (!buttonObject)
-	{
-		return;
-	}
-
-	auto* rect =
-		buttonObject->GetComponent<
-		UIRectComponent>();
-
-	auto* image =
-		buttonObject->GetComponent<
-		UIImageComponent>();
-
-	if (rect)
-	{
-		rect->SetPosition(
-			x,
-			y);
-
-		rect->SetSize(
-			width,
-			height);
-	}
-
-	if (image)
-	{
-		image->SetTexture(
-			texturePath);
-
-		// 状態切替直後はNormal色へ戻す
-		image->SetColor(
-			Color(
-				1.0f,
-				1.0f,
-				1.0f,
-				1.0f));
-	}
-}
-
-//=====================================================
-// Hide Button
-//=====================================================
-
-void TownScene::HideButton(
-	GameObject* buttonObject)
-{
-	if (!buttonObject)
-	{
-		return;
-	}
-
-	auto* rect =
-		buttonObject->GetComponent<
-		UIRectComponent>();
-
-	if (!rect)
-	{
-		return;
-	}
-
-	// 0x0にすることで
-	// DrawとMouse Hitの両方を実質無効化する。
-	rect->SetSize(
-		0.0f,
-		0.0f);
-}
-
-//=====================================================
-// Button Visual
-//=====================================================
-
-void TownScene::UpdateButtonVisual(
-	GameObject* buttonObject)
-{
-	if (!buttonObject)
-	{
-		return;
-	}
-
-	auto* rect =
-		buttonObject->GetComponent<
-		UIRectComponent>();
-
-	auto* button =
-		buttonObject->GetComponent<
-		UIButtonComponent>();
-
-	auto* image =
-		buttonObject->GetComponent<
-		UIImageComponent>();
-
-	if (!rect ||
-		!button ||
-		!image)
-	{
-		return;
-	}
-
-	// 非表示Buttonは処理不要
-	if (rect->GetSize().x <= 0.0f ||
-		rect->GetSize().y <= 0.0f)
-	{
-		return;
-	}
-
-	switch (button->GetState())
-	{
-	case UIButtonState::Normal:
-
-		image->SetColor(
-			Color(
-				1.0f,
-				1.0f,
-				1.0f,
-				1.0f));
-
-		break;
-
-	case UIButtonState::Hovered:
-
-		image->SetColor(
-			Color(
-				0.9f,
-				0.9f,
-				0.9f,
-				1.0f));
-
-		break;
-
-	case UIButtonState::Pressed:
-
-		image->SetColor(
-			Color(
-				0.7f,
-				0.7f,
-				0.7f,
-				1.0f));
-
-		break;
-
-	default:
-		break;
+		m_GuildQuestUI->ApplyState(
+			state,
+			m_SelectedQuest);
 	}
 }
 
@@ -665,86 +304,158 @@ void TownScene::UpdateButtonVisual(
 
 void TownScene::UpdateTownOverview()
 {
-	//=================================================
-	// Guild
-	//=================================================
-
-	if (m_PrimaryButton)
+	if (!m_UI)
 	{
-		auto* button =
-			m_PrimaryButton->GetComponent<
-			UIButtonComponent>();
-
-		if (button &&
-			button->IsClicked())
-		{
-			ChangeLocation(
-				TownLocation::Guild);
-
-			return;
-		}
+		return;
 	}
 
-	//=================================================
-	// Town Exit
-	//=================================================
-
-	if (m_SecondaryButton)
+	if (m_UI->IsGuildClicked())
 	{
-		auto* button =
-			m_SecondaryButton->GetComponent<
-			UIButtonComponent>();
+		ChangeState(
+			TownSceneState::GuildInterior);
 
-		if (button &&
-			button->IsClicked())
-		{
-			SceneManager::SetCurrentScene(
-				"FieldScene");
+		return;
+	}
 
-			return;
-		}
+	if (m_UI->IsInnClicked())
+	{
+		ChangeState(
+			TownSceneState::Inn);
+
+		return;
+	}
+
+	if (m_UI->IsTavernClicked())
+	{
+		ChangeState(
+			TownSceneState::Tavern);
+
+		return;
+	}
+
+	if (m_UI->IsMarketClicked())
+	{
+		ChangeState(
+			TownSceneState::Market);
+
+		return;
+	}
+
+	if (m_UI->IsGateClicked())
+	{
+		SceneManager::SetCurrentScene(
+			"FieldScene");
+
+		return;
+	}
+
+	if (m_UI->IsCastleClicked())
+	{
+		ChangeState(
+			TownSceneState::Castle);
+
+		return;
 	}
 }
 
 //=====================================================
-// Guild
+// Guild Interior
 //=====================================================
 
-void TownScene::UpdateGuild()
+void TownScene::UpdateGuildInterior()
 {
-	//=================================================
-	// Quest Accept
-	//=================================================
-
-	if (m_PrimaryButton)
+	if (!m_UI)
 	{
-		auto* button =
-			m_PrimaryButton->GetComponent<
-			UIButtonComponent>();
+		return;
+	}
 
-		if (button &&
-			button->IsClicked())
-		{
-			AcceptQuest();
+	if (m_UI->IsReceptionClicked())
+	{
+		ChangeState(
+			TownSceneState::Reception);
 
-			return;
-		}
+		return;
+	}
+
+	if (m_UI->IsShopClicked())
+	{
+		ChangeState(
+			TownSceneState::Shop);
+
+		return;
+	}
+
+	if (m_UI->IsQuestBoardClicked())
+	{
+		ChangeState(
+			TownSceneState::QuestBoard);
+
+		return;
+	}
+
+	if (m_UI->IsGuildBackClicked())
+	{
+		ChangeState(
+			TownSceneState::Overview);
+
+		return;
+	}
+}
+
+//=====================================================
+// Reception
+//=====================================================
+
+void TownScene::UpdateReception()
+{
+	if (!m_UI ||
+		!m_GuildQuestUI)
+	{
+		return;
 	}
 
 	//=================================================
-	// Quest Report
+	// Quest Select
 	//=================================================
 
-	if (m_SecondaryButton)
-	{
-		auto* button =
-			m_SecondaryButton->GetComponent<
-			UIButtonComponent>();
+	Quest* clickedQuest =
+		m_GuildQuestUI->
+		GetClickedReceptionQuest();
 
-		if (button &&
-			button->IsClicked())
+	if (clickedQuest)
+	{
+		m_SelectedQuest =
+			clickedQuest;
+
+		m_GuildQuestUI->
+			SetSelectedQuest(
+				m_SelectedQuest);
+
+		// 選択だけなので
+		// State遷移はしない。
+	}
+
+	//=================================================
+	// Report
+	//=================================================
+
+	if (m_GuildQuestUI->
+		IsReportClicked())
+	{
+		if (ReportSelectedQuest())
 		{
-			ReportQuest();
+			//=========================================
+			// 報告成功
+			//=========================================
+
+			m_GuildQuestUI->
+				SetSelectedQuest(
+					nullptr);
+
+			// CompletedになったQuestを
+			// Reception一覧から除外する。
+			m_GuildQuestUI->
+				RefreshReception();
 
 			return;
 		}
@@ -754,219 +465,316 @@ void TownScene::UpdateGuild()
 	// Back
 	//=================================================
 
-	if (m_BackButton)
+	if (m_UI->
+		IsReceptionBackClicked())
 	{
-		auto* button =
-			m_BackButton->GetComponent<
-			UIButtonComponent>();
+		m_SelectedQuest =
+			nullptr;
 
-		if (button &&
-			button->IsClicked())
+		ChangeState(
+			TownSceneState::GuildInterior);
+
+		return;
+	}
+}
+
+//=====================================================
+// Guild Shop
+//=====================================================
+
+void TownScene::UpdateShop()
+{
+	if (!m_UI)
+	{
+		return;
+	}
+
+	//=================================================
+	// TODO
+	//
+	// Monster素材等の専門買取を
+	// Item / Inventory完成後に実装する。
+	//=================================================
+
+	if (m_UI->
+		IsShopBackClicked())
+	{
+		ChangeState(
+			TownSceneState::GuildInterior);
+
+		return;
+	}
+}
+
+//=====================================================
+// Quest Board
+//=====================================================
+
+void TownScene::UpdateQuestBoard()
+{
+	if (!m_UI ||
+		!m_GuildQuestUI)
+	{
+		return;
+	}
+
+	//=================================================
+	// QuestPaper Click
+	//=================================================
+
+	Quest* clickedQuest =
+		m_GuildQuestUI->
+		GetClickedBoardQuest();
+
+	if (clickedQuest)
+	{
+		m_SelectedQuest =
+			clickedQuest;
+
+		ChangeState(
+			TownSceneState::QuestDetail);
+
+		return;
+	}
+
+	//=================================================
+	// Back
+	//=================================================
+
+	if (m_UI->
+		IsQuestBoardBackClicked())
+	{
+		ChangeState(
+			TownSceneState::GuildInterior);
+
+		return;
+	}
+}
+
+//=====================================================
+// Quest Detail
+//=====================================================
+
+void TownScene::UpdateQuestDetail(
+	uint64_t delta)
+{
+	(void)delta;
+
+	if (!m_UI ||
+		!m_GuildQuestUI ||
+		!m_SelectedQuest)
+	{
+		return;
+	}
+
+	//=================================================
+	// Sign
+	//=================================================
+
+	if (!m_IsQuestAcceptPending &&
+		m_UI->IsQuestSignClicked())
+	{
+		// Inactiveのみ受注可能。
+		if (m_SelectedQuest->GetState() ==
+			QuestState::Inactive)
 		{
-			ChangeLocation(
-				TownLocation::Overview);
+			m_IsQuestAcceptPending =
+				true;
+
+			m_GuildQuestUI->
+				StartAcceptEffect();
 
 			return;
 		}
 	}
+
+	//=================================================
+	// Stamp Effect Finished
+	//=================================================
+
+	if (m_IsQuestAcceptPending &&
+		m_GuildQuestUI->
+		ConsumeAcceptEffectFinished())
+	{
+		AcceptSelectedQuest();
+
+		m_IsQuestAcceptPending =
+			false;
+
+		ChangeState(
+			TownSceneState::QuestBoard);
+
+		return;
+	}
+
+	//=================================================
+	// Back
+	//=================================================
+
+	if (!m_IsQuestAcceptPending &&
+		m_UI->
+		IsQuestDetailBackClicked())
+	{
+		ChangeState(
+			TownSceneState::QuestBoard);
+
+		return;
+	}
 }
 
-void TownScene::AcceptQuest()
+//=====================================================
+// Accept Selected Quest
+//=====================================================
+
+void TownScene::AcceptSelectedQuest()
 {
-	std::vector<Quest*> acceptableQuests =
-		QUEST_MANAGER.GetAcceptableQuests();
-
-	//=================================================
-	// 受注可能Questなし
-	//=================================================
-
-	if (acceptableQuests.empty())
-	{
-		OutputDebugStringA(
-			"[Guild] "
-			"No quests available.\n");
-
-		return;
-	}
-
-	//=================================================
-	// β版
-	//
-	// 現在は最初の未受注Questを受注する。
-	// 将来的にはQuest一覧UIから選択する。
-	//=================================================
-
-	Quest* quest =
-		acceptableQuests.front();
-
-	if (!quest)
+	if (!m_SelectedQuest)
 	{
 		return;
 	}
 
-	quest->Accept();
+	if (m_SelectedQuest->GetState() !=
+		QuestState::Inactive)
+	{
+		return;
+	}
+
+	m_SelectedQuest->Accept();
 
 	OutputDebugStringA(
 		"[Guild] Quest Accepted: ");
 
 	OutputDebugStringA(
-		quest->GetName().c_str());
+		m_SelectedQuest->
+		GetName().c_str());
 
 	OutputDebugStringA(
 		"\n");
 }
 
-void TownScene::ReportQuest()
+//=====================================================
+// Report Selected Quest
+//=====================================================
+
+bool TownScene::ReportSelectedQuest()
 {
-	std::vector<Quest*> reportableQuests =
-		QUEST_MANAGER.GetReportableQuests();
-
-	//=================================================
-	// 報告可能Questなし
-	//=================================================
-
-	if (reportableQuests.empty())
+	if (!m_SelectedQuest)
 	{
-		OutputDebugStringA(
-			"[Guild] "
-			"No quests ready to report.\n");
-
-		return;
+		return false;
 	}
 
 	//=================================================
-	// β版
-	//
-	// 現在は最初の報告可能Questを報告する。
-	// 将来的にはQuest一覧UIから選択する。
+	// State Check
 	//=================================================
 
-	Quest* quest =
-		reportableQuests.front();
-
-	if (!quest)
+	if (m_SelectedQuest->GetState() !=
+		QuestState::ReadyToReport)
 	{
-		return;
+		return false;
 	}
 
-	if (!quest->Report())
+	//=================================================
+	// Report
+	//=================================================
+
+	if (!m_SelectedQuest->Report())
 	{
-		return;
+		return false;
 	}
 
 	OutputDebugStringA(
 		"[Guild] Quest Reported: ");
 
 	OutputDebugStringA(
-		quest->GetName().c_str());
+		m_SelectedQuest->
+		GetName().c_str());
 
 	OutputDebugStringA(
 		"\n");
+
+	// 完了Questは選択解除。
+	m_SelectedQuest =
+		nullptr;
+
+	return true;
 }
 
-void TownScene::DrawGuildQuestListUI()
+//=====================================================
+// Inn
+//=====================================================
+
+void TownScene::UpdateInn()
 {
-	// Guild以外では表示しない
-	if (m_CurrentLocation !=
-		TownLocation::Guild)
+	if (!m_UI)
 	{
 		return;
 	}
 
-	ImGui::SetNextWindowSize(
-		ImVec2(
-			500.0f,
-			400.0f),
-		ImGuiCond_FirstUseEver);
-
-	ImGui::Begin(
-		"Quest List");
-
-	const auto& quests =
-		QUEST_MANAGER.GetQuests();
-
-	if (quests.empty())
+	if (m_UI->IsInnBackClicked())
 	{
-		ImGui::Text(
-			"No quests available.");
-
-		ImGui::End();
+		ChangeState(
+			TownSceneState::Overview);
 
 		return;
 	}
+}
 
-	//=================================================
-	// Quest一覧
-	//=================================================
+//=====================================================
+// Tavern
+//=====================================================
 
-	for (size_t i = 0;
-		i < quests.size();
-		++i)
+void TownScene::UpdateTavern()
+{
+	if (!m_UI)
 	{
-		const Quest& quest =
-			quests[i];
-
-		ImGui::PushID(
-			static_cast<int>(i));
-
-		//=============================================
-		// Quest Name
-		//=============================================
-
-		ImGui::Text(
-			"%s",
-			quest.GetName().c_str());
-
-		//=============================================
-		// State
-		//=============================================
-
-		ImGui::Text(
-			"State: %s",
-			GetQuestStateName(
-				quest.GetState()));
-
-		//=============================================
-		// Progress
-		//=============================================
-
-		ImGui::Text(
-			"Progress: %d / %d",
-			quest.GetCurrentCount(),
-			quest.GetRequiredCount());
-
-		//=============================================
-		// ProgressBar
-		//=============================================
-
-		float progress =
-			0.0f;
-
-		if (quest.GetRequiredCount() > 0)
-		{
-			progress =
-				static_cast<float>(
-					quest.GetCurrentCount()) /
-				static_cast<float>(
-					quest.GetRequiredCount());
-
-			if (progress > 1.0f)
-			{
-				progress =
-					1.0f;
-			}
-		}
-
-		ImGui::ProgressBar(
-			progress,
-			ImVec2(
-				-1.0f,
-				20.0f));
-
-		ImGui::Separator();
-
-		ImGui::PopID();
+		return;
 	}
 
-	ImGui::End();
+	if (m_UI->IsTavernBackClicked())
+	{
+		ChangeState(
+			TownSceneState::Overview);
+
+		return;
+	}
+}
+
+//=====================================================
+// Market
+//=====================================================
+
+void TownScene::UpdateMarket()
+{
+	if (!m_UI)
+	{
+		return;
+	}
+
+	if (m_UI->IsMarketBackClicked())
+	{
+		ChangeState(
+			TownSceneState::Overview);
+
+		return;
+	}
+}
+
+//=====================================================
+// Castle
+//=====================================================
+
+void TownScene::UpdateCastle()
+{
+	if (!m_UI)
+	{
+		return;
+	}
+
+	if (m_UI->IsCastleBackClicked())
+	{
+		ChangeState(
+			TownSceneState::Overview);
+
+		return;
+	}
 }

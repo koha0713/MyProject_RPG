@@ -1,5 +1,6 @@
 #include "FieldScene.h"
 #include "DebugUI.h"
+#include "FieldSceneUI.h"
 #include "Renderer.h"
 
 // Component
@@ -9,6 +10,7 @@
 #include "AudioSourceComponent.h"
 #include "GridPositionComponent.h"
 #include "PlayerControllerComponent.h"
+#include "PlayerClassComponent.h"
 #include "EnemyAIComponent.h"
 #include "CharacterStatusComponent.h"
 #include "FieldExitComponent.h"
@@ -18,6 +20,13 @@
 #include "UIRectComponent.h"
 #include "UIButtonComponent.h"
 #include "UIFontComponent.h"
+
+#include "WarriorClassComponent.h"
+#include "WizardClassComponent.h"
+#include "RangerClassComponent.h"
+#include "MonkClassComponent.h"
+#include "RogueClassComponent.h"
+#include "ClericClassComponent.h"
 
 #include <ModelLoader.h>
 #include "MousePicker.h"
@@ -42,6 +51,9 @@ FieldScene::FieldScene()
 {
 
 }
+
+FieldScene::~FieldScene() =
+default;
 
 void FieldScene::Initialize()
 {
@@ -192,121 +204,16 @@ void FieldScene::Initialize()
 			}
 		}
 
-		//====================
-		// UI生成
-		//====================
-		{
-			m_NextTurnButton =
-				m_gameObjectManager.Create<GameObject>();
+		//=====================================================
+		// Field UI
+		//=====================================================
 
-			if (!m_NextTurnButton)
-			{
-				return;
-			}
+		m_FieldUI =
+			std::make_unique<
+			FieldSceneUI>();
 
-			m_NextTurnButton->SetName(
-				"NextTurnButton");
-
-			m_NextTurnButton->SetTag(
-				Tag::UI);
-
-			//====================
-			// UI Rect
-			//====================
-			auto* rect =
-				m_NextTurnButton->AddComponent<UIRectComponent>();
-
-			if (rect)
-			{
-				const float buttonWidth =
-					150.0f;
-
-				const float buttonHeight =
-					150.0f;
-
-				// 画面中央より少し下
-				const float x = 1100.0f;
-
-				const float y = 550.0f;
-
-				rect->SetPosition(
-					x,
-					y);
-
-				rect->SetSize(
-					buttonWidth,
-					buttonHeight);
-			}
-
-			//====================
-			// Image
-			//====================
-			auto* image =
-				m_NextTurnButton->AddComponent<UIImageComponent>();
-
-			if (image)
-			{
-				image->SetTexture(
-					"Assets/Textures/Field/Next.png");
-				image->SetColor(Color(1.0f,1.0f,1.0f,0.0f));
-			}
-
-			//====================
-			// Button
-			//====================
-			auto* buttom = 
-				m_NextTurnButton->AddComponent<UIButtonComponent>();
-			if (buttom)
-			{
-				// 初期状態では操作不可。
-				buttom->SetEnabled(
-					false);
-			}
-		}
-
-		GameObject* textObject =
-			m_gameObjectManager.Create<GameObject>();
-
-		textObject->SetName(
-			"TestText");
-
-		textObject->SetTag(
-			Tag::Font);
-
-		auto* rect =
-			textObject->AddComponent<
-			UIRectComponent>();
-
-		if (rect)
-		{
-			rect->SetPosition(
-				50.0f,
-				50.0f);
-
-			rect->SetSize(
-				600.0f,
-				100.0f);
-		}
-
-		auto* font =
-			textObject->AddComponent<
-			UIFontComponent>();
-
-		if (font)
-		{
-			font->SetText(
-				L"次のターンへ");
-
-			font->SetFontSize(
-				40.0f);
-
-			font->SetColor(
-				Color(
-					1.0f,
-					1.0f,
-					1.0f,
-					1.0f));
-		}
+		m_FieldUI->Initialize(
+			m_gameObjectManager);
 
 		//====================
 		// Directional Light
@@ -443,10 +350,30 @@ void FieldScene::Initialize()
 
 void FieldScene::Finalize()
 {
+	m_SelectedPlayer =
+		nullptr;
+
+	m_FocusedPlayer =
+		nullptr;
+
+	m_MainCamera =
+		nullptr;
+
+	//=================================================
+	// UI
+	//=================================================
+
+	if (m_FieldUI)
+	{
+		m_FieldUI->Finalize();
+
+		m_FieldUI.reset();
+	}
+
 	m_TerrainObjects.clear();
 
 	m_TerrainMapData.Clear();
-	// GameObjectの終了処理
+
 	m_gameObjectManager.Clear();
 }
 
@@ -454,16 +381,22 @@ void FieldScene::Update(
 	uint64_t delta)
 {
 	//=====================================
-	// UI表示状態更新
-	//=====================================
-	UpdateNextTurnButton();
-
-	//=====================================
 	// GameObject Update
 	//=====================================
 
 	m_gameObjectManager.Update(
 		delta);
+
+	//=====================================
+	// UI表示状態更新
+	//=====================================
+	UpdateNextTurnButton();
+
+	if (m_FieldUI)
+	{
+		m_FieldUI->Update(
+			m_FocusedPlayer);
+	}
 
 	//=====================================
 	// NextTurn Button
@@ -672,16 +605,27 @@ void FieldScene::Draw(uint64_t delta)
 					0.03f);
 			}
 
-			//=====================================
+			//=================================================
 			// Attack Range
-			//=====================================
+			//=================================================
+
+			auto* playerClass =
+				m_SelectedPlayer->
+				GetComponent<
+				PlayerClassComponent>();
+
+			const int attackDistance =
+				playerClass
+				? playerClass->
+				GetNormalAttackRange()
+				: 1;
 
 			const auto attackRange =
 				GridRangeCalculator::
 				CalculateAttackRange(
 					m_GridMap,
 					playerGrid,
-					1);
+					attackDistance);
 
 			GridRangeRenderer::DrawCells(
 				m_GridMap,
@@ -832,7 +776,12 @@ void FieldScene::UpdatePlayerInput()
 			return;
 		}
 
+		// 操作対象
 		m_SelectedPlayer =
+			occupant;
+
+		// HUD表示対象
+		m_FocusedPlayer =
 			occupant;
 
 		OutputDebugStringA(
@@ -1122,30 +1071,30 @@ GameObject* FieldScene::CreatePlayer(
 	// 現在対応しているPlayerType確認
 	//=================================================
 
-	if (data.Type != "Warrior")
-	{
-		OutputDebugStringA(
-			"[FieldScene] "
-			"Unknown Player Type.\n");
+	//if (data.Type == "Enemy")
+	//{
+	//	OutputDebugStringA(
+	//		"[FieldScene] "
+	//		"Unknown Player Type.\n");
 
-		return nullptr;
-	}
+	//	return nullptr;
+	//}
 
-	auto* warrior =
+	auto* player =
 		m_gameObjectManager.Create<
 		GameObject>();
 
-	if (!warrior)
+	if (!player)
 	{
 		return nullptr;
 	}
 
 	// IDをGameObject名として使用する。
 	// MapData上で各Characterを一意に識別できる。
-	warrior->SetName(
+	player->SetName(
 		data.ID);
 
-	warrior->SetTag(
+	player->SetTag(
 		Tag::Player);
 
 	//=================================================
@@ -1153,7 +1102,7 @@ GameObject* FieldScene::CreatePlayer(
 	//=================================================
 
 	auto* transform =
-		warrior->AddComponent<
+		player->AddComponent<
 		TransformComponent>();
 
 	if (transform)
@@ -1172,13 +1121,29 @@ GameObject* FieldScene::CreatePlayer(
 	//=================================================
 
 	auto* model =
-		warrior->AddComponent<
+		player->AddComponent<
 		ModelComponent>();
 
-	if (model)
+	if (!model)
 	{
-		model->SetModel(
-			"Assets/Models/Character/Player/Warrior.fbx");
+		player->Destroy();
+
+		return nullptr;
+	}
+
+	//=================================================
+	// Player Type別 Model設定
+	//=================================================
+
+	if (data.Type == "Warrior")
+	{
+		if (!model->SetModel(
+			"Assets/Models/Character/Player/Warrior.fbx"))
+		{
+			player->Destroy();
+
+			return nullptr;
+		}
 
 		model->SetTexture(
 			0,
@@ -1187,19 +1152,105 @@ GameObject* FieldScene::CreatePlayer(
 		model->SetTexture(
 			1,
 			"Assets/Models/Character/Player/Warrior_Sword_Texture.png");
-
-		model->PlayAnimation(
-			AnimationID::Idle,
-			true,
-			0.0f);
 	}
+	else if (data.Type == "Ranger")
+	{
+		if (!model->SetModel(
+			"Assets/Models/Character/Player/Ranger.fbx"))
+		{
+			player->Destroy();
+
+			return nullptr;
+		}
+
+		model->SetTexture(
+			0,
+			"Assets/Models/Character/Player/Ranger_Texture.png");
+
+		model->SetTexture(
+			1,
+			"Assets/Models/Character/Player/Ranger_Bow_Texture.png");
+	}
+	else if (data.Type == "Wizard")
+	{
+		if (!model->SetModel(
+			"Assets/Models/Character/Player/Wizard.fbx"))
+		{
+			player->Destroy();
+
+			return nullptr;
+		}
+
+		model->SetTexture(
+			0,
+			"Assets/Models/Character/Player/Wizard_Texture.png");
+	}
+	else if (data.Type == "Monk")
+	{
+		if (!model->SetModel(
+			"Assets/Models/Character/Player/Monk.fbx"))
+		{
+			player->Destroy();
+
+			return nullptr;
+		}
+
+		model->SetTexture(
+			0,
+			"Assets/Models/Character/Player/Monk_Texture.png");
+	}
+	else if (data.Type == "Rogue")
+	{
+		if (!model->SetModel(
+			"Assets/Models/Character/Player/Rogue.fbx"))
+		{
+			player->Destroy();
+
+			return nullptr;
+		}
+
+		model->SetTexture(
+			0,
+			"Assets/Models/Character/Player/Rogue_Texture.png");
+	}
+	else if (data.Type == "Cleric")
+	{
+		if (!model->SetModel(
+			"Assets/Models/Character/Player/Cleric.fbx"))
+		{
+			player->Destroy();
+
+			return nullptr;
+		}
+
+		model->SetTexture(
+			0,
+			"Assets/Models/Character/Player/Cleric_Texture.png");
+	}
+	else
+	{
+		OutputDebugStringA(
+			"[FieldScene] "
+			"Unknown Player Type.\n");
+
+		player->Destroy();
+
+		return nullptr;
+	}
+
+	// 初期Animation
+	model->PlayAnimation(
+		AnimationID::Idle,
+		true,
+		0.0f);
+
 
 	//=================================================
 	// Audio
 	//=================================================
 
 	auto* audioSource =
-		warrior->AddComponent<
+		player->AddComponent<
 		AudioSourceComponent>();
 
 	if (audioSource)
@@ -1230,12 +1281,12 @@ GameObject* FieldScene::CreatePlayer(
 	//=================================================
 
 	auto* gridPosition =
-		warrior->AddComponent<
+		player->AddComponent<
 		GridPositionComponent>();
 
 	if (!gridPosition)
 	{
-		warrior->Destroy();
+		player->Destroy();
 
 		return nullptr;
 	}
@@ -1251,7 +1302,7 @@ GameObject* FieldScene::CreatePlayer(
 			"[FieldScene] "
 			"Player spawn position is invalid.\n");
 
-		warrior->Destroy();
+		player->Destroy();
 
 		return nullptr;
 	}
@@ -1261,7 +1312,7 @@ GameObject* FieldScene::CreatePlayer(
 	//=================================================
 
 	auto* controller =
-		warrior->AddComponent<
+		player->AddComponent<
 		PlayerControllerComponent>();
 
 	if (controller)
@@ -1275,13 +1326,22 @@ GameObject* FieldScene::CreatePlayer(
 	//=================================================
 
 	auto* status =
-		warrior->AddComponent<
+		player->AddComponent<
 		CharacterStatusComponent>();
 
 	if (status)
 	{
+		//=================================================
+		// Warrior Status
+		//=================================================
+
 		status->SetMaxHP(
 			10);
+
+		// WarriorもSkill使用を想定し、
+		// 少量のMPを持たせておく。
+		status->SetMaxMP(
+			5);
 
 		status->SetAttackPower(
 			3);
@@ -1295,7 +1355,7 @@ GameObject* FieldScene::CreatePlayer(
 	//=================================================
 
 	auto* characterAnimation =
-		warrior->AddComponent<
+		player->AddComponent<
 		CharacterAnimationComponent>();
 
 	if (characterAnimation)
@@ -1317,7 +1377,42 @@ GameObject* FieldScene::CreatePlayer(
 				AnimationID::Death);
 	}
 
-	return warrior;
+	//=================================================
+	// Player Class
+	//=================================================
+
+	if (data.Type == "Warrior")
+	{
+		player->AddComponent<
+			WarriorClassComponent>();
+	}
+	else if (data.Type == "Ranger")
+	{
+		player->AddComponent<
+			RangerClassComponent>();
+	}
+	else if (data.Type == "Wizard")
+	{
+		player->AddComponent<
+			WizardClassComponent>();
+	}
+	else if (data.Type == "Monk")
+	{
+		player->AddComponent<
+			MonkClassComponent>();
+	}
+	else if (data.Type == "Rogue")
+	{
+		player->AddComponent<
+			RogueClassComponent>();
+	}
+	else if (data.Type == "Cleric")
+	{
+		player->AddComponent<
+			ClericClassComponent>();
+	}
+
+	return player;
 }
 
 GameObject* FieldScene::CreateEnemy(
@@ -1327,7 +1422,7 @@ GameObject* FieldScene::CreateEnemy(
 	// 現在対応しているEnemyType確認
 	//=================================================
 
-	if (data.Type != "Ranger")
+	if (data.Type != "Enemy")
 	{
 		OutputDebugStringA(
 			"[FieldScene] "
@@ -1759,27 +1854,22 @@ void FieldScene::CheckPlayerTurnEnd()
 
 void FieldScene::UpdateNextTurnButton()
 {
-	if (!m_NextTurnButton)
-	{
-		return;
-	}
-
-	auto* image =
-		m_NextTurnButton->
-		GetComponent<UIImageComponent>();
-
-	auto* button =
-		m_NextTurnButton->
-		GetComponent<UIButtonComponent>();
-
-	if (!image ||
-		!button)
+	if (!m_FieldUI)
 	{
 		return;
 	}
 
 	//=================================================
 	// Button表示条件
+	//=================================================
+	//
+	// ・PlayerTurn中
+	// ・全Playerが最低1回行動済み
+	// ・Animation等が終了済み
+	// ・まだ移動力が余っている
+	//
+	// 全員の移動力が0なら
+	// CheckPlayerTurnEnd()側で自動終了する。
 	//=================================================
 
 	const bool canEndTurn =
@@ -1788,126 +1878,30 @@ void FieldScene::UpdateNextTurnButton()
 		AreAllPlayerActionsFinished() &&
 		!AreAllPlayersOutOfMovePoints();
 
-	if (!canEndTurn)
-	{
-		// 見えなくする。
-		image->SetColor(
-			Color(
-				1.0f,
-				1.0f,
-				1.0f,
-				0.0f));
-
-		// 見えないButtonがクリックされないよう
-		// 入力受付も停止する。
-		button->SetEnabled(
-			false);
-
-		return;
-	}
-
-	// Buttonを表示し、
-	// 入力受付を有効にする。
-	button->SetEnabled(
-		true);
-
-	// TitleSceneと同様に
-	// Button状態で見た目を変更する。
-	UpdateButtonVisual(
-		m_NextTurnButton);
+	m_FieldUI->
+		SetNextTurnVisible(
+			canEndTurn);
 }
 
-void FieldScene::UpdateButtonVisual(
-	GameObject* buttonObject)
+bool FieldScene::
+CheckNextTurnButtonClick()
 {
-	if (!buttonObject)
-	{
-		return;
-	}
-
-	auto* button =
-		buttonObject->
-		GetComponent<UIButtonComponent>();
-
-	auto* image =
-		buttonObject->
-		GetComponent<UIImageComponent>();
-
-	if (!button ||
-		!image)
-	{
-		return;
-	}
-
-	if (!button->IsEnabled())
-	{
-		return;
-	}
-
-	switch (button->GetState())
-	{
-	case UIButtonState::Normal:
-
-		image->SetColor(
-			Color(
-				1.0f,
-				1.0f,
-				1.0f,
-				1.0f));
-
-		break;
-
-	case UIButtonState::Hovered:
-
-		image->SetColor(
-			Color(
-				0.9f,
-				0.9f,
-				0.9f,
-				1.0f));
-
-		break;
-
-	case UIButtonState::Pressed:
-
-		image->SetColor(
-			Color(
-				0.7f,
-				0.7f,
-				0.7f,
-				1.0f));
-
-		break;
-
-	default:
-		break;
-	}
-}
-
-bool FieldScene::CheckNextTurnButtonClick()
-{
-	if (!m_NextTurnButton)
+	if (!m_FieldUI)
 	{
 		return false;
 	}
 
-	auto* button =
-		m_NextTurnButton->
-		GetComponent<UIButtonComponent>();
-
-	if (!button ||
-		!button->IsEnabled())
-	{
-		return false;
-	}
-
-	if (!button->IsClicked())
+	if (!m_FieldUI->
+		IsNextTurnClicked())
 	{
 		return false;
 	}
 
 	//=================================================
-	// 念のためTurn終了条件を再確認
+	// Gameplay側でも条件を再確認
+	//=================================================
+	//
+	// UIのEnabled状態だけにGameRuleを依存させない。
 	//=================================================
 
 	if (!m_TurnManager.IsPlayerTurn() ||
@@ -1919,6 +1913,12 @@ bool FieldScene::CheckNextTurnButtonClick()
 
 	m_SelectedPlayer =
 		nullptr;
+
+	// HUDは残す。
+	// EnemyTurn中は行動済みPlayerが暗く見える。
+	//
+	// m_FocusedPlayer = nullptr;
+	// にはしない。
 
 	m_TurnManager.EndPlayerTurn();
 

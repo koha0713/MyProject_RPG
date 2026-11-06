@@ -1,12 +1,18 @@
 #include "PlayerControllerComponent.h"
 
+#include <cstdlib>
+
 #include "GameObject.h"
+
 #include "GridMap.h"
 #include "GridPositionComponent.h"
 #include "CharacterStatusComponent.h"
 #include "CharacterAnimationComponent.h"
 #include "TransformComponent.h"
+#include "PlayerClassComponent.h"
+
 #include "GridPathFinder.h"
+
 #include "InputManager.h"
 #include "DebugUI.h"
 
@@ -16,19 +22,58 @@
 
 void PlayerControllerComponent::Initialize()
 {
+	m_RemainingMovePoints =
+		0;
+
+	m_ActionState =
+		PlayerActionState::Idle;
+
+	m_MovePath.clear();
+
+	m_MovePathIndex =
+		0;
+
+	m_HasActed =
+		false;
+
+	m_AttackTarget =
+		nullptr;
+
+	m_ClassAttackActive =
+		false;
 }
+
+//=====================================================
+// Finalize
+//=====================================================
 
 void PlayerControllerComponent::Finalize()
 {
 	m_TurnManager =
 		nullptr;
+
+	m_MovePath.clear();
+
+	m_MovePathIndex =
+		0;
+
+	m_AttackTarget =
+		nullptr;
+
+	m_ClassAttackActive =
+		false;
+
+	m_ActionState =
+		PlayerActionState::Idle;
 }
+
+//=====================================================
+// Update
+//=====================================================
 
 void PlayerControllerComponent::Update(
 	uint64_t delta)
 {
-	(void)delta;
-
 	//=================================================
 	// TurnManager確認
 	//=================================================
@@ -38,8 +83,9 @@ void PlayerControllerComponent::Update(
 		return;
 	}
 
-	// PlayerTurn以外では処理しない。
-	if (!m_TurnManager->IsPlayerTurn())
+	// PlayerTurn以外では操作処理しない。
+	if (!m_TurnManager->
+		IsPlayerTurn())
 	{
 		return;
 	}
@@ -49,7 +95,8 @@ void PlayerControllerComponent::Update(
 	//=================================================
 
 	const uint64_t currentTurn =
-		m_TurnManager->GetTurnCount();
+		m_TurnManager->
+		GetTurnCount();
 
 	if (m_LastTurnCount !=
 		currentTurn)
@@ -80,39 +127,9 @@ void PlayerControllerComponent::Update(
 	if (m_ActionState ==
 		PlayerActionState::Attacking)
 	{
-		GameObject* owner =
-			GetOwner();
+		UpdateClassAttack();
 
-		if (!owner)
-		{
-			return;
-		}
-
-		auto* characterAnimation =
-			owner->GetComponent<
-			CharacterAnimationComponent>();
-
-		if (!characterAnimation)
-		{
-			// AnimationComponentが無い場合でも
-			// Player全体のTurnは終了させず、
-			// このPlayerの行動だけ終了する。
-			m_ActionState =
-				PlayerActionState::Idle;
-
-			return;
-		}
-
-		// Attack Animation終了後、
-		// このPlayerを再びIdle状態へ戻す。
-		if (!characterAnimation->
-			IsAttacking())
-		{
-			m_ActionState =
-				PlayerActionState::Idle;
-		}
-
-		// Attack中は追加入力を受け付けない。
+		// 攻撃中は追加入力を受け付けない。
 		return;
 	}
 
@@ -120,7 +137,8 @@ void PlayerControllerComponent::Update(
 	// 移動力を使い切った場合
 	//=================================================
 	//
-	// PlayerController側ではTurn終了させない。
+	// Controller単体ではTurnを終了しない。
+	//
 	// 複数Player全体のTurn終了判定は
 	// FieldScene::CheckPlayerTurnEnd()へ委譲する。
 	//=================================================
@@ -133,6 +151,10 @@ void PlayerControllerComponent::Update(
 		return;
 	}
 }
+
+//=====================================================
+// Draw
+//=====================================================
 
 void PlayerControllerComponent::Draw()
 {
@@ -153,6 +175,24 @@ void PlayerControllerComponent::BeginPlayerTurn()
 	}
 
 	//=================================================
+	// Action Reset
+	//=================================================
+
+	m_ActionState =
+		PlayerActionState::Idle;
+
+	m_MovePath.clear();
+
+	m_MovePathIndex =
+		0;
+
+	m_AttackTarget =
+		nullptr;
+
+	m_ClassAttackActive =
+		false;
+
+	//=================================================
 	// Character Status
 	//=================================================
 
@@ -162,7 +202,8 @@ void PlayerControllerComponent::BeginPlayerTurn()
 
 	if (!status)
 	{
-		// Statusが無い場合でも最低1マスは動けるようにする。
+		// Statusが無い場合でも
+		// 最低1マス動けるようにする。
 		m_RemainingMovePoints =
 			1;
 
@@ -170,7 +211,7 @@ void PlayerControllerComponent::BeginPlayerTurn()
 	}
 
 	//=================================================
-	// 敏捷値から移動可能回数を決定
+	// Agility -> Move Points
 	//=================================================
 
 	m_RemainingMovePoints =
@@ -185,6 +226,34 @@ void PlayerControllerComponent::BeginPlayerTurn()
 
 	OutputDebugStringA(
 		buffer);
+}
+
+//=====================================================
+// Start Player Turn
+//=====================================================
+
+void PlayerControllerComponent::StartPlayerTurn(
+	uint64_t turnCount)
+{
+	//=================================================
+	// Turn番号記録
+	//=================================================
+
+	m_LastTurnCount =
+		turnCount;
+
+	//=================================================
+	// 行動状態Reset
+	//=================================================
+
+	m_HasActed =
+		false;
+
+	//=================================================
+	// Turn開始
+	//=================================================
+
+	BeginPlayerTurn();
 }
 
 //=====================================================
@@ -203,7 +272,25 @@ bool PlayerControllerComponent::RequestMove(
 	}
 
 	//=================================================
-	// 移動可能回数確認
+	// PlayerTurn確認
+	//=================================================
+
+	if (!m_TurnManager ||
+		!m_TurnManager->
+		IsPlayerTurn())
+	{
+		return false;
+	}
+
+	// 行動中は新しい要求を受け付けない。
+	if (m_ActionState !=
+		PlayerActionState::Idle)
+	{
+		return false;
+	}
+
+	//=================================================
+	// 移動力確認
 	//=================================================
 
 	if (m_RemainingMovePoints <= 0)
@@ -212,7 +299,7 @@ bool PlayerControllerComponent::RequestMove(
 	}
 
 	//=================================================
-	// GridPositionComponent取得
+	// GridPosition
 	//=================================================
 
 	auto* gridPosition =
@@ -236,7 +323,7 @@ bool PlayerControllerComponent::RequestMove(
 		gridPosition->TryMove(
 			direction);
 
-	// 壁・他Actorなどによって移動できなかった場合は
+	// 壁・Actor等で移動できなければ
 	// MovePointを消費しない。
 	if (!moved)
 	{
@@ -248,39 +335,45 @@ bool PlayerControllerComponent::RequestMove(
 	}
 
 	//=================================================
-	// MovePoint消費
+	// MovePoint
 	//=================================================
 
 	--m_RemainingMovePoints;
+
+	if (m_RemainingMovePoints < 0)
+	{
+		m_RemainingMovePoints =
+			0;
+	}
+
+	m_HasActed =
+		true;
 
 	char buffer[128]{};
 
 	sprintf_s(
 		buffer,
-		"[PlayerController] Move success. Remaining=%d\n",
+		"[PlayerController] "
+		"Move success. Remaining=%d\n",
 		m_RemainingMovePoints);
 
 	OutputDebugStringA(
 		buffer);
 
 	//=================================================
-	// 移動力を使い切ったらEnemyTurnへ
+	// Turn終了はFieldSceneへ委譲
 	//=================================================
-
-	if (m_RemainingMovePoints <= 0 &&
-		m_TurnManager)
-	{
-		m_TurnManager->
-			EndPlayerTurn();
-	}
 
 	return true;
 }
 
+//=====================================================
+// Request Move To
+//=====================================================
+
 bool PlayerControllerComponent::RequestMoveTo(
 	const GridPosition& destination)
 {
-
 	GameObject* owner =
 		GetOwner();
 
@@ -289,23 +382,39 @@ bool PlayerControllerComponent::RequestMoveTo(
 		return false;
 	}
 
+	//=================================================
+	// PlayerTurn確認
+	//=================================================
+
 	if (!m_TurnManager ||
-		!m_TurnManager->IsPlayerTurn())
+		!m_TurnManager->
+		IsPlayerTurn())
 	{
 		return false;
 	}
 
-	// 行動中は新しい移動要求を受け付けない。
+	//=================================================
+	// Action確認
+	//=================================================
+
 	if (m_ActionState !=
 		PlayerActionState::Idle)
 	{
 		return false;
 	}
 
+	//=================================================
+	// MovePoint確認
+	//=================================================
+
 	if (m_RemainingMovePoints <= 0)
 	{
 		return false;
 	}
+
+	//=================================================
+	// GridPosition
+	//=================================================
 
 	auto* gridPosition =
 		owner->GetComponent<
@@ -317,7 +426,8 @@ bool PlayerControllerComponent::RequestMoveTo(
 	}
 
 	GridMap* gridMap =
-		gridPosition->GetGridMap();
+		gridPosition->
+		GetGridMap();
 
 	if (!gridMap)
 	{
@@ -325,15 +435,17 @@ bool PlayerControllerComponent::RequestMoveTo(
 	}
 
 	const GridPosition start =
-		gridPosition->GetGridPosition();
+		gridPosition->
+		GetGridPosition();
 
-	if (start == destination)
+	if (start ==
+		destination)
 	{
 		return false;
 	}
 
 	//=================================================
-	// A* Path探索
+	// A* Path
 	//=================================================
 
 	const std::vector<GridPosition> path =
@@ -348,12 +460,18 @@ bool PlayerControllerComponent::RequestMoveTo(
 	}
 
 	//=================================================
-	// 必要移動力確認
+	// 必要MovePoint
 	//=================================================
 
 	const int requiredMovePoints =
 		static_cast<int>(
-			path.size()) - 1;
+			path.size()) -
+		1;
+
+	if (requiredMovePoints <= 0)
+	{
+		return false;
+	}
 
 	// 残り移動力で目的地まで届かない場合は
 	// 一切移動しない。
@@ -362,21 +480,32 @@ bool PlayerControllerComponent::RequestMoveTo(
 	{
 		OutputDebugStringA(
 			"[PlayerController] "
-			"Move failed: Destination out of range.\n");
+			"Move failed: "
+			"Destination out of range.\n");
 
 		return false;
 	}
 
 	//=================================================
-	// 移動開始
+	// Begin Move
 	//=================================================
-	m_HasActed = true;
-	return BeginMove(
-		path);
+
+	if (!BeginMove(
+		path))
+	{
+		return false;
+	}
+
+	// 実際に移動開始できた場合のみ
+	// 行動済みにする。
+	m_HasActed =
+		true;
+
+	return true;
 }
 
 //=====================================================
-// Attack
+// Attack - Auto Target
 //=====================================================
 
 bool PlayerControllerComponent::RequestAttack()
@@ -390,183 +519,152 @@ bool PlayerControllerComponent::RequestAttack()
 	}
 
 	//=================================================
-	// Player Component取得
+	// PlayerTurn
+	//=================================================
+
+	if (!m_TurnManager ||
+		!m_TurnManager->
+		IsPlayerTurn())
+	{
+		return false;
+	}
+
+	if (m_ActionState !=
+		PlayerActionState::Idle)
+	{
+		return false;
+	}
+
+	//=================================================
+	// Component
 	//=================================================
 
 	auto* playerGrid =
 		owner->GetComponent<
 		GridPositionComponent>();
 
-	auto* playerStatus =
+	auto* playerClass =
 		owner->GetComponent<
-		CharacterStatusComponent>();
+		PlayerClassComponent>();
 
 	if (!playerGrid ||
-		!playerStatus)
+		!playerClass)
 	{
-		OutputDebugStringA(
-			"[PlayerController] "
-			"Required Player Component not found.\n");
-
 		return false;
 	}
 
-	//=================================================
-	// GridMap取得
-	//=================================================
-
 	GridMap* gridMap =
-		playerGrid->GetGridMap();
+		playerGrid->
+		GetGridMap();
 
 	if (!gridMap)
 	{
-		OutputDebugStringA(
-			"[PlayerController] "
-			"GridMap not found.\n");
-
 		return false;
 	}
 
 	const GridPosition playerPosition =
-		playerGrid->GetGridPosition();
+		playerGrid->
+		GetGridPosition();
+
+	const int attackRange =
+		playerClass->
+		GetNormalAttackRange();
 
 	//=================================================
-	// 隣接4方向
+	// Attack Range内Enemy検索
 	//=================================================
 	//
-	// 現段階では順番に検索して、
-	// 最初に見つかったEnemyを攻撃する。
-	//
-	// 将来的にはMouse選択によって
-	// GameObjectを直接指定する方式へ変更予定。
-	//
+	// Manhattan距離1から順番に検索する。
+	// そのため最も近いEnemyを優先する。
+	//=================================================
 
-	const GridPosition directions[] =
+	for (int distance = 1;
+		distance <= attackRange;
+		++distance)
 	{
-		{  0, -1 }, // Up
-		{  0,  1 }, // Down
-		{ -1,  0 }, // Left
-		{  1,  0 }  // Right
-	};
-
-	GameObject* attackTarget =
-		nullptr;
-
-	//=================================================
-	// 隣接Enemy検索
-	//=================================================
-
-	for (const GridPosition& direction :
-		directions)
-	{
-		const GridPosition targetPosition
+		for (int dx = -distance;
+			dx <= distance;
+			++dx)
 		{
-			playerPosition.X +
-				direction.X,
+			const int remaining =
+				distance -
+				std::abs(dx);
 
-			playerPosition.Y +
-				direction.Y
-		};
+			//=========================================
+			// 同じdistanceに存在する
+			// 上下2地点を確認する。
+			//=========================================
 
-		GameObject* occupant =
-			gridMap->GetOccupant(
-				targetPosition);
+			const int dyValues[] =
+			{
+				-remaining,
+				remaining
+			};
 
-		if (!occupant)
-		{
-			continue;
+			for (int i = 0;
+				i < 2;
+				++i)
+			{
+				const int dy =
+					dyValues[i];
+
+				// remaining == 0の場合、
+				// 同じGridを2回確認しない。
+				if (i == 1 &&
+					remaining == 0)
+				{
+					continue;
+				}
+
+				const GridPosition targetPosition
+				{
+					playerPosition.X +
+						dx,
+
+					playerPosition.Y +
+						dy
+				};
+
+				GameObject* occupant =
+					gridMap->
+					GetOccupant(
+						targetPosition);
+
+				if (!occupant)
+				{
+					continue;
+				}
+
+				if (occupant->
+					GetTag() !=
+					Tag::Enemy)
+				{
+					continue;
+				}
+
+				// 実際の攻撃条件チェックは
+				// Target指定版へ委譲。
+				return RequestAttack(
+					occupant);
+			}
 		}
-
-		// Enemy以外は攻撃対象にしない。
-		if (occupant->GetTag() !=
-			Tag::Enemy)
-		{
-			continue;
-		}
-
-		attackTarget =
-			occupant;
-
-		break;
 	}
-
-	//=================================================
-	// Enemyが隣接していない
-	//=================================================
-
-	if (!attackTarget)
-	{
-		OutputDebugStringA(
-			"[PlayerController] "
-			"Attack failed: No adjacent enemy.\n");
-
-		return false;
-	}
-
-	//=================================================
-	// Enemy Status取得
-	//=================================================
-
-	auto* enemyStatus =
-		attackTarget->GetComponent<
-		CharacterStatusComponent>();
-
-	if (!enemyStatus)
-	{
-		OutputDebugStringA(
-			"[PlayerController] "
-			"Enemy CharacterStatusComponent not found.\n");
-
-		return false;
-	}
-
-	if (enemyStatus->IsDead())
-	{
-		return false;
-	}
-
-	//=================================================
-	// Damage
-	//=================================================
-
-	const int damage =
-		playerStatus->
-		GetAttackPower();
-
-	enemyStatus->
-		TakeDamage(
-			damage);
-
-	char buffer[128]{};
-
-	sprintf_s(
-		buffer,
-		"[PlayerController] Attack success. Damage=%d\n",
-		damage);
 
 	OutputDebugStringA(
-		buffer);
+		"[PlayerController] "
+		"Attack failed: "
+		"No enemy in attack range.\n");
 
-	//=================================================
-	// 攻撃成功時はPlayerTurn終了
-	//=================================================
-
-	if (m_TurnManager)
-	{
-		m_RemainingMovePoints =
-			0;
-
-		m_TurnManager->
-			EndPlayerTurn();
-	}
-
-	return true;
+	return false;
 }
+
+//=====================================================
+// Attack - Target
+//=====================================================
 
 bool PlayerControllerComponent::RequestAttack(
 	GameObject* target)
 {
-
 	GameObject* owner =
 		GetOwner();
 
@@ -577,11 +675,27 @@ bool PlayerControllerComponent::RequestAttack(
 	}
 
 	//=================================================
-	// PlayerTurn確認
+	// PlayerTurn
 	//=================================================
 
 	if (!m_TurnManager ||
-		!m_TurnManager->IsPlayerTurn())
+		!m_TurnManager->
+		IsPlayerTurn())
+	{
+		return false;
+	}
+
+	//=================================================
+	// Action State
+	//=================================================
+
+	if (m_ActionState !=
+		PlayerActionState::Idle)
+	{
+		return false;
+	}
+
+	if (m_ClassAttackActive)
 	{
 		return false;
 	}
@@ -590,27 +704,25 @@ bool PlayerControllerComponent::RequestAttack(
 	// Enemy確認
 	//=================================================
 
-	if (target->GetTag() !=
+	if (target->IsDestroy() ||
+		target->GetTag() !=
 		Tag::Enemy)
 	{
 		OutputDebugStringA(
 			"[PlayerController] "
-			"Attack failed: Target is not Enemy.\n");
+			"Attack failed: "
+			"Target is not Enemy.\n");
 
 		return false;
 	}
 
 	//=================================================
-	// Component取得
+	// Components
 	//=================================================
 
 	auto* playerGrid =
 		owner->GetComponent<
 		GridPositionComponent>();
-
-	auto* playerStatus =
-		owner->GetComponent<
-		CharacterStatusComponent>();
 
 	auto* enemyGrid =
 		target->GetComponent<
@@ -620,11 +732,20 @@ bool PlayerControllerComponent::RequestAttack(
 		target->GetComponent<
 		CharacterStatusComponent>();
 
+	auto* playerClass =
+		owner->GetComponent<
+		PlayerClassComponent>();
+
 	if (!playerGrid ||
-		!playerStatus ||
 		!enemyGrid ||
-		!enemyStatus)
+		!enemyStatus ||
+		!playerClass)
 	{
+		OutputDebugStringA(
+			"[PlayerController] "
+			"Attack failed: "
+			"Required Component not found.\n");
+
 		return false;
 	}
 
@@ -634,14 +755,16 @@ bool PlayerControllerComponent::RequestAttack(
 	}
 
 	//=================================================
-	// 距離判定
+	// Distance
 	//=================================================
 
 	const GridPosition playerPosition =
-		playerGrid->GetGridPosition();
+		playerGrid->
+		GetGridPosition();
 
 	const GridPosition enemyPosition =
-		enemyGrid->GetGridPosition();
+		enemyGrid->
+		GetGridPosition();
 
 	const int dx =
 		enemyPosition.X -
@@ -655,146 +778,242 @@ bool PlayerControllerComponent::RequestAttack(
 		std::abs(dx) +
 		std::abs(dy);
 
-	// 隣接4方向のみ攻撃可能。
-	if (distance != 1)
+	//=================================================
+	// Attack Range
+	//=================================================
+
+	const int attackRange =
+		playerClass->
+		GetNormalAttackRange();
+
+	if (distance <= 0 ||
+		distance >
+		attackRange)
 	{
 		OutputDebugStringA(
 			"[PlayerController] "
-			"Attack failed: Target is not adjacent.\n");
+			"Attack failed: "
+			"Target out of attack range.\n");
 
 		return false;
 	}
 
 	//=================================================
-	// 攻撃対象の方向を向く
+	// Face Target
 	//=================================================
+
 	auto* transform =
 		owner->GetComponent<
 		TransformComponent>();
 
 	if (transform)
 	{
-		transform->FaceGridPosition(
-			playerPosition,
-			enemyPosition);
+		transform->
+			FaceGridPosition(
+				playerPosition,
+				enemyPosition);
 	}
 
 	//=================================================
-	// Attack Animation
+	// PlayerClass Attack
+	//=================================================
+	//
+	// Warrior:
+	// Attack
+	//
+	// Ranger:
+	// Draw -> Release
+	//
+	// 等の差分はPlayerClassComponent側が担当。
 	//=================================================
 
-	auto* characterAnimation =
-		owner->GetComponent<
-		CharacterAnimationComponent>();
-
-	if (characterAnimation)
+	if (!playerClass->
+		BeginNormalAttack(
+			target))
 	{
-		characterAnimation->
-			ChangeState(
-				CharacterAnimationState::Attack);
+		OutputDebugStringA(
+			"[PlayerController] "
+			"Attack failed: "
+			"BeginNormalAttack failed.\n");
+
+		return false;
 	}
 
 	//=================================================
-	// Damage
+	// Attack State
 	//=================================================
 
-	const int damage =
-		playerStatus->GetAttackPower();
+	m_AttackTarget =
+		target;
 
-	enemyStatus->TakeDamage(
-		damage);
-
-	char buffer[128]{};
-
-	sprintf_s(
-		buffer,
-		"[PlayerController] "
-		"Attack success. Damage=%d\n",
-		damage);
-
-	OutputDebugStringA(
-		buffer);
-
-	//=================================================
-	// 攻撃中状態へ移行
-	//=================================================
-	//
-	// EnemyTurnへの移行はここでは行わない。
-	// Attack Animation終了後にUpdate()側で行う。
-	//
-
-	m_RemainingMovePoints =
-		0;
+	m_ClassAttackActive =
+		true;
 
 	m_ActionState =
 		PlayerActionState::Attacking;
 
-	m_HasActed = true;
+	// 攻撃はそのPlayerの行動を終了させる。
+	m_RemainingMovePoints =
+		0;
+
+	m_HasActed =
+		true;
+
+	OutputDebugStringA(
+		"[PlayerController] "
+		"Class Attack Started.\n");
 
 	return true;
 }
 
+//=====================================================
+// Update Class Attack
+//=====================================================
 
-void PlayerControllerComponent::StartPlayerTurn(
-	uint64_t turnCount)
+void PlayerControllerComponent::
+UpdateClassAttack()
 {
-	// このTurnを初期化済みとして記録する。
-	m_LastTurnCount =
-		turnCount;
+	if (!m_ClassAttackActive)
+	{
+		m_ActionState =
+			PlayerActionState::Idle;
 
-	// 新しいTurnなので未行動状態へ戻す。
-	m_HasActed =
+		return;
+	}
+
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		m_AttackTarget =
+			nullptr;
+
+		m_ClassAttackActive =
+			false;
+
+		m_ActionState =
+			PlayerActionState::Idle;
+
+		return;
+	}
+
+	auto* playerClass =
+		owner->GetComponent<
+		PlayerClassComponent>();
+
+	if (!playerClass)
+	{
+		OutputDebugStringA(
+			"[PlayerController] "
+			"PlayerClassComponent lost.\n");
+
+		m_AttackTarget =
+			nullptr;
+
+		m_ClassAttackActive =
+			false;
+
+		m_ActionState =
+			PlayerActionState::Idle;
+
+		return;
+	}
+
+	//=================================================
+	// Hit Request
+	//=================================================
+	//
+	// PlayerClassComponent側が
+	// Animation Sequenceに応じて
+	// Hitタイミングを通知する。
+	//=================================================
+
+	if (playerClass->
+		ConsumeAttackHitRequest())
+	{
+		if (m_AttackTarget &&
+			!m_AttackTarget->
+			IsDestroy())
+		{
+			auto* attackerStatus =
+				owner->GetComponent<
+				CharacterStatusComponent>();
+
+			auto* targetStatus =
+				m_AttackTarget->
+				GetComponent<
+				CharacterStatusComponent>();
+
+			if (attackerStatus &&
+				targetStatus &&
+				!targetStatus->
+				IsDead())
+			{
+				//=====================================
+				// Damage
+				//=====================================
+				//
+				// 現段階では
+				// AttackPower = Damage。
+				//
+				// 将来的にはBattleCalculator等へ
+				// 分離可能。
+				//=====================================
+
+				const int damage =
+					attackerStatus->
+					GetAttackPower();
+
+				targetStatus->
+					TakeDamage(
+						damage);
+
+				char buffer[128]{};
+
+				sprintf_s(
+					buffer,
+					"[PlayerController] "
+					"Attack Hit. Damage=%d\n",
+					damage);
+
+				OutputDebugStringA(
+					buffer);
+			}
+		}
+	}
+
+	//=================================================
+	// Attack Sequence終了待ち
+	//=================================================
+
+	if (!playerClass->
+		IsAttackFinished())
+	{
+		return;
+	}
+
+	//=================================================
+	// Attack Complete
+	//=================================================
+
+	m_AttackTarget =
+		nullptr;
+
+	m_ClassAttackActive =
 		false;
 
-	// 敏捷値から移動力を再設定する。
-	BeginPlayerTurn();
+	m_ActionState =
+		PlayerActionState::Idle;
+
+	OutputDebugStringA(
+		"[PlayerController] "
+		"Class Attack Finished.\n");
 }
 
 //=====================================================
-// Debug UI
+// Movement Update
 //=====================================================
-
-void PlayerControllerComponent::DrawDebugUI()
-{
-	ImGui::Text(
-		"Control: Keyboard");
-
-	ImGui::Text(
-		"W / A / S / D : Move");
-
-	ImGui::Text(
-		"Space : Attack");
-
-	ImGui::Text(
-		"Enter : End Turn");
-
-	ImGui::Separator();
-
-	ImGui::Text(
-		"Remaining Move Points: %d",
-		m_RemainingMovePoints);
-
-	if (m_TurnManager)
-	{
-		ImGui::Text(
-			"Turn: %llu",
-			static_cast<unsigned long long>(
-				m_TurnManager->
-				GetTurnCount()));
-
-		ImGui::Text(
-			"Phase: %s",
-			m_TurnManager->
-			IsPlayerTurn()
-			? "Player"
-			: "Enemy");
-	}
-	else
-	{
-		ImGui::Text(
-			"TurnManager: None");
-	}
-}
 
 void PlayerControllerComponent::UpdateMovement(
 	uint64_t delta)
@@ -821,22 +1040,27 @@ void PlayerControllerComponent::UpdateMovement(
 		m_ActionState =
 			PlayerActionState::Idle;
 
+		m_MovePath.clear();
+
 		return;
 	}
 
 	GridMap* gridMap =
-		gridPosition->GetGridMap();
+		gridPosition->
+		GetGridMap();
 
 	if (!gridMap)
 	{
 		m_ActionState =
 			PlayerActionState::Idle;
 
+		m_MovePath.clear();
+
 		return;
 	}
 
 	//=================================================
-	// Path終了確認
+	// Path終了
 	//=================================================
 
 	if (m_MovePathIndex >=
@@ -855,21 +1079,23 @@ void PlayerControllerComponent::UpdateMovement(
 		{
 			animation->
 				ChangeState(
-					CharacterAnimationState::Idle);
+					CharacterAnimationState::
+					Idle);
 		}
 
 		return;
 	}
 
 	const GridPosition currentGrid =
-		gridPosition->GetGridPosition();
+		gridPosition->
+		GetGridPosition();
 
 	const GridPosition nextGrid =
 		m_MovePath[
 			m_MovePathIndex];
 
 	//=================================================
-	// 移動方向を向く
+	// Face Move Direction
 	//=================================================
 
 	transform->
@@ -886,7 +1112,8 @@ void PlayerControllerComponent::UpdateMovement(
 			nextGrid);
 
 	Vector3 currentPosition =
-		transform->GetPosition();
+		transform->
+		GetPosition();
 
 	Vector3 direction =
 		targetPosition -
@@ -896,7 +1123,7 @@ void PlayerControllerComponent::UpdateMovement(
 		direction.Length();
 
 	//=================================================
-	// 到着判定
+	// Arrive
 	//=================================================
 
 	constexpr float ARRIVE_EPSILON =
@@ -905,7 +1132,8 @@ void PlayerControllerComponent::UpdateMovement(
 	if (distance <=
 		ARRIVE_EPSILON)
 	{
-		// 座標誤差を消すため完全に合わせる。
+		// 座標誤差を除去するため
+		// 完全に目的位置へ合わせる。
 		transform->SetPosition(
 			targetPosition);
 
@@ -917,15 +1145,29 @@ void PlayerControllerComponent::UpdateMovement(
 			SetGridPosition(
 				nextGrid))
 		{
-			// 何らかの理由でGrid更新失敗。
+			OutputDebugStringA(
+				"[PlayerController] "
+				"SetGridPosition failed.\n");
+
 			m_ActionState =
 				PlayerActionState::Idle;
+
+			m_MovePath.clear();
 
 			return;
 		}
 
-		// 1マス分の移動力消費。
+		//=============================================
+		// MovePoint消費
+		//=============================================
+
 		--m_RemainingMovePoints;
+
+		if (m_RemainingMovePoints < 0)
+		{
+			m_RemainingMovePoints =
+				0;
+		}
 
 		++m_MovePathIndex;
 
@@ -949,17 +1191,18 @@ void PlayerControllerComponent::UpdateMovement(
 			{
 				animation->
 					ChangeState(
-						CharacterAnimationState::Idle);
+						CharacterAnimationState::
+						Idle);
 			}
 
-			// 移動力を使い切った場合のみ
-			// EnemyTurnへ進む。
-			if (m_RemainingMovePoints <= 0 &&
-				m_TurnManager)
-			{
-				m_TurnManager->
-					EndPlayerTurn();
-			}
+			//=========================================
+			// Turn終了はFieldSceneへ委譲
+			//=========================================
+			//
+			// 複数Player対応のため、
+			// 1人の移動力が0になっただけでは
+			// EndPlayerTurn()しない。
+			//=========================================
 
 			return;
 		}
@@ -968,16 +1211,13 @@ void PlayerControllerComponent::UpdateMovement(
 	}
 
 	//=================================================
-	// World座標補間
+	// World Position補間
 	//=================================================
 
 	direction.Normalize();
 
-	// deltaは現在uint64_tなので、
-	// プロジェクト内で「何単位か」に合わせてください。
-	//
-	// もしdeltaがミリ秒なら /1000.0f。
-	// 既に秒換算済みならそのまま。
+	// 現在のプロジェクトでは
+	// deltaをミリ秒として扱う。
 	const float deltaSeconds =
 		static_cast<float>(
 			delta) /
@@ -987,8 +1227,10 @@ void PlayerControllerComponent::UpdateMovement(
 		m_MoveSpeed *
 		deltaSeconds;
 
-	// 次フレームでTargetを通り越す場合は
-	// TargetにClampする。
+	//=================================================
+	// Overshoot防止
+	//=================================================
+
 	if (moveDistance >=
 		distance)
 	{
@@ -1006,6 +1248,10 @@ void PlayerControllerComponent::UpdateMovement(
 	}
 }
 
+//=====================================================
+// Begin Move
+//=====================================================
+
 bool PlayerControllerComponent::BeginMove(
 	const std::vector<GridPosition>& path)
 {
@@ -1017,7 +1263,7 @@ bool PlayerControllerComponent::BeginMove(
 		return false;
 	}
 
-	// StartだけしかないPathは移動不要。
+	// StartしかないPathなら移動不要。
 	if (path.size() <= 1)
 	{
 		return false;
@@ -1026,8 +1272,7 @@ bool PlayerControllerComponent::BeginMove(
 	m_MovePath =
 		path;
 
-	// index 0は現在地なので、
-	// index 1を最初の目的地とする。
+	// index 0は現在位置。
 	m_MovePathIndex =
 		1;
 
@@ -1035,7 +1280,7 @@ bool PlayerControllerComponent::BeginMove(
 		PlayerActionState::Moving;
 
 	//=================================================
-	// 移動Animation開始
+	// Move Animation
 	//=================================================
 
 	auto* animation =
@@ -1050,4 +1295,115 @@ bool PlayerControllerComponent::BeginMove(
 	}
 
 	return true;
+}
+
+//=====================================================
+// Debug UI
+//=====================================================
+
+void PlayerControllerComponent::DrawDebugUI()
+{
+	ImGui::Text(
+		"Control: Mouse / Controller");
+
+	ImGui::Separator();
+
+	//=================================================
+	// Action State
+	//=================================================
+
+	const char* actionState =
+		"Unknown";
+
+	switch (m_ActionState)
+	{
+	case PlayerActionState::Idle:
+
+		actionState =
+			"Idle";
+
+		break;
+
+	case PlayerActionState::Moving:
+
+		actionState =
+			"Moving";
+
+		break;
+
+	case PlayerActionState::Attacking:
+
+		actionState =
+			"Attacking";
+
+		break;
+
+	default:
+		break;
+	}
+
+	ImGui::Text(
+		"Action State: %s",
+		actionState);
+
+	ImGui::Text(
+		"Has Acted: %s",
+		m_HasActed
+		? "Yes"
+		: "No");
+
+	ImGui::Text(
+		"Remaining Move Points: %d",
+		m_RemainingMovePoints);
+
+	ImGui::Text(
+		"Class Attack Active: %s",
+		m_ClassAttackActive
+		? "Yes"
+		: "No");
+
+	//=================================================
+	// Attack Target
+	//=================================================
+
+	if (m_AttackTarget)
+	{
+		ImGui::Text(
+			"Attack Target: %s",
+			m_AttackTarget->
+			GetName().
+			c_str());
+	}
+	else
+	{
+		ImGui::Text(
+			"Attack Target: None");
+	}
+
+	//=================================================
+	// Turn
+	//=================================================
+
+	if (m_TurnManager)
+	{
+		ImGui::Separator();
+
+		ImGui::Text(
+			"Turn: %llu",
+			static_cast<unsigned long long>(
+				m_TurnManager->
+				GetTurnCount()));
+
+		ImGui::Text(
+			"Phase: %s",
+			m_TurnManager->
+			IsPlayerTurn()
+			? "Player"
+			: "Enemy");
+	}
+	else
+	{
+		ImGui::Text(
+			"TurnManager: None");
+	}
 }

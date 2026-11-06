@@ -1,8 +1,11 @@
 #pragma once
+
 #include <string>
 #include <memory>
 #include <cstdint>
 #include <array>
+#include <vector>
+
 #include "IScene.h"
 #include "SceneClassFactory.h"
 #include "GameObjectManager.h"
@@ -10,139 +13,167 @@
 #include "GridMap.h"
 #include "TurnManager.h"
 #include "Quest.h"
-#include <vector>
-
 #include "TerrainMapData.h"
 
 class GameObject;
 struct CharacterSpawnData;
 class CameraComponent;
+class FieldSceneUI;
 
-class FieldScene : public IScene
+class FieldScene :
+	public IScene
 {
 public:
-	//====================
-	// ライフサイクル
-	//====================
+
+	//=================================================
+	// Lifecycle
+	//=================================================
+
 	explicit FieldScene();
+
+	~FieldScene() override;
+
 	void Initialize() override;
+
 	void Finalize() override;
-	void Update(uint64_t delta) override;
-	void Draw(uint64_t delta) override;
 
-	//====================
-	// デバッグ用関数(予定)
-	//====================
+	void Update(
+		uint64_t delta) override;
 
-
-	//====================
-	// メンバ変数
-	//====================
-	GameObjectManager m_gameObjectManager;
-	TurnManager m_TurnManager;
-	CameraComponent* m_MainCamera = nullptr;
-	SoundHandle m_BGMHandle;
-	GridMap m_GridMap;
-	Quest m_CurrentQuest;
+	void Draw(
+		uint64_t delta) override;
 
 private:
-	//====================
-	// Update分割
-	//====================
+
+	//=================================================
+	// Update
+	//=================================================
 
 	void UpdatePlayerInput();
+
 	void CheckPlayerTurnEnd();
+
 	void UpdateNextTurnButton();
-	void UpdateButtonVisual(
-		GameObject* buttonObject);
+
 	bool CheckNextTurnButtonClick();
 
-	//====================
+	//=================================================
 	// Enemy Turn Sequence
-	//====================
+	//=================================================
 
-	/**
-	 * @brief EnemyTurn開始処理
-	 */
 	void BeginEnemyTurnSequence();
 
-	/**
-	 * @brief EnemyTurn進行処理
-	 */
 	void UpdateEnemyTurnSequence();
 
-	/**
-	 * @brief EnemyTurn終了処理
-	 */
 	void EndEnemyTurnSequence();
 
-	// キャラクター生成関数
-	/**
-	 * @brief MapDataからPlayerを生成する
-	 */
+	//=================================================
+	// Character Create
+	//=================================================
+
 	GameObject* CreatePlayer(
 		const CharacterSpawnData& data);
 
-	/**
-	 * @brief MapDataからEnemyを生成する
-	 */
 	GameObject* CreateEnemy(
 		const CharacterSpawnData& data);
 
-	/**
-	 * @brief Terrain1マス分のGameObjectを生成
-	 */
 	void CreateTerrainTile(
 		const TerrainCellData& terrainData);
 
-	/**
-	 * @brief 操作キャラの行動済み確認
-	 */
+	//=================================================
+	// Turn
+	//=================================================
+
 	bool AreAllPlayersActed();
+
 	bool AreAllPlayerActionsFinished() const;
+
 	bool AreAllPlayersOutOfMovePoints();
 
 private:
-	// 現在操作対象として選択されているPlayer。
-	// GameObjectManagerが所有しているため、
-	// FieldSceneでは非所有ポインタとして保持する。
-	GameObject* m_SelectedPlayer = nullptr;
+
+	//=================================================
+	// Core
+	//=================================================
+
+	GameObjectManager
+		m_gameObjectManager;
+
+	TurnManager
+		m_TurnManager;
+
+	CameraComponent*
+		m_MainCamera =
+		nullptr;
+
+	SoundHandle
+		m_BGMHandle;
+
+	GridMap
+		m_GridMap;
+
+	Quest
+		m_CurrentQuest;
+
+	//=================================================
+	// UI
+	//=================================================
+
+	std::unique_ptr<FieldSceneUI>
+		m_FieldUI;
+
+	//=================================================
+	// Selected Player
+	//=================================================
 
 	/**
-	 * @brief 今回のEnemyTurnで行動するEnemy一覧
+	 * @brief 現在操作するPlayer
 	 *
-	 * GameObjectManagerが所有しているため、
-	 * ここでは非所有ポインタとして保持する。
+	 * 移動・攻撃開始時に解除する。
 	 */
+	GameObject*
+		m_SelectedPlayer =
+		nullptr;
+
+	/**
+	 * @brief HUDへ表示するPlayer
+	 *
+	 * 行動開始後も保持することで、
+	 * 行動済み状態をHUDで確認できる。
+	 */
+	GameObject*
+		m_FocusedPlayer =
+		nullptr;
+
+	//=================================================
+	// Enemy Turn
+	//=================================================
+
 	std::vector<GameObject*>
 		m_EnemyTurnOrder;
 
-	/**
-	 * @brief 現在行動中EnemyのIndex
-	 */
-	size_t m_CurrentEnemyIndex =
+	size_t
+		m_CurrentEnemyIndex =
 		0;
 
-	/**
-	 * @brief 現在のEnemyがAct()を開始済みか
-	 */
-	bool m_EnemyActionStarted =
+	bool
+		m_EnemyActionStarted =
 		false;
 
-	/**
-	 * @brief EnemyTurnシーケンス実行中か
-	 */
-	bool m_EnemyTurnSequenceActive =
+	bool
+		m_EnemyTurnSequenceActive =
 		false;
+
+	//=================================================
+	// Terrain
+	//=================================================
 
 	TerrainMapData
 		m_TerrainMapData;
 
 	std::vector<GameObject*>
 		m_TerrainObjects;
-
-	// UI
-	GameObject* m_NextTurnButton = nullptr;
 };
+
 // Scene登録
 REGISTER_CLASS(FieldScene)
