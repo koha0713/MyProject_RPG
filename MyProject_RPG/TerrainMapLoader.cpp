@@ -47,6 +47,12 @@ namespace
 			return true;
 		}
 
+		if (value == "Forest")
+		{
+			outType = TerrainType::Forest;
+			return true;
+		}
+
 		return false;
 	}
 }

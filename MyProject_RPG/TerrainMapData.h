@@ -13,7 +13,9 @@ enum class TerrainType
 	Grass,
 	Dirt,
 	Rock,
-	Water
+    Sand,
+	Water,
+    Forest
 };
 
 /**

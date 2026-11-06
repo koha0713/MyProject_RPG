@@ -344,6 +344,7 @@ void FieldScene::Initialize()
 		exit->SetTargetScene(
 			"TownScene");
 	}
+
 	m_TurnManager.Initialize();
 	m_gameObjectManager.Initialize();
 
@@ -1623,7 +1624,7 @@ void FieldScene::CreateTerrainTile(
 		transform->SetScale(
 			Vector3(
 				0.5f,
-				0.5f,
+				3.0f,
 				0.5f));
 	}
 
@@ -1791,17 +1792,30 @@ void FieldScene::CreateTerrainTile(
 	case TerrainType::Rock:
 
 		model->SetModel(
-			"Assets/Models/field/block-grass-large.fbx");
+			"Assets/Models/field/Rock.obj");
 		model->SetTexture(
-			0, "Assets/Models/field/colormap.png");
+			0, "Assets/Models/field/Rock_Albedo.png");
+		break;
+	case TerrainType::Sand:
+		model->SetModel(
+			"Assets/Models/field/Sand.obj");
+		model->SetTexture(
+			0, "Assets/Models/field/Sand_Albedo.png");
 		break;
 
 	case TerrainType::Water:
 
 		model->SetModel(
-			"Assets/Models/field/block-grass-large.fbx");
+			"Assets/Models/field/Water.obj");
 		model->SetTexture(
-			0, "Assets/Models/field/colormap.png");
+			0, "Assets/Models/field/Water_Albedo.png");
+		break;
+
+	case TerrainType::Forest:
+		model->SetModel(
+			"Assets/Models/field/Forest.obj");
+		model->SetTexture(
+			0, "Assets/Models/field/Forest_Albedo.png");
 		break;
 
 	default:
