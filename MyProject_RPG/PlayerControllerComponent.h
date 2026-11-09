@@ -2,7 +2,7 @@
 
 /**
  * @file PlayerControllerComponent.h
- * @brief Playerの入力と行動要求を管理するComponent
+ * @brief Playerの行動要求と実行状態を管理するComponent
  */
 
 #include <cstdint>
@@ -14,6 +14,8 @@
 #include "TurnManager.h"
 
 class GameObject;
+class CharacterStatusComponent;
+class PlayerActionComponent;
 
 /**
  * @brief Playerの現在行動状態
@@ -31,20 +33,21 @@ enum class PlayerActionState
  * @brief Player Controller
  *
  * @details
- * Playerの共通行動を管理する。
+ * Playerへの操作要求をGame上の行動へ変換する。
  *
- * 担当：
- * ・移動要求
- * ・攻撃要求
- * ・Turn中の行動状態
- * ・移動力
- * ・攻撃Damage適用
+ * このComponent自身は、
+ * AP / MP等のResourceを保持しない。
  *
- * 職業によって異なる、
- * ・攻撃Animation
- * ・攻撃Sequence
+ * AP / MP
+ *     CharacterStatusComponent
  *
- * はPlayerClassComponentへ委譲する。
+ * Action Cost
+ *     PlayerActionComponent
+ *
+ * 職業固有Action
+ *     PlayerClassComponent
+ *
+ * をそれぞれ利用する。
  */
 class PlayerControllerComponent :
 	public Component
@@ -74,7 +77,7 @@ public:
 	//=================================================
 
 	/**
-	 * @brief TurnManagerを設定
+	 * @brief TurnManager設定
 	 *
 	 * @note
 	 * 所有権は持たない。
@@ -87,11 +90,11 @@ public:
 	}
 
 	/**
-	 * @brief 新しいPlayerTurnの開始準備
+	 * @brief 新しいPlayerTurn開始
 	 *
 	 * @details
-	 * FieldSceneからPlayerTurn開始時に呼び出す。
-	 * 移動力・行動状態を初期化する。
+	 * PlayerActionComponent::BeginTurn()を呼び、
+	 * APを最大値まで回復する。
 	 */
 	void StartPlayerTurn(
 		uint64_t turnCount);
@@ -101,79 +104,60 @@ public:
 	//=================================================
 
 	/**
-	 * @brief 指定方向へ1マス移動を要求する
+	 * @brief 指定方向へ1マス移動
 	 *
-	 * @param direction
-	 * Grid上の移動方向
+	 * @details
+	 * デバッグ操作などの簡易移動用。
 	 *
-	 * @return
-	 * 移動成功時true
+	 * Move ActionとしてAPを消費する。
 	 */
 	bool RequestMove(
 		const GridPosition& direction);
 
 	/**
-	 * @brief 指定Gridへの移動を要求する
-	 *
-	 * @param destination
-	 * 移動先Grid座標
-	 *
-	 * @return
-	 * 移動開始成功時true
+	 * @brief 指定Gridへの移動要求
 	 *
 	 * @details
-	 * A*で経路を取得して、
-	 * 残り移動力以内なら移動を開始する。
+	 * A*でPathを検索し、
+	 * CharacterStatusComponent::CalculateMoveRange()
+	 * 以内であれば移動を開始する。
+	 *
+	 * 距離に関係なく、
+	 * 1回のMove ActionとしてAPを消費する。
 	 */
 	bool RequestMoveTo(
 		const GridPosition& destination);
-
-	/**
-	 * @brief 現在の残り移動力を取得
-	 */
-	int GetRemainingMovePoints() const
-	{
-		return m_RemainingMovePoints;
-	}
 
 	//=================================================
 	// Attack
 	//=================================================
 
 	/**
-	 * @brief 隣接Enemyを検索して攻撃する
+	 * @brief 攻撃可能範囲内からEnemyを検索して攻撃
 	 *
-	 * @details
-	 * Keyboard操作等で利用する簡易入口。
+	 * @note
+	 * 現段階では簡易操作用。
 	 */
 	bool RequestAttack();
 
 	/**
-	 * @brief 指定Enemyへの攻撃を要求する
+	 * @brief 指定Enemyへの通常攻撃要求
 	 *
-	 * @param target
-	 * 攻撃対象Enemy
+	 * @param target 攻撃対象
 	 *
 	 * @return
 	 * 攻撃開始成功時true
-	 *
-	 * @details
-	 * 実際のAnimation Sequenceは
-	 * PlayerClassComponentへ委譲する。
 	 */
 	bool RequestAttack(
 		GameObject* target);
 
 	/**
-	 * @brief 職業固有攻撃Sequenceを更新する
-	 *
-	 * PlayerClassComponentから
-	 * Hit通知を受け取ってDamageを適用する。
+	 * @brief 職業固有通常攻撃Sequence更新
 	 */
 	void UpdateClassAttack();
 
 	/**
-	 * @brief 現在職業攻撃中か
+	 * @brief 現在攻撃中か
 	 */
 	bool IsClassAttacking() const
 	{
@@ -181,32 +165,17 @@ public:
 	}
 
 	//=================================================
-	// Turn Action
+	// Action State
 	//=================================================
 
-	bool HasActed() const
-	{
-		return m_HasActed;
-	}
-
 	/**
-	 * @brief 現在の行動が終了しているか
-	 *
-	 * @return
-	 * Idleならtrue
+	 * @brief 現在実行中Actionが終了しているか
 	 */
 	bool IsActionFinished() const
 	{
 		return
 			m_ActionState ==
 			PlayerActionState::Idle;
-	}
-
-	void SetActed(
-		bool acted)
-	{
-		m_HasActed =
-			acted;
 	}
 
 	//=================================================
@@ -227,10 +196,7 @@ private:
 	//=================================================
 
 	/**
-	 * @brief PlayerTurn開始処理
-	 *
-	 * CharacterStatusComponentの
-	 * Agilityから移動力を設定する。
+	 * @brief PlayerTurn開始内部処理
 	 */
 	void BeginPlayerTurn();
 
@@ -250,6 +216,34 @@ private:
 	bool BeginMove(
 		const std::vector<GridPosition>& path);
 
+	//=================================================
+	// Component Access
+	//=================================================
+
+	/**
+	 * @brief CharacterStatus取得
+	 */
+	CharacterStatusComponent*
+		GetStatus() const;
+
+	/**
+	 * @brief PlayerActionComponent取得
+	 */
+	PlayerActionComponent*
+		GetPlayerAction() const;
+
+	/**
+	 * @brief PlayerがAction要求を受け付けられるか
+	 *
+	 * @details
+	 * ・PlayerTurn
+	 * ・Idle
+	 * ・生存
+	 *
+	 * を確認する。
+	 */
+	bool CanAcceptActionRequest() const;
+
 private:
 
 	//=================================================
@@ -266,13 +260,6 @@ private:
 		nullptr;
 
 	/**
-	 * @brief 現在のPlayerTurnで残っている移動力
-	 */
-	int
-		m_RemainingMovePoints =
-		0;
-
-	/**
 	 * @brief 最後に開始処理したTurn番号
 	 */
 	uint64_t
@@ -287,21 +274,14 @@ private:
 		m_ActionState =
 		PlayerActionState::Idle;
 
-	/**
-	 * @brief このTurnですでに行動したか
-	 */
-	bool
-		m_HasActed =
-		false;
-
 	//=================================================
 	// Movement
 	//=================================================
 
 	/**
-	 * @brief 現在移動中Path
+	 * @brief 現在移動中のPath
 	 *
-	 * index 0 = 開始地点
+	 * index 0は開始地点。
 	 */
 	std::vector<GridPosition>
 		m_MovePath;

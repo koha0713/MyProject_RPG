@@ -9,7 +9,6 @@
 #include "UIFontComponent.h"
 
 #include "CharacterStatusComponent.h"
-#include "PlayerControllerComponent.h"
 
 #include <string>
 #include <Windows.h>
@@ -793,10 +792,6 @@ void FieldSceneUI::UpdatePlayerHUD(
 		player->GetComponent<
 		CharacterStatusComponent>();
 
-	auto* controller =
-		player->GetComponent<
-		PlayerControllerComponent>();
-
 	if (!status)
 	{
 		HidePlayerHUD();
@@ -1021,15 +1016,21 @@ void FieldSceneUI::UpdatePlayerHUD(
 	}
 
 	//=================================================
-	// Acted
+	// AP State
+	//=================================================
+	//
+	// AP制では旧HasActedフラグを使用しない。
+	//
+	// APが0になったCharacterは、
+	// このTurnでこれ以上通常Actionを実行できないため
+	// HUDを暗く表示する。
 	//=================================================
 
-	const bool hasActed =
-		controller &&
-		controller->HasActed();
+	const bool outOfAP =
+		status->GetAP() <= 0;
 
 	SetPlayerHUDDarkened(
-		hasActed);
+		outOfAP);
 }
 
 //=====================================================

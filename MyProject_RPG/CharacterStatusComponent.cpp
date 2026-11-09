@@ -10,6 +10,27 @@
 
 void CharacterStatusComponent::Initialize()
 {
+	//=================================================
+	// Resource Clamp
+	//=================================================
+
+	m_HP =
+		std::clamp(
+			m_HP,
+			0,
+			m_MaxHP);
+
+	m_MP =
+		std::clamp(
+			m_MP,
+			0,
+			m_MaxMP);
+
+	m_AP =
+		std::clamp(
+			m_AP,
+			0,
+			m_MaxAP);
 }
 
 void CharacterStatusComponent::Finalize()
@@ -33,12 +54,14 @@ void CharacterStatusComponent::Draw()
 void CharacterStatusComponent::SetMaxHP(
 	int hp)
 {
+	// 最大HPは最低1。
 	m_MaxHP =
 		(std::max)(
-			hp,
-			1);
+			1,
+			hp);
 
-	// 初期設定時は最大HPまで回復する。
+	// Character生成時の使用を想定して
+	// 現在HPも最大値まで回復する。
 	m_HP =
 		m_MaxHP;
 }
@@ -50,8 +73,12 @@ void CharacterStatusComponent::SetMaxHP(
 void CharacterStatusComponent::TakeDamage(
 	int damage)
 {
-	if (damage <= 0 ||
-		IsDead())
+	if (damage <= 0)
+	{
+		return;
+	}
+
+	if (IsDead())
 	{
 		return;
 	}
@@ -69,19 +96,14 @@ void CharacterStatusComponent::TakeDamage(
 
 	sprintf_s(
 		buffer,
-		"[CharacterStatus] Damage=%d HP=%d/%d\n",
+		"[CharacterStatus] "
+		"Damage=%d HP=%d/%d\n",
 		damage,
 		m_HP,
 		m_MaxHP);
 
 	OutputDebugStringA(
 		buffer);
-
-	if (IsDead())
-	{
-		OutputDebugStringA(
-			"[CharacterStatus] Dead\n");
-	}
 }
 
 //=====================================================
@@ -91,20 +113,22 @@ void CharacterStatusComponent::TakeDamage(
 void CharacterStatusComponent::RecoverHP(
 	int amount)
 {
-	if (amount <= 0 ||
-		IsDead())
+	if (amount <= 0)
 	{
 		return;
 	}
 
-	m_HP +=
-		amount;
-
-	if (m_HP > m_MaxHP)
+	// 現仕様では戦闘不能Characterを
+	// 通常回復では復活させない。
+	if (IsDead())
 	{
-		m_HP =
-			m_MaxHP;
+		return;
 	}
+
+	m_HP =
+		(std::min)(
+			m_HP + amount,
+			m_MaxHP);
 }
 
 //=====================================================
@@ -114,29 +138,32 @@ void CharacterStatusComponent::RecoverHP(
 void CharacterStatusComponent::SetMaxMP(
 	int mp)
 {
-	// MPを使用しないCharacterは0を許可する。
 	m_MaxMP =
 		(std::max)(
-			mp,
-			0);
+			0,
+			mp);
 
 	m_MP =
 		m_MaxMP;
 }
 
-//=====================================================
-// Consume MP
-//=====================================================
-
-bool CharacterStatusComponent::ConsumeMP(
-	int amount)
+bool CharacterStatusComponent::CanConsumeMP(
+	int amount) const
 {
-	if (amount <= 0)
+	if (amount < 0)
 	{
 		return false;
 	}
 
-	if (m_MP < amount)
+	return
+		m_MP >= amount;
+}
+
+bool CharacterStatusComponent::ConsumeMP(
+	int amount)
+{
+	if (!CanConsumeMP(
+		amount))
 	{
 		return false;
 	}
@@ -147,10 +174,6 @@ bool CharacterStatusComponent::ConsumeMP(
 	return true;
 }
 
-//=====================================================
-// Recover MP
-//=====================================================
-
 void CharacterStatusComponent::RecoverMP(
 	int amount)
 {
@@ -159,31 +182,104 @@ void CharacterStatusComponent::RecoverMP(
 		return;
 	}
 
-	m_MP +=
+	m_MP =
+		(std::min)(
+			m_MP + amount,
+			m_MaxMP);
+}
+
+//=====================================================
+// AP
+//=====================================================
+
+void CharacterStatusComponent::SetMaxAP(
+	int ap)
+{
+	m_MaxAP =
+		(std::max)(
+			0,
+			ap);
+
+	// Character生成時の利用を想定。
+	m_AP =
+		m_MaxAP;
+}
+
+bool CharacterStatusComponent::CanConsumeAP(
+	int amount) const
+{
+	if (amount < 0)
+	{
+		return false;
+	}
+
+	return
+		m_AP >= amount;
+}
+
+bool CharacterStatusComponent::ConsumeAP(
+	int amount)
+{
+	if (!CanConsumeAP(
+		amount))
+	{
+		return false;
+	}
+
+	m_AP -=
 		amount;
 
-	if (m_MP > m_MaxMP)
-	{
-		m_MP =
-			m_MaxMP;
-	}
+	return true;
 }
 
-//=====================================================
-// Attack
-//=====================================================
-
-void CharacterStatusComponent::SetAttackPower(
-	int power)
+void CharacterStatusComponent::RecoverAP(
+	int amount)
 {
-	m_AttackPower =
-		(std::max)(
-			power,
-			0);
+	if (amount <= 0)
+	{
+		return;
+	}
+
+	m_AP =
+		(std::min)(
+			m_AP + amount,
+			m_MaxAP);
+}
+
+void CharacterStatusComponent::ResetAP()
+{
+	m_AP =
+		m_MaxAP;
 }
 
 //=====================================================
-// Agility
+// STR
+//=====================================================
+
+void CharacterStatusComponent::SetStrength(
+	int strength)
+{
+	m_Strength =
+		(std::max)(
+			1,
+			strength);
+}
+
+//=====================================================
+// DEX
+//=====================================================
+
+void CharacterStatusComponent::SetDexterity(
+	int dexterity)
+{
+	m_Dexterity =
+		(std::max)(
+			1,
+			dexterity);
+}
+
+//=====================================================
+// AGI
 //=====================================================
 
 void CharacterStatusComponent::SetAgility(
@@ -191,8 +287,72 @@ void CharacterStatusComponent::SetAgility(
 {
 	m_Agility =
 		(std::max)(
-			agility,
-			1);
+			1,
+			agility);
+}
+
+//=====================================================
+// PER
+//=====================================================
+
+void CharacterStatusComponent::SetPerception(
+	int perception)
+{
+	m_Perception =
+		(std::max)(
+			1,
+			perception);
+}
+
+//=====================================================
+// Move Range
+//=====================================================
+
+void CharacterStatusComponent::SetBaseMoveRange(
+	int range)
+{
+	m_BaseMoveRange =
+		(std::max)(
+			0,
+			range);
+}
+
+int CharacterStatusComponent::
+CalculateMoveRange() const
+{
+	//=================================================
+	// 現段階
+	//=================================================
+	//
+	// AGIは能力値として保持するが、
+	// 移動距離へ直接変換しない。
+	//
+	// 将来的にはここへ、
+	//
+	// ・AGI
+	// ・装備重量
+	// ・Squad補正
+	// ・状態異常
+	// ・Buff / Debuff
+	//
+	// を加味する。
+	//=================================================
+
+	return
+		m_BaseMoveRange;
+}
+
+//=====================================================
+// Legacy Attack Power
+//=====================================================
+
+void CharacterStatusComponent::SetAttackPower(
+	int power)
+{
+	m_AttackPower =
+		(std::max)(
+			0,
+			power);
 }
 
 //=====================================================
@@ -201,6 +361,10 @@ void CharacterStatusComponent::SetAgility(
 
 void CharacterStatusComponent::DrawDebugUI()
 {
+	//=================================================
+	// Resource
+	//=================================================
+
 	ImGui::Text(
 		"HP: %d / %d",
 		m_HP,
@@ -212,12 +376,61 @@ void CharacterStatusComponent::DrawDebugUI()
 		m_MaxMP);
 
 	ImGui::Text(
-		"Attack Power: %d",
-		m_AttackPower);
+		"AP: %d / %d",
+		m_AP,
+		m_MaxAP);
+
+	ImGui::Separator();
+
+	//=================================================
+	// Ability
+	//=================================================
 
 	ImGui::Text(
-		"Agility: %d",
+		"STR: %d",
+		m_Strength);
+
+	ImGui::Text(
+		"DEX: %d",
+		m_Dexterity);
+
+	ImGui::Text(
+		"AGI: %d",
 		m_Agility);
+
+	ImGui::Text(
+		"PER: %d",
+		m_Perception);
+
+	ImGui::Separator();
+
+	//=================================================
+	// Movement
+	//=================================================
+
+	ImGui::Text(
+		"Base Move Range: %d",
+		m_BaseMoveRange);
+
+	ImGui::Text(
+		"Calculated Move Range: %d",
+		CalculateMoveRange());
+
+	ImGui::Separator();
+
+	//=================================================
+	// Legacy
+	//=================================================
+
+	ImGui::Text(
+		"Legacy Attack Power: %d",
+		m_AttackPower);
+
+	ImGui::Separator();
+
+	//=================================================
+	// State
+	//=================================================
 
 	ImGui::Text(
 		"State: %s",

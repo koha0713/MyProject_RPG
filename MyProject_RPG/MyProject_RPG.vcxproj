@@ -160,6 +160,7 @@
     <ClInclude Include="GridCell.h" />
     <ClInclude Include="GridMap.h" />
     <ClInclude Include="GridPathFinder.h" />
+    <ClInclude Include="GridPattern.h" />
     <ClInclude Include="GridPosition.h" />
     <ClInclude Include="GridPositionComponent.h" />
     <ClInclude Include="GridRangeCalculator.h" />
@@ -185,6 +186,9 @@
     <ClInclude Include="NonCopyable.h" />
     <ClInclude Include="IScene.h" />
     <ClInclude Include="OutlineSetting.h" />
+    <ClInclude Include="PlayerActionComponent.h" />
+    <ClInclude Include="PlayerActionDefinition.h" />
+    <ClInclude Include="PlayerActionType.h" />
     <ClInclude Include="PlayerClassComponent.h" />
     <ClInclude Include="PlayerClassType.h" />
     <ClInclude Include="PlayerControllerComponent.h" />
@@ -203,6 +207,8 @@
     <ClInclude Include="SoundManager.h" />
     <ClInclude Include="SpriteRenderer.h" />
     <ClInclude Include="stb_image.h" />
+    <ClInclude Include="TargetingRules.h" />
+    <ClInclude Include="TargetingSystem.h" />
     <ClInclude Include="TerrainMapData.h" />
     <ClInclude Include="TerrainMapLoader.h" />
     <ClInclude Include="TerrainTileComponent.h" />
@@ -240,6 +246,7 @@
     <ClCompile Include="GameObjectManager.cpp" />
     <ClCompile Include="GridMap.cpp" />
     <ClCompile Include="GridPathFinder.cpp" />
+    <ClCompile Include="GridPattern.cpp" />
     <ClCompile Include="GridPositionComponent.cpp" />
     <ClCompile Include="GridRangeCalculator.cpp" />
     <ClCompile Include="GridRangeRenderer.cpp" />
@@ -260,6 +267,7 @@
     <ClCompile Include="ModelData.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
     <ClCompile Include="MousePicker.cpp" />
+    <ClCompile Include="PlayerActionComponent.cpp" />
     <ClCompile Include="PlayerClassComponent.cpp" />
     <ClCompile Include="PlayerControllerComponent.cpp" />
     <ClCompile Include="PrimitiveRenderer.cpp" />
@@ -270,6 +278,7 @@
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SoundManager.cpp" />
     <ClCompile Include="SpriteRenderer.cpp" />
+    <ClCompile Include="TargetingSystem.cpp" />
     <ClCompile Include="TerrainMapLoader.cpp" />
     <ClCompile Include="TerrainTileComponent.cpp" />
     <ClCompile Include="TitleScene.cpp" />

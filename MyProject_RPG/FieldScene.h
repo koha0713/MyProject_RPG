@@ -84,11 +84,15 @@ private:
 	// Turn
 	//=================================================
 
-	bool AreAllPlayersActed();
-
+	/**
+	 * @brief 全Playerの実行中Actionが終了しているか
+	 */
 	bool AreAllPlayerActionsFinished() const;
 
-	bool AreAllPlayersOutOfMovePoints();
+	/**
+	 * @brief 全PlayerのAPが0か
+	 */
+	bool AreAllPlayersOutOfAP() const;
 
 private:
 

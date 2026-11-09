@@ -10,6 +10,7 @@
 #include "Component.h"
 #include "AnimationData.h"
 #include "PlayerClassType.h"
+#include "PlayerActionDefinition.h"
 
 class GameObject;
 
@@ -102,16 +103,18 @@ public:
 	bool ConsumeAttackHitRequest();
 
 	/**
-	 * @brief 通常攻撃の射程を取得
+	 * @brief 指定Actionの職業固有定義を取得する
 	 *
 	 * @details
-	 * Manhattan距離で使用する。
+	 * AP / MP Costなど、
+	 * 職業によって異なるAction情報を返す。
 	 *
-	 * 例：
-	 * Warrior = 1
-	 * Ranger  = 4
+	 * Move / Itemなど共通Actionについては
+	 * Base実装を利用できる。
 	 */
-	virtual int GetNormalAttackRange() const = 0;
+	virtual PlayerActionDefinition
+		GetActionDefinition(
+			PlayerActionType type) const;
 
 	//=================================================
 	// Debug

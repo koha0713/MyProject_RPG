@@ -9,10 +9,7 @@
 #include "CameraComponent.h"
 #include "AudioSourceComponent.h"
 #include "GridPositionComponent.h"
-#include "PlayerControllerComponent.h"
-#include "PlayerClassComponent.h"
 #include "EnemyAIComponent.h"
-#include "CharacterStatusComponent.h"
 #include "FieldExitComponent.h"
 #include "CharacterAnimationComponent.h"
 #include "TerrainTileComponent.h"
@@ -20,6 +17,17 @@
 #include "UIRectComponent.h"
 #include "UIButtonComponent.h"
 #include "UIFontComponent.h"
+
+// Player関係
+#include "CharacterStatusComponent.h"
+#include "PlayerActionType.h"
+#include "PlayerActionDefinition.h"
+#include "PlayerControllerComponent.h"
+#include "PlayerClassComponent.h"
+#include "PlayerActionComponent.h"
+
+// Battle関係
+#include "TargetingSystem.h"
 
 #include "WarriorClassComponent.h"
 #include "WizardClassComponent.h"
@@ -69,7 +77,6 @@ void FieldScene::Initialize()
 	//=====================================================
 	// TerrainMap
 	//=====================================================
-
 	if (!TerrainMapLoader::Load(
 		"Assets/Map/TerrainMap.txt",
 		m_TerrainMapData))
@@ -406,9 +413,17 @@ void FieldScene::Update(
 
 	if (CheckNextTurnButtonClick())
 	{
-		// 同じMouse入力を
-		// Field操作へ流さない。
-		return;
+		// Action中の手動Turn終了は禁止。
+		if (AreAllPlayerActionsFinished())
+		{
+			m_SelectedPlayer =
+				nullptr;
+
+			m_TurnManager.
+				EndPlayerTurn();
+
+			BeginEnemyTurnSequence();
+		}
 	}
 
 	//=====================================
@@ -572,72 +587,121 @@ void FieldScene::Draw(uint64_t delta)
 			m_SelectedPlayer->GetComponent<
 			PlayerControllerComponent>();
 
+		auto* status =
+			m_SelectedPlayer->GetComponent<
+			CharacterStatusComponent>();
+
+		auto* playerAction =
+			m_SelectedPlayer->GetComponent<
+			PlayerActionComponent>();
+
+		//=================================================
+		// 必要Component確認
+		//=================================================
+
 		if (gridPosition &&
 			controller &&
+			status &&
+			playerAction &&
 			controller->IsActionFinished())
 		{
 			const GridPosition playerGrid =
 				gridPosition->
 				GetGridPosition();
 
-			const int movePoints =
-				controller->
-				GetRemainingMovePoints();
-
-			//=====================================
+			//=================================================
 			// Move Range
-			//=====================================
-			if (movePoints > 0)
-			{
-				const auto moveRange =
-					GridRangeCalculator::
-					CalculateMoveRange(
-						m_GridMap,
-						playerGrid,
-						movePoints);
+			//=================================================
+			//
+			// Move ActionのAP / MPを支払える場合のみ、
+			// 移動可能範囲を表示する。
+			//
+			// 移動可能距離は旧RemainingMovePointsではなく、
+			// CharacterStatusComponentが計算する。
+			//=================================================
 
-				GridRangeRenderer::DrawCells(
-					m_GridMap,
-					moveRange,
-					Color(
-						0.2f,
-						0.5f,
-						1.0f,
-						0.30f),
-					0.03f);
+			const bool canMove =
+				playerAction->
+				CanUseAction(
+					PlayerActionType::Move);
+
+			if (canMove)
+			{
+				const int moveRangeDistance =
+					status->
+					CalculateMoveRange();
+
+				if (moveRangeDistance > 0)
+				{
+					const auto moveRange =
+						GridRangeCalculator::
+						CalculateMoveRange(
+							m_GridMap,
+							playerGrid,
+							moveRangeDistance);
+
+					GridRangeRenderer::DrawCells(
+						m_GridMap,
+						moveRange,
+						Color(
+							0.2f,
+							0.5f,
+							1.0f,
+							0.30f),
+						0.03f);
+				}
 			}
 
 			//=================================================
 			// Attack Range
 			//=================================================
+			//
+			// NormalAttackのAP / MPを支払える場合のみ、
+			// 実際にTarget指定可能なGridを表示する。
+			//
+			// 範囲形状・射線・壁・Unit遮蔽は
+			// TargetingSystem側で判定する。
+			//=================================================
 
-			auto* playerClass =
-				m_SelectedPlayer->
-				GetComponent<
-				PlayerClassComponent>();
+			const bool canAttack =
+				playerAction->
+				CanUseAction(
+					PlayerActionType::
+					NormalAttack);
 
-			const int attackDistance =
-				playerClass
-				? playerClass->
-				GetNormalAttackRange()
-				: 1;
+			if (canAttack)
+			{
+				const PlayerActionDefinition definition =
+					playerAction->
+					GetActionDefinition(
+						PlayerActionType::
+						NormalAttack);
 
-			const auto attackRange =
-				GridRangeCalculator::
-				CalculateAttackRange(
-					m_GridMap,
-					playerGrid,
-					attackDistance);
+				// Action自体が無効、
+				// またはTargetPatternが不正なら描画しない。
+				if (definition.Enabled &&
+					definition.TargetPattern.IsValid())
+				{
+					const auto attackRange =
+						TargetingSystem::
+						GetTargetableCells(
+							m_GridMap,
+							m_SelectedPlayer,
+							playerGrid,
+							definition.TargetPattern,
+							definition.Targeting);
 
-			GridRangeRenderer::DrawCells(
-				m_GridMap,
-				attackRange,
-				Color(
-					1.0f,
-					0.2f,
-					0.2f,
-					0.35f),
-				0.04f);
+					GridRangeRenderer::DrawCells(
+						m_GridMap,
+						attackRange,
+						Color(
+							1.0f,
+							0.2f,
+							0.2f,
+							0.35f),
+						0.04f);
+				}
+			}
 		}
 	}
 	SpriteRenderer::Begin();
@@ -1334,22 +1398,115 @@ GameObject* FieldScene::CreatePlayer(
 	if (status)
 	{
 		//=================================================
-		// Warrior Status
+		// Class Status
 		//=================================================
 
-		status->SetMaxHP(
-			10);
+		if (data.Type == "Warrior")
+		{
+			status->SetMaxHP(120);
+			status->SetMaxMP(25);
+			status->SetMaxAP(4);
 
-		// WarriorもSkill使用を想定し、
-		// 少量のMPを持たせておく。
-		status->SetMaxMP(
-			5);
+			status->SetStrength(8);
+			status->SetDexterity(5);
+			status->SetAgility(4);
+			status->SetPerception(4);
 
-		status->SetAttackPower(
-			3);
+			status->SetBaseMoveRange(2);
 
-		status->SetAgility(
-			3);
+			// 暫定Damage値。
+			status->SetAttackPower(3);
+		}
+		else if (data.Type == "Wizard")
+		{
+			status->SetMaxHP(70);
+			status->SetMaxMP(120);
+			status->SetMaxAP(4);
+
+			status->SetStrength(2);
+			status->SetDexterity(4);
+			status->SetAgility(3);
+			status->SetPerception(6);
+
+			status->SetBaseMoveRange(2);
+
+			status->SetAttackPower(3);
+		}
+		else if (data.Type == "Ranger")
+		{
+			status->SetMaxHP(85);
+			status->SetMaxMP(45);
+			status->SetMaxAP(4);
+
+			status->SetStrength(4);
+			status->SetDexterity(9);
+			status->SetAgility(7);
+			status->SetPerception(9);
+
+			status->SetBaseMoveRange(3);
+
+			status->SetAttackPower(3);
+		}
+		else if (data.Type == "Monk")
+		{
+			status->SetMaxHP(105);
+			status->SetMaxMP(35);
+			status->SetMaxAP(4);
+
+			status->SetStrength(7);
+			status->SetDexterity(7);
+			status->SetAgility(8);
+			status->SetPerception(5);
+
+			status->SetBaseMoveRange(3);
+
+			status->SetAttackPower(2);
+		}
+		else if (data.Type == "Rogue")
+		{
+			status->SetMaxHP(75);
+			status->SetMaxMP(40);
+			status->SetMaxAP(4);
+
+			status->SetStrength(5);
+			status->SetDexterity(9);
+			status->SetAgility(10);
+			status->SetPerception(7);
+
+			status->SetBaseMoveRange(4);
+
+			status->SetAttackPower(3);
+		}
+		else if (data.Type == "Cleric")
+		{
+			status->SetMaxHP(90);
+			status->SetMaxMP(100);
+			status->SetMaxAP(4);
+
+			status->SetStrength(3);
+			status->SetDexterity(5);
+			status->SetAgility(4);
+			status->SetPerception(8);
+
+			status->SetBaseMoveRange(2);
+
+			status->SetAttackPower(2);
+		}
+	}
+
+	//=================================================
+	// Player Action
+	//=================================================
+
+	auto* playerAction =
+		player->AddComponent<
+		PlayerActionComponent>();
+
+	if (!playerAction)
+	{
+		player->Destroy();
+
+		return nullptr;
 	}
 
 	//=================================================
@@ -1835,57 +1992,20 @@ void FieldScene::CreateTerrainTile(
 		terrainObject);
 }
 
-/**
- * @brief 操作キャラの行動済み確認
- * @return false:未行動キャラあり
- */
-bool FieldScene::AreAllPlayersActed()
-{
-	std::vector<GameObject*> players =
-		m_gameObjectManager.FindByTag(
-			Tag::Player);
-
-	if (players.empty())
-	{
-		return false;
-	}
-
-	for (GameObject* player :
-		players)
-	{
-		if (!player)
-		{
-			continue;
-		}
-
-		auto* controller =
-			player->GetComponent<
-			PlayerControllerComponent>();
-
-		if (!controller)
-		{
-			continue;
-		}
-
-		if (!controller->HasActed())
-		{
-			return false;
-		}
-	}
-
-	return true;
-}
-
+//=====================================================
+// 全Player Action終了確認
+//=====================================================
 bool FieldScene::AreAllPlayerActionsFinished() const
 {
-	std::vector<GameObject*> players =
+	const auto players =
 		m_gameObjectManager.FindByTag(
 			Tag::Player);
 
 	for (GameObject* player :
 		players)
 	{
-		if (!player)
+		if (!player ||
+			player->IsDestroy())
 		{
 			continue;
 		}
@@ -1909,102 +2029,127 @@ bool FieldScene::AreAllPlayerActionsFinished() const
 	return true;
 }
 
-bool FieldScene::AreAllPlayersOutOfMovePoints()
+//=====================================================
+// 全Player AP消費確認
+//=====================================================
+
+bool FieldScene::AreAllPlayersOutOfAP() const
 {
-	std::vector<GameObject*> players =
+	const auto players =
 		m_gameObjectManager.FindByTag(
 			Tag::Player);
 
+	// Playerが存在しない場合は
+	// 自動Turn終了させない。
 	if (players.empty())
 	{
 		return false;
 	}
 
+	bool foundAlivePlayer =
+		false;
+
 	for (GameObject* player :
 		players)
 	{
-		if (!player)
+		if (!player ||
+			player->IsDestroy())
 		{
 			continue;
 		}
 
-		auto* controller =
+		auto* status =
 			player->GetComponent<
-			PlayerControllerComponent>();
+			CharacterStatusComponent>();
 
-		if (!controller)
+		if (!status)
 		{
 			continue;
 		}
 
-		// 1人でも移動力が残っていれば、
-		// 強制Turn終了はしない。
-		if (controller->
-			GetRemainingMovePoints() > 0)
+		// 戦闘不能Characterは
+		// 行動可能Playerとして扱わない。
+		if (status->IsDead())
+		{
+			continue;
+		}
+
+		foundAlivePlayer =
+			true;
+
+		// 1APでも残っているPlayerがいるなら
+		// 全員AP切れではない。
+		if (status->GetAP() > 0)
 		{
 			return false;
 		}
 	}
 
-	return true;
+	// 生存Playerが存在し、
+	// 全員AP 0ならtrue。
+	return foundAlivePlayer;
 }
 
+//=====================================================
+// Player Turn終了判定
+//=====================================================
 void FieldScene::CheckPlayerTurnEnd()
 {
+	// PlayerTurn以外では判定しない。
 	if (!m_TurnManager.IsPlayerTurn())
 	{
 		return;
 	}
 
-	// Playerの移動・攻撃演出中は
-	// Turnを切り替えない。
+	//=================================================
+	// 実行中Action確認
+	//=================================================
+	//
+	// APが0でも、
+	// Move / Attack Animationが残っている間は
+	// EnemyTurnへ進めない。
+	//=================================================
+
 	if (!AreAllPlayerActionsFinished())
 	{
 		return;
 	}
 
-	// 全Playerが行動不能になった場合のみ
-	// 強制的にEnemyTurnへ移行する。
-	if (!AreAllPlayersOutOfMovePoints())
+	//=================================================
+	// AP確認
+	//=================================================
+
+	if (!AreAllPlayersOutOfAP())
 	{
 		return;
 	}
+
+	//=================================================
+	// Player Turn End
+	//=================================================
 
 	m_SelectedPlayer =
 		nullptr;
 
-	m_TurnManager.EndPlayerTurn();
+	m_TurnManager.
+		EndPlayerTurn();
+
+	// Enemy行動開始。
+	BeginEnemyTurnSequence();
 }
 
 void FieldScene::UpdateNextTurnButton()
 {
-	if (!m_FieldUI)
-	{
-		return;
-	}
-
-	//=================================================
-	// Button表示条件
-	//=================================================
-	//
-	// ・PlayerTurn中
-	// ・全Playerが最低1回行動済み
-	// ・Animation等が終了済み
-	// ・まだ移動力が余っている
-	//
-	// 全員の移動力が0なら
-	// CheckPlayerTurnEnd()側で自動終了する。
-	//=================================================
-
 	const bool canEndTurn =
 		m_TurnManager.IsPlayerTurn() &&
-		AreAllPlayersActed() &&
-		AreAllPlayerActionsFinished() &&
-		!AreAllPlayersOutOfMovePoints();
+		AreAllPlayerActionsFinished();
 
-	m_FieldUI->
-		SetNextTurnVisible(
-			canEndTurn);
+	if (m_FieldUI)
+	{
+		m_FieldUI->
+			SetNextTurnVisible(
+				canEndTurn);
+	}
 }
 
 bool FieldScene::
@@ -2029,7 +2174,6 @@ CheckNextTurnButtonClick()
 	//=================================================
 
 	if (!m_TurnManager.IsPlayerTurn() ||
-		!AreAllPlayersActed() ||
 		!AreAllPlayerActionsFinished())
 	{
 		return false;

@@ -311,6 +311,88 @@ UpdateClassAttack(
 }
 
 //=====================================================
+// Action Definition
+//=====================================================
+PlayerActionDefinition
+PlayerClassComponent::GetActionDefinition(
+	PlayerActionType type) const
+{
+	PlayerActionDefinition definition;
+
+	definition.Type =
+		type;
+
+	definition.Enabled =
+		true;
+
+	switch (type)
+	{
+	case PlayerActionType::Move:
+	{
+		definition.Cost.AP =
+			2;
+
+		definition.Cost.MP =
+			0;
+
+		//=================================================
+		// MoveはTargetingSystemとは別扱い
+		//=================================================
+		//
+		// 移動範囲はCharacterStatusComponentの
+		// CalculateMoveRange()を使用するため、
+		// TargetPatternはここでは設定しない。
+		//=================================================
+
+		break;
+	}
+
+	case PlayerActionType::NormalAttack:
+	{
+		// 派生Class側で設定する。
+		definition.Enabled =
+			false;
+
+		break;
+	}
+
+	case PlayerActionType::Skill1:
+	case PlayerActionType::Skill2:
+	case PlayerActionType::Ultimate:
+	{
+		// 派生Class側で設定する。
+		definition.Enabled =
+			false;
+
+		break;
+	}
+
+	case PlayerActionType::Item:
+	{
+		definition.Cost.AP =
+			2;
+
+		definition.Cost.MP =
+			0;
+
+		// ItemのTargetingは
+		// Inventory実装時に設定する。
+		break;
+	}
+
+	default:
+	{
+		definition.Enabled =
+			false;
+
+		break;
+	}
+	}
+
+	return definition;
+}
+
+//=====================================================
 // Debug
 //=====================================================
 

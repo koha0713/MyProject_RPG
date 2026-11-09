@@ -91,6 +91,9 @@
     <Filter Include="ソース ファイル\Component\Chara\Class">
       <UniqueIdentifier>{fc745cd8-075d-4d9a-af16-f16da170ceaa}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\System\Chara">
+      <UniqueIdentifier>{6f6e03ca-cdf7-483d-9188-384f936d7386}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -354,6 +357,24 @@
     <ClInclude Include="ClericClassComponent.h">
       <Filter>ソース ファイル\Component\Chara\Class</Filter>
     </ClInclude>
+    <ClInclude Include="PlayerActionType.h">
+      <Filter>ソース ファイル\System\Chara</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerActionDefinition.h">
+      <Filter>ソース ファイル\System\Chara</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerActionComponent.h">
+      <Filter>ソース ファイル\Component\Player</Filter>
+    </ClInclude>
+    <ClInclude Include="GridPattern.h">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="TargetingRules.h">
+      <Filter>ソース ファイル\System\Chara</Filter>
+    </ClInclude>
+    <ClInclude Include="TargetingSystem.h">
+      <Filter>ソース ファイル\System\Chara</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -532,6 +553,15 @@
     </ClCompile>
     <ClCompile Include="PlayerClassComponent.cpp">
       <Filter>ソース ファイル\Component\Chara</Filter>
+    </ClCompile>
+    <ClCompile Include="PlayerActionComponent.cpp">
+      <Filter>ソース ファイル\Component\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="GridPattern.cpp">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="TargetingSystem.cpp">
+      <Filter>ソース ファイル\System\Chara</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

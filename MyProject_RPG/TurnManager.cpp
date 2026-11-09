@@ -1,56 +1,100 @@
 #include "TurnManager.h"
 
+//=====================================================
+// Initialize
+//=====================================================
+
 void TurnManager::Initialize()
 {
+	// ゲーム開始時はPlayer Phase。
 	m_Phase =
 		TurnPhase::Player;
 
+	// 初回Turnは0から開始する。
 	m_TurnCount =
 		0;
 }
 
+//=====================================================
+// Update
+//=====================================================
+
 void TurnManager::Update()
 {
-	// 現段階では状態保持のみ。
-	// EnemyManagerやEnemyAIを接続した段階で
-	// Enemyターン処理をここから起動する。
+	//=================================================
+	// 現段階では処理なし
+	//=================================================
+	//
+	// TurnManager自身は
+	// Phaseを自動的に進行させない。
+	//
+	// Player / Enemyの行動終了条件は
+	// FieldScene側が判断する。
+	//
+	// その結果、
+	//
+	// EndPlayerTurn()
+	//
+	// または
+	//
+	// EndEnemyTurn()
+	//
+	// が呼ばれる。
+	//=================================================
 }
+
+//=====================================================
+// End Player Turn
+//=====================================================
 
 void TurnManager::EndPlayerTurn()
 {
+	// Player Phase以外では
+	// PlayerTurn終了処理を行わない。
 	if (m_Phase !=
 		TurnPhase::Player)
 	{
 		return;
 	}
 
+	//=================================================
+	// Player -> Enemy
+	//=================================================
+
 	m_Phase =
 		TurnPhase::Enemy;
 }
 
+//=====================================================
+// End Enemy Turn
+//=====================================================
+
 void TurnManager::EndEnemyTurn()
 {
+	// Enemy Phase以外では
+	// EnemyTurn終了処理を行わない。
 	if (m_Phase !=
 		TurnPhase::Enemy)
 	{
 		return;
 	}
-	m_TurnCount++;
+
+	//=================================================
+	// Turn Count
+	//=================================================
+	//
+	// Player -> Enemy
+	//
+	// の1サイクルが終了したので
+	// Turn番号を進める。
+	//=================================================
+
+	++m_TurnCount;
+
+	//=================================================
+	// Enemy -> Player
+	//=================================================
 
 	m_Phase =
 		TurnPhase::Player;
-}
-
-bool TurnManager::IsPlayerTurn() const
-{
-	return
-		m_Phase ==
-		TurnPhase::Player;
-}
-
-bool TurnManager::IsEnemyTurn() const
-{
-	return
-		m_Phase ==
-		TurnPhase::Enemy;
 }

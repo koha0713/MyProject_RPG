@@ -2,7 +2,7 @@
 
 /**
  * @file CharacterStatusComponent.h
- * @brief キャラクターの基本ステータスを管理するComponent
+ * @brief Character共通の能力値を管理するComponent
  */
 
 #include "Component.h"
@@ -11,16 +11,19 @@
   * @brief Character Status Component
   *
   * @details
-  * Player / Enemy 共通の基本ステータスを保持する。
+  * Player / Enemy共通の基本能力値を管理する。
   *
-  * 管理対象
-  * ・HP
-  * ・MP
-  * ・攻撃力
-  * ・敏捷値
+  * 現段階ではBase値を直接保持する。
   *
-  * 職業固有のSkill処理などはここへ入れず、
-  * 別Componentへ分離する。
+  * 将来的には、
+  *
+  * Base Status
+  * + Level補正
+  * + Equipment補正
+  * + Buff / Debuff
+  * = Final Status
+  *
+  * という構造へ拡張する。
   */
 class CharacterStatusComponent :
 	public Component
@@ -28,7 +31,9 @@ class CharacterStatusComponent :
 public:
 
 	CharacterStatusComponent() = default;
-	~CharacterStatusComponent() override = default;
+
+	~CharacterStatusComponent() override =
+		default;
 
 	//=================================================
 	// Lifecycle
@@ -47,11 +52,6 @@ public:
 	// HP
 	//=================================================
 
-	/**
-	 * @brief 最大HP設定
-	 *
-	 * 初期設定時はHPも最大値まで回復する。
-	 */
 	void SetMaxHP(
 		int hp);
 
@@ -66,35 +66,27 @@ public:
 	}
 
 	/**
-	 * @brief ダメージを受ける
+	 * @brief Damageを受ける
 	 */
 	void TakeDamage(
 		int damage);
 
 	/**
-	 * @brief HPを回復する
+	 * @brief HP回復
 	 */
 	void RecoverHP(
 		int amount);
 
-	/**
-	 * @brief 死亡判定
-	 */
 	bool IsDead() const
 	{
-		return m_HP <= 0;
+		return
+			m_HP <= 0;
 	}
 
 	//=================================================
 	// MP
 	//=================================================
 
-	/**
-	 * @brief 最大MP設定
-	 *
-	 * 0を許可する。
-	 * MPを使用しない職業・Enemyでは0でよい。
-	 */
 	void SetMaxMP(
 		int mp);
 
@@ -109,11 +101,16 @@ public:
 	}
 
 	/**
+	 * @brief MPを消費可能か
+	 */
+	bool CanConsumeMP(
+		int amount) const;
+
+	/**
 	 * @brief MP消費
 	 *
 	 * @return
-	 * true  : 消費成功
-	 * false : MP不足
+	 * 消費成功時true
 	 */
 	bool ConsumeMP(
 		int amount);
@@ -125,7 +122,151 @@ public:
 		int amount);
 
 	//=================================================
-	// Attack
+	// AP
+	//=================================================
+
+	/**
+	 * @brief 最大APを設定
+	 *
+	 * @details
+	 * 基本仕様では全Player共通4。
+	 * 将来的なBuff等を考慮しSetterは残す。
+	 */
+	void SetMaxAP(
+		int ap);
+
+	int GetAP() const
+	{
+		return m_AP;
+	}
+
+	int GetMaxAP() const
+	{
+		return m_MaxAP;
+	}
+
+	/**
+	 * @brief APを消費可能か
+	 */
+	bool CanConsumeAP(
+		int amount) const;
+
+	/**
+	 * @brief AP消費
+	 *
+	 * @return
+	 * 消費成功時true
+	 */
+	bool ConsumeAP(
+		int amount);
+
+	/**
+	 * @brief AP回復
+	 */
+	void RecoverAP(
+		int amount);
+
+	/**
+	 * @brief Turn開始時などにAPを全回復する
+	 */
+	void ResetAP();
+
+	//=================================================
+	// STR
+	//=================================================
+
+	void SetStrength(
+		int strength);
+
+	int GetStrength() const
+	{
+		return m_Strength;
+	}
+
+	//=================================================
+	// DEX
+	//=================================================
+
+	void SetDexterity(
+		int dexterity);
+
+	int GetDexterity() const
+	{
+		return m_Dexterity;
+	}
+
+	//=================================================
+	// AGI
+	//=================================================
+
+	/**
+	 * @brief 敏捷値設定
+	 *
+	 * @details
+	 * AGIは移動マス数そのものではなく、
+	 * 移動性能などの計算に利用する能力値。
+	 */
+	void SetAgility(
+		int agility);
+
+	int GetAgility() const
+	{
+		return m_Agility;
+	}
+
+	//=================================================
+	// PER
+	//=================================================
+
+	void SetPerception(
+		int perception);
+
+	int GetPerception() const
+	{
+		return m_Perception;
+	}
+
+	//=================================================
+	// Move
+	//=================================================
+
+	/**
+	 * @brief 基本移動距離設定
+	 *
+	 * @details
+	 * 現仕様では、
+	 * 2AP消費時に移動できる基本マス数。
+	 */
+	void SetBaseMoveRange(
+		int range);
+
+	int GetBaseMoveRange() const
+	{
+		return m_BaseMoveRange;
+	}
+
+	/**
+	 * @brief 実際の移動距離を計算
+	 *
+	 * @details
+	 * 現段階ではBaseMoveRangeをそのまま返す。
+	 *
+	 * 将来的に、
+	 * AGI / 装備重量 / 状態異常 / Buff
+	 * などを加味する。
+	 */
+	int CalculateMoveRange() const;
+
+	//=================================================
+	// Legacy Attack Power
+	//=================================================
+	//
+	// 現在のPlayerController / EnemyAIとの
+	// 互換性維持用。
+	//
+	// PlayerActionSystem完成後は、
+	// STR / DEX / Weapon等からDamage計算する
+	// BattleCalculatorへ置き換える予定。
 	//=================================================
 
 	void SetAttackPower(
@@ -137,37 +278,22 @@ public:
 	}
 
 	//=================================================
-	// Agility
-	//=================================================
-
-	/**
-	 * @brief 敏捷値設定
-	 *
-	 * 現在は1PlayerTurn中の移動可能マス数として使用する。
-	 */
-	void SetAgility(
-		int agility);
-
-	int GetAgility() const
-	{
-		return m_Agility;
-	}
-
-	//=================================================
 	// Debug
 	//=================================================
 
 	void DrawDebugUI() override;
 
-	const char* GetComponentName() const override
+	const char* GetComponentName()
+		const override
 	{
-		return "CharacterStatusComponent";
+		return
+			"CharacterStatusComponent";
 	}
 
 private:
 
 	//=================================================
-	// HP
+	// Resource
 	//=================================================
 
 	int m_HP =
@@ -176,29 +302,45 @@ private:
 	int m_MaxHP =
 		10;
 
-	//=================================================
-	// MP
-	//=================================================
-
 	int m_MP =
 		0;
 
 	int m_MaxMP =
 		0;
 
+	int m_AP =
+		4;
+
+	int m_MaxAP =
+		4;
+
 	//=================================================
-	// Battle
+	// Base Ability
+	//=================================================
+
+	int m_Strength =
+		1;
+
+	int m_Dexterity =
+		1;
+
+	int m_Agility =
+		1;
+
+	int m_Perception =
+		1;
+
+	//=================================================
+	// Movement
+	//=================================================
+
+	int m_BaseMoveRange =
+		2;
+
+	//=================================================
+	// Legacy
 	//=================================================
 
 	int m_AttackPower =
-		1;
-
-	/**
-	 * @brief 敏捷値
-	 *
-	 * 現段階では
-	 * 1PlayerTurn中の移動可能マス数。
-	 */
-	int m_Agility =
 		1;
 };
