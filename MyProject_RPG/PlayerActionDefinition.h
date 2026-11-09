@@ -4,10 +4,11 @@
  * @file PlayerActionDefinition.h
  * @brief Player Actionの定義
  */
-
+#include <vector>
 #include "PlayerActionType.h"
 #include "GridPattern.h"
 #include "TargetingRules.h"
+#include "EffectDefinition.h"
 
  /**
   * @brief Action選択後のTarget指定方式
@@ -149,5 +150,19 @@ struct PlayerActionDefinition
 	 * 複数Gridへ効果を適用するActionで使用する。
 	 */
 	GridPattern EffectPattern;
+
+	/**
+	 * @brief Actionが持つEffect一覧
+	 *
+	 * 例：
+	 *
+	 * Shield Bash
+	 * → Damage
+	 * → Knockback
+	 *
+	 * のように複数Effectを保持できる。
+	 */
+	std::vector<EffectDefinition>
+		Effects;
 };
 

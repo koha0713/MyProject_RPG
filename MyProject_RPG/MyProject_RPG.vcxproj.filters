@@ -94,6 +94,9 @@
     <Filter Include="ソース ファイル\System\Chara">
       <UniqueIdentifier>{6f6e03ca-cdf7-483d-9188-384f936d7386}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\Effect">
+      <UniqueIdentifier>{a8fe7ed6-c327-4798-849e-a66db18c10a7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -375,6 +378,21 @@
     <ClInclude Include="TargetingSystem.h">
       <Filter>ソース ファイル\System\Chara</Filter>
     </ClInclude>
+    <ClInclude Include="EffectType.h">
+      <Filter>ソース ファイル\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="EffectDefinition.h">
+      <Filter>ソース ファイル\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="EffectSystem.h">
+      <Filter>ソース ファイル\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerActionRequest.h">
+      <Filter>ソース ファイル\System\Chara</Filter>
+    </ClInclude>
+    <ClInclude Include="RadialMenuUI.h">
+      <Filter>ソース ファイル\Scene\Field</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -562,6 +580,12 @@
     </ClCompile>
     <ClCompile Include="TargetingSystem.cpp">
       <Filter>ソース ファイル\System\Chara</Filter>
+    </ClCompile>
+    <ClCompile Include="EffectSystem.cpp">
+      <Filter>ソース ファイル\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="RadialMenuUI.cpp">
+      <Filter>ソース ファイル\Scene\Field</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

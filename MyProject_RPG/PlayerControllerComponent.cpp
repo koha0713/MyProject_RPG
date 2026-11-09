@@ -12,6 +12,9 @@
 #include "TransformComponent.h"
 
 #include "TargetingSystem.h"
+#include "EffectSystem.h"
+#include "EffectDefinition.h"
+#include "EffectType.h"
 
 #include "PlayerActionComponent.h"
 #include "PlayerActionType.h"
@@ -222,6 +225,146 @@ CanAcceptActionRequest() const
 	}
 
 	return true;
+}
+
+//=====================================================
+// Unit Action
+//=====================================================
+
+bool PlayerControllerComponent::RequestUnitAction(
+	PlayerActionType type,
+	GameObject* target)
+{
+	if (!target)
+	{
+		return false;
+	}
+
+	switch (type)
+	{
+	case PlayerActionType::NormalAttack:
+	{
+		// 既存の通常攻撃処理を再利用する。
+		return RequestAttack(
+			target);
+	}
+
+	case PlayerActionType::Skill1:
+	case PlayerActionType::Skill2:
+	case PlayerActionType::Ultimate:
+	{
+		// Skill実装時に追加する。
+		OutputDebugStringA(
+			"[PlayerController] "
+			"Unit Skill is not implemented yet.\n");
+
+		return false;
+	}
+
+	default:
+		break;
+	}
+
+	return false;
+}
+
+//=====================================================
+// Grid Action
+//=====================================================
+
+bool PlayerControllerComponent::RequestGridAction(
+	PlayerActionType type,
+	const GridPosition& target)
+{
+	switch (type)
+	{
+	case PlayerActionType::Move:
+	{
+		// 既存Move処理を利用。
+		return RequestMoveTo(
+			target);
+	}
+
+	case PlayerActionType::Skill1:
+	case PlayerActionType::Skill2:
+	case PlayerActionType::Ultimate:
+	{
+		// Fireball / IceWall /
+		// ShadowStep等を後で実装する。
+		OutputDebugStringA(
+			"[PlayerController] "
+			"Grid Skill is not implemented yet.\n");
+
+		return false;
+	}
+
+	default:
+		break;
+	}
+
+	return false;
+}
+
+//=====================================================
+// Self Action
+//=====================================================
+
+bool PlayerControllerComponent::RequestSelfAction(
+	PlayerActionType type)
+{
+	switch (type)
+	{
+	case PlayerActionType::Ultimate:
+	case PlayerActionType::Skill1:
+	case PlayerActionType::Skill2:
+	{
+		// Warrior Whirlwindなどを
+		// Skill実装段階で接続する。
+		OutputDebugStringA(
+			"[PlayerController] "
+			"Self Skill is not implemented yet.\n");
+
+		return false;
+	}
+
+	default:
+		break;
+	}
+
+	return false;
+}
+
+//=====================================================
+// Direction Action
+//=====================================================
+
+bool PlayerControllerComponent::
+RequestDirectionAction(
+	PlayerActionType type,
+	GridDirection direction)
+{
+	(void)direction;
+
+	switch (type)
+	{
+	case PlayerActionType::Skill1:
+	case PlayerActionType::Skill2:
+	case PlayerActionType::Ultimate:
+	{
+		// Sweep / PiercingShot等を
+		// Skill実装段階で接続する。
+		OutputDebugStringA(
+			"[PlayerController] "
+			"Direction Skill is not implemented yet.\n");
+
+		return false;
+	}
+
+	default:
+		break;
+	}
+
+	return false;
 }
 
 //=====================================================
@@ -1042,7 +1185,6 @@ UpdateClassAttack()
 	//=================================================
 	// Hit Request
 	//=================================================
-
 	if (playerClass->
 		ConsumeAttackHitRequest())
 	{
@@ -1054,45 +1196,48 @@ UpdateClassAttack()
 				owner->GetComponent<
 				CharacterStatusComponent>();
 
-			auto* targetStatus =
-				m_AttackTarget->
-				GetComponent<
-				CharacterStatusComponent>();
+			auto* attackerGrid =
+				owner->GetComponent<
+				GridPositionComponent>();
 
 			if (attackerStatus &&
-				targetStatus &&
-				!targetStatus->
-				IsDead())
+				attackerGrid)
 			{
-				//=====================================
-				// Temporary Damage Calculation
-				//=====================================
-				//
-				// 現在は既存互換として
-				// AttackPowerを使用する。
-				//
-				// 後でSTR / DEX / Weapon等を使う
-				// BattleCalculatorへ移行する。
-				//=====================================
+				GridMap* gridMap =
+					attackerGrid->
+					GetGridMap();
 
-				const int damage =
-					attackerStatus->
-					GetAttackPower();
+				if (gridMap)
+				{
+					//=============================
+					// Temporary Damage Effect
+					//=============================
 
-				targetStatus->
-					TakeDamage(
-						damage);
+					EffectDefinition damageEffect;
 
-				char buffer[128]{};
+					damageEffect.Type =
+						EffectType::Damage;
 
-				sprintf_s(
-					buffer,
-					"[PlayerController] "
-					"Attack Hit. Damage=%d\n",
-					damage);
+					damageEffect.Power =
+						attackerStatus->
+						GetAttackPower();
 
-				OutputDebugStringA(
-					buffer);
+					damageEffect.AffectSelf =
+						false;
+
+					damageEffect.AffectAllies =
+						false;
+
+					damageEffect.AffectEnemies =
+						true;
+
+					EffectSystem::
+						ApplyEffect(
+							*gridMap,
+							owner,
+							m_AttackTarget,
+							damageEffect);
+				}
 			}
 		}
 	}
@@ -1123,6 +1268,98 @@ UpdateClassAttack()
 	OutputDebugStringA(
 		"[PlayerController] "
 		"Class Attack Finished.\n");
+}
+
+//=====================================================
+// Request Action
+//=====================================================
+
+bool PlayerControllerComponent::RequestAction(
+	const PlayerActionRequest& request)
+{
+	if (!CanAcceptActionRequest())
+	{
+		return false;
+	}
+
+	PlayerActionComponent* playerAction =
+		GetPlayerAction();
+
+	if (!playerAction)
+	{
+		return false;
+	}
+
+	//=================================================
+	// Action Definition
+	//=================================================
+
+	const PlayerActionDefinition definition =
+		playerAction->
+		GetActionDefinition(
+			request.Type);
+
+	if (!definition.Enabled)
+	{
+		return false;
+	}
+
+	//=================================================
+	// Cost確認
+	//=================================================
+	//
+	// この段階では消費しない。
+	//
+	// Target検証・Action開始に成功してから
+	// 各Action側でCostを消費する。
+	//=================================================
+
+	if (!playerAction->
+		CanUseAction(
+			request.Type))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Target Mode
+	//=================================================
+
+	switch (definition.TargetMode)
+	{
+	case TargetingMode::Unit:
+	{
+		return RequestUnitAction(
+			request.Type,
+			request.TargetObject);
+	}
+
+	case TargetingMode::Grid:
+	{
+		return RequestGridAction(
+			request.Type,
+			request.TargetGrid);
+	}
+
+	case TargetingMode::Self:
+	{
+		return RequestSelfAction(
+			request.Type);
+	}
+
+	case TargetingMode::Direction:
+	{
+		return RequestDirectionAction(
+			request.Type,
+			request.Direction);
+	}
+
+	case TargetingMode::None:
+	default:
+		break;
+	}
+
+	return false;
 }
 
 //=====================================================

@@ -3,6 +3,8 @@
 #include "FieldSceneUI.h"
 #include "Renderer.h"
 
+#include <cmath>
+
 // Component
 #include "ModelComponent.h"
 #include "TransformComponent.h"
@@ -13,15 +15,10 @@
 #include "FieldExitComponent.h"
 #include "CharacterAnimationComponent.h"
 #include "TerrainTileComponent.h"
-#include "UIImageComponent.h"
-#include "UIRectComponent.h"
-#include "UIButtonComponent.h"
-#include "UIFontComponent.h"
 
 // Player関係
 #include "CharacterStatusComponent.h"
 #include "PlayerActionType.h"
-#include "PlayerActionDefinition.h"
 #include "PlayerControllerComponent.h"
 #include "PlayerClassComponent.h"
 #include "PlayerActionComponent.h"
@@ -35,6 +32,12 @@
 #include "MonkClassComponent.h"
 #include "RogueClassComponent.h"
 #include "ClericClassComponent.h"
+
+// UI関係
+#include "UIImageComponent.h"
+#include "UIRectComponent.h"
+#include "UIButtonComponent.h"
+#include "UIFontComponent.h"
 
 #include <ModelLoader.h>
 #include <DirectXMath.h>
@@ -223,6 +226,9 @@ void FieldScene::Initialize()
 		m_FieldUI->Initialize(
 			m_gameObjectManager);
 
+		m_RadialMenuUI.Initialize(
+			m_gameObjectManager);
+
 		//====================
 		// Directional Light
 		//====================
@@ -379,6 +385,8 @@ void FieldScene::Finalize()
 		m_FieldUI.reset();
 	}
 
+	m_RadialMenuUI.Finalize();
+
 	m_TerrainObjects.clear();
 
 	m_TerrainMapData.Clear();
@@ -389,6 +397,113 @@ void FieldScene::Finalize()
 void FieldScene::Update(
 	uint64_t delta)
 {
+	//=================================================
+	// Input取得
+	//=================================================
+
+	const Vector2& mousePosition =
+		INPUT_MANAGER.
+		GetMousePosition();
+
+	const bool leftHeld =
+		INPUT_MANAGER.
+		IsMouseDown(
+			MouseButton::Left);
+
+	const bool leftReleased =
+		INPUT_MANAGER.
+		IsMouseReleased(
+			MouseButton::Left);
+
+	const bool rightPressed =
+		INPUT_MANAGER.
+		IsMousePressed(
+			MouseButton::Right);
+
+	const bool escapePressed =
+		INPUT_MANAGER.
+		IsKeyPressed(
+			KeyCode::Escape);
+
+	//=================================================
+	// 通常Player入力を止めるか
+	//=================================================
+	//
+	// RadialMenuやTargetSelection中に、
+	// 既存のUpdatePlayerInput()が同時に動くと
+	// 移動・攻撃などが誤発動する可能性がある。
+	//=================================================
+
+	bool blockNormalPlayerInput =
+		false;
+
+	//=================================================
+	// Player Action Cancel
+	//=================================================
+	//
+	// RadialMenu / TargetSelection中は
+	// 右クリックまたはEscでキャンセル。
+	//
+	// Update全体は止めず、
+	// このFrameの通常Player入力だけ止める。
+	//=================================================
+
+	if (rightPressed ||
+		escapePressed)
+	{
+		if (m_PlayerInputMode ==
+			PlayerInputMode::RadialMenu ||
+			m_PlayerInputMode ==
+			PlayerInputMode::TargetSelection)
+		{
+			CancelPlayerActionSelection();
+
+			blockNormalPlayerInput =
+				true;
+		}
+	}
+
+	//=================================================
+	// Radial Menu Input
+	//=================================================
+
+	if (m_RadialPressActive)
+	{
+		UpdateRadialInput(
+			delta,
+			mousePosition.x,
+			mousePosition.y,
+			leftHeld,
+			leftReleased);
+
+		// Radial操作開始後は、
+		// 既存Player入力と競合させない。
+		blockNormalPlayerInput =
+			true;
+	}
+
+	//=================================================
+	// Radial / Target Selection中
+	//=================================================
+	//
+	// Mouseを離したFrameで
+	// BeginActionSelection()によって
+	// TargetSelectionへ移行する場合がある。
+	//
+	// その場合も通常Player入力は止める。
+	//=================================================
+
+	if (m_PlayerInputMode ==
+		PlayerInputMode::RadialMenu ||
+		m_PlayerInputMode ==
+		PlayerInputMode::TargetSelection ||
+		m_PlayerInputMode ==
+		PlayerInputMode::Executing)
+	{
+		blockNormalPlayerInput =
+			true;
+	}
+
 	//=====================================
 	// GameObject Update
 	//=====================================
@@ -396,9 +511,52 @@ void FieldScene::Update(
 	m_gameObjectManager.Update(
 		delta);
 
+	//=================================================
+	// Action Execution State
+	//=================================================
+	//
+	// Controller側でActionが完了したら、
+	// FieldSceneのInputModeも通常状態へ戻す。
+	//=================================================
+	if (m_PlayerInputMode ==
+		PlayerInputMode::Executing)
+	{
+		if (!m_SelectedPlayer ||
+			m_SelectedPlayer->
+			IsDestroy())
+		{
+			m_PlayerInputMode =
+				PlayerInputMode::None;
+
+			m_SelectedPlayer =
+				nullptr;
+		}
+		else
+		{
+			auto* controller =
+				m_SelectedPlayer->
+				GetComponent<
+				PlayerControllerComponent>();
+
+			if (!controller ||
+				controller->
+				IsActionFinished())
+			{
+				m_PlayerInputMode =
+					PlayerInputMode::None;
+
+				// HUD表示対象は残すが、
+				// 操作対象選択は一度解除する。
+				m_SelectedPlayer =
+					nullptr;
+			}
+		}
+	}
+
 	//=====================================
 	// UI表示状態更新
 	//=====================================
+
 	UpdateNextTurnButton();
 
 	if (m_FieldUI)
@@ -419,6 +577,9 @@ void FieldScene::Update(
 			m_SelectedPlayer =
 				nullptr;
 
+			// Player操作状態もResetする。
+			CancelPlayerActionSelection();
+
 			m_TurnManager.
 				EndPlayerTurn();
 
@@ -432,7 +593,24 @@ void FieldScene::Update(
 
 	if (m_TurnManager.IsPlayerTurn())
 	{
-		UpdatePlayerInput();
+		//=================================================
+		// Target Selection
+		//=================================================
+
+		if (m_PlayerInputMode ==
+			PlayerInputMode::TargetSelection)
+		{
+			UpdateTargetSelection();
+		}
+
+		//=================================================
+		// Normal Input
+		//=================================================
+
+		else if (!blockNormalPlayerInput)
+		{
+			UpdatePlayerInput();
+		}
 	}
 
 	//=====================================
@@ -453,6 +631,7 @@ void FieldScene::Update(
 	//=====================================
 	// 帰還判定
 	//=====================================
+
 	std::vector<GameObject*> players =
 		m_gameObjectManager.FindByTag(
 			Tag::Player);
@@ -479,10 +658,12 @@ void FieldScene::Update(
 			fieldExit)
 		{
 			const GridPosition playerPosition =
-				playerGrid->GetGridPosition();
+				playerGrid->
+				GetGridPosition();
 
 			const GridPosition exitPosition =
-				fieldExit->GetGridPosition();
+				fieldExit->
+				GetGridPosition();
 
 			// ExitのGridへ到達したら自動遷移
 			if (playerPosition ==
@@ -500,6 +681,7 @@ void FieldScene::Update(
 	//=====================================
 	// Enemy死亡処理
 	//=====================================
+
 	std::vector<GameObject*> enemies =
 		m_gameObjectManager.FindByTag(
 			Tag::Enemy);
@@ -573,11 +755,20 @@ void FieldScene::Draw(uint64_t delta)
 		0.02f);
 
 	//=================================================
-	// Player Range
+	// Selected Action Range
+	//=================================================
+	//
+	// 通常時はRangeを表示しない。
+	//
+	// RadialMenuからActionを選択し、
+	// TargetSelection状態になった場合のみ
+	// 選択中ActionのRangeを表示する。
 	//=================================================
 
 	if (m_TurnManager.IsPlayerTurn() &&
-		m_SelectedPlayer)
+		m_SelectedPlayer &&
+		m_PlayerInputMode ==
+		PlayerInputMode::TargetSelection)
 	{
 		auto* gridPosition =
 			m_SelectedPlayer->GetComponent<
@@ -610,100 +801,127 @@ void FieldScene::Draw(uint64_t delta)
 				GetGridPosition();
 
 			//=================================================
-			// Move Range
-			//=================================================
-			//
-			// Move ActionのAP / MPを支払える場合のみ、
-			// 移動可能範囲を表示する。
-			//
-			// 移動可能距離は旧RemainingMovePointsではなく、
-			// CharacterStatusComponentが計算する。
+			// Action使用可能確認
 			//=================================================
 
-			const bool canMove =
-				playerAction->
+			if (playerAction->
 				CanUseAction(
-					PlayerActionType::Move);
-
-			if (canMove)
-			{
-				const int moveRangeDistance =
-					status->
-					CalculateMoveRange();
-
-				if (moveRangeDistance > 0)
-				{
-					const auto moveRange =
-						GridRangeCalculator::
-						CalculateMoveRange(
-							m_GridMap,
-							playerGrid,
-							moveRangeDistance);
-
-					GridRangeRenderer::DrawCells(
-						m_GridMap,
-						moveRange,
-						Color(
-							0.2f,
-							0.5f,
-							1.0f,
-							0.30f),
-						0.03f);
-				}
-			}
-
-			//=================================================
-			// Attack Range
-			//=================================================
-			//
-			// NormalAttackのAP / MPを支払える場合のみ、
-			// 実際にTarget指定可能なGridを表示する。
-			//
-			// 範囲形状・射線・壁・Unit遮蔽は
-			// TargetingSystem側で判定する。
-			//=================================================
-
-			const bool canAttack =
-				playerAction->
-				CanUseAction(
-					PlayerActionType::
-					NormalAttack);
-
-			if (canAttack)
+					m_SelectedAction))
 			{
 				const PlayerActionDefinition definition =
 					playerAction->
 					GetActionDefinition(
-						PlayerActionType::
-						NormalAttack);
+						m_SelectedAction);
 
-				// Action自体が無効、
-				// またはTargetPatternが不正なら描画しない。
-				if (definition.Enabled &&
-					definition.TargetPattern.IsValid())
+				if (definition.Enabled)
 				{
-					const auto attackRange =
-						TargetingSystem::
-						GetTargetableCells(
-							m_GridMap,
-							m_SelectedPlayer,
-							playerGrid,
-							definition.TargetPattern,
-							definition.Targeting);
+					switch (m_SelectedAction)
+					{
+						//=========================================
+						// Move
+						//=========================================
 
-					GridRangeRenderer::DrawCells(
-						m_GridMap,
-						attackRange,
-						Color(
-							1.0f,
-							0.2f,
-							0.2f,
-							0.35f),
-						0.04f);
+					case PlayerActionType::Move:
+					{
+						const int moveRangeDistance =
+							status->
+							CalculateMoveRange();
+
+						if (moveRangeDistance > 0)
+						{
+							const auto moveRange =
+								GridRangeCalculator::
+								CalculateMoveRange(
+									m_GridMap,
+									playerGrid,
+									moveRangeDistance);
+
+							GridRangeRenderer::DrawCells(
+								m_GridMap,
+								moveRange,
+								Color(
+									0.2f,
+									0.5f,
+									1.0f,
+									0.30f),
+								0.03f);
+						}
+
+						break;
+					}
+
+					//=========================================
+					// Targeting Action
+					//=========================================
+
+					case PlayerActionType::NormalAttack:
+					case PlayerActionType::Skill1:
+					case PlayerActionType::Skill2:
+					case PlayerActionType::Ultimate:
+					{
+						//=====================================
+						// Unit / Grid Target
+						//=====================================
+						//
+						// TargetPatternを持つActionは、
+						// TargetingSystemで実際に選択可能な
+						// Cellを取得する。
+						//=====================================
+
+						if ((definition.TargetMode ==
+							TargetingMode::Unit ||
+							definition.TargetMode ==
+							TargetingMode::Grid) &&
+							definition.TargetPattern.IsValid())
+						{
+							const auto targetRange =
+								TargetingSystem::
+								GetTargetableCells(
+									m_GridMap,
+									m_SelectedPlayer,
+									playerGrid,
+									definition.TargetPattern,
+									definition.Targeting);
+
+							GridRangeRenderer::DrawCells(
+								m_GridMap,
+								targetRange,
+								Color(
+									1.0f,
+									0.2f,
+									0.2f,
+									0.35f),
+								0.04f);
+						}
+
+						//=====================================
+						// Direction Target
+						//=====================================
+						//
+						// Direction Skillは、
+						// マウス方向に応じたEffectPatternを
+						// Previewする必要がある。
+						//
+						// Skill実装時に追加する。
+						//=====================================
+
+						break;
+					}
+
+					case PlayerActionType::Item:
+					{
+						// Inventory実装後に対応。
+						break;
+					}
+
+					default:
+						break;
+					}
 				}
 			}
 		}
 	}
+
 	SpriteRenderer::Begin();
 	m_gameObjectManager.DrawUI();
 	SpriteRenderer::End();
@@ -726,85 +944,27 @@ void FieldScene::Draw(uint64_t delta)
 //====================
 void FieldScene::UpdatePlayerInput()
 {
-	//=====================================
-	// Mouse Picking
-	// クリックしたマス目を取得・判定・処理
-	//=====================================
-	
 	if (!INPUT_MANAGER.IsMousePressed(
 		MouseButton::Left))
 	{
 		return;
 	}
 
-	// Camera取得
-	GameObject* cameraObject =
-		m_gameObjectManager.FindByName(
-			"MainCamera");
-	if (!cameraObject)
-	{
-		return;
-	}
-
-	// CameraComponent取得
-	auto* camera =
-		cameraObject->GetComponent<
-		CameraComponent>();
-	if (!camera)
-	{
-		return;
-	}
-
-	// どのセルをクリックしたかの計算処理
 	const Vector2 mousePosition =
-		INPUT_MANAGER.GetMousePosition();
+		INPUT_MANAGER.
+		GetMousePosition();
 
-	const Matrix4x4 view =
-		camera->GetViewMatrix();
-
-	const Matrix4x4 projection =
-		camera->GetProjectionMatrix();
-
-	Vector3 worldPosition(
-		0.0f,
-		0.0f,
-		0.0f);
-
-	if (!MousePicker::PickGround(
-		mousePosition,
-		static_cast<float>(
-			Window::GetWidth()),
-		static_cast<float>(
-			Window::GetHeight()),
-		view,
-		projection,
-		0.0f,
-		worldPosition))
+	GridPosition clickedGrid
 	{
-		return;
-	}
+		0,
+		0
+	};
 
-	//=====================================
-	// World → Grid
-	//=====================================
-
-	const GridPosition clickedGrid =
-		m_GridMap.WorldToGrid(
-			worldPosition);
-
-	//=====================================
-	// Grid範囲確認
-	//=====================================
-
-	if (!m_GridMap.IsInside(
+	if (!TryGetMouseGrid(
 		clickedGrid))
 	{
 		return;
 	}
-
-	//=====================================
-	// Clicked Cell取得
-	//=====================================
 
 	GridCell* cell =
 		m_GridMap.GetCell(
@@ -815,59 +975,30 @@ void FieldScene::UpdatePlayerInput()
 		return;
 	}
 
-	// 選択セルにいるキャラを取得
 	GameObject* occupant =
 		cell->Occupant;
 
-	//=====================================
-	// 1:Player選択
-	//=====================================
+	//=================================================
+	// Player以外は通常状態では処理しない
+	//=================================================
+	//
+	// 空きマス / Enemyは、
+	// Action選択後のTargetSelectionで処理する。
+	//=================================================
 
-	if (occupant &&
-		occupant->GetTag() ==
+	if (!occupant ||
+		occupant->GetTag() !=
 		Tag::Player)
 	{
-		auto* controller =
-			occupant->GetComponent<
-			PlayerControllerComponent>();
-
-		if (!controller)
-		{
-			return;
-		}
-
-		// 行動中のPlayerは選択しない。
-		if (!controller->IsActionFinished())
-		{
-			return;
-		}
-
-		// 操作対象
-		m_SelectedPlayer =
-			occupant;
-
-		// HUD表示対象
-		m_FocusedPlayer =
-			occupant;
-
-		OutputDebugStringA(
-			"[FieldScene] "
-			"Player selected.\n");
-
 		return;
 	}
 
-	if (!m_SelectedPlayer)
-	{
-		return;
-	}
-
-	//=====================================
-	// 2:実行処理
-	//=====================================
+	//=================================================
+	// Player Controller
+	//=================================================
 
 	auto* controller =
-		m_SelectedPlayer->GetComponent<
+		occupant->GetComponent<
 		PlayerControllerComponent>();
 
 	if (!controller)
@@ -875,45 +1006,45 @@ void FieldScene::UpdatePlayerInput()
 		return;
 	}
 
-	//=====================================
-	// 空きマス
-	//=====================================
-
-	if (!occupant)
+	// 行動中Playerからは
+	// RadialMenuを開かない。
+	if (!controller->
+		IsActionFinished())
 	{
-		if (controller->RequestMoveTo(
-			clickedGrid))
-		{
-			// 行動を開始時に選択状態を解除する
-			m_SelectedPlayer = nullptr;
-		}
-
 		return;
 	}
 
-	//=====================================
-	// Enemy
-	//=====================================
+	//=================================================
+	// Player Selection
+	//=================================================
 
-	if (occupant->GetTag() ==
-		Tag::Enemy)
-	{
-		if (controller->RequestAttack(
-			occupant))
-		{
-			m_SelectedPlayer = nullptr;
-		}
+	// 操作対象。
+	m_SelectedPlayer =
+		occupant;
 
-		return;
-	}
+	// HUD表示対象。
+	m_FocusedPlayer =
+		occupant;
 
-	//=====================================
-	// その他
-	//=====================================
+	//=================================================
+	// Radial Press開始
+	//=================================================
+	//
+	// この時点ではMenuは表示しない。
+	//
+	// UpdateRadialInput()で
+	// m_RadialHoldThresholdを超えた時点で
+	// OpenRadialMenu()される。
+	//=================================================
+
+	BeginRadialPress(
+		mousePosition.x,
+		mousePosition.y);
 
 	OutputDebugStringA(
 		"[FieldScene] "
-		"Clicked occupied cell.\n");
+		"Player selected. "
+		"Radial press started.\n");
 }
 
 //====================
@@ -2189,6 +2320,1136 @@ CheckNextTurnButtonClick()
 	// にはしない。
 
 	m_TurnManager.EndPlayerTurn();
+
+	return true;
+}
+
+void FieldScene::BeginRadialPress(
+	float mouseX,
+	float mouseY)
+{
+	if (!m_TurnManager.
+		IsPlayerTurn())
+	{
+		return;
+	}
+
+	if (!m_SelectedPlayer)
+	{
+		return;
+	}
+
+	auto* controller =
+		m_SelectedPlayer->
+		GetComponent<
+		PlayerControllerComponent>();
+
+	if (!controller ||
+		!controller->
+		IsActionFinished())
+	{
+		return;
+	}
+
+	//=================================================
+	// Press開始
+	//=================================================
+
+	m_RadialPressActive =
+		true;
+
+	m_RadialHoldTime =
+		0.0f;
+
+	m_RadialOriginX =
+		mouseX;
+
+	m_RadialOriginY =
+		mouseY;
+
+	m_HasRadialAction =
+		false;
+
+	// この段階ではまだ表示しない。
+	// HoldThresholdを超えた時点で開く。
+}
+
+//=====================================================
+// Update Radial Input
+//=====================================================
+void FieldScene::UpdateRadialInput(
+	uint64_t delta,
+	float mouseX,
+	float mouseY,
+	bool leftHeld,
+	bool leftReleased)
+{
+	if (!m_RadialPressActive)
+	{
+		return;
+	}
+
+	//=================================================
+	// Hold
+	//=================================================
+
+	const float deltaSeconds =
+		static_cast<float>(
+			delta) *
+		0.001f;
+
+	// Menuがまだ開いていない段階だけ
+	// Hold時間を加算する。
+	if (m_PlayerInputMode !=
+		PlayerInputMode::RadialMenu &&
+		leftHeld)
+	{
+		m_RadialHoldTime +=
+			deltaSeconds;
+	}
+
+	//=================================================
+	// Menu Open
+	//=================================================
+
+	if (m_PlayerInputMode !=
+		PlayerInputMode::RadialMenu &&
+		m_RadialHoldTime >=
+		m_RadialHoldThreshold)
+	{
+		OpenRadialMenu();
+	}
+
+	//=================================================
+	// Radial Highlight
+	//=================================================
+
+	if (m_PlayerInputMode ==
+		PlayerInputMode::RadialMenu)
+	{
+		const float deltaX =
+			mouseX -
+			m_RadialOriginX;
+
+		const float deltaY =
+			mouseY -
+			m_RadialOriginY;
+
+		PlayerActionType action =
+			PlayerActionType::Move;
+
+		if (CalculateRadialAction(
+			deltaX,
+			deltaY,
+			action))
+		{
+			m_HasRadialAction =
+				true;
+
+			m_RadialAction =
+				action;
+
+			m_RadialMenuUI.
+				SetHighlightedAction(
+					action);
+		}
+		else
+		{
+			m_HasRadialAction =
+				false;
+
+			m_RadialMenuUI.
+				ClearHighlight();
+		}
+	}
+
+	//=================================================
+	// Release
+	//=================================================
+
+	if (!leftReleased)
+	{
+		return;
+	}
+
+	if (m_PlayerInputMode ==
+		PlayerInputMode::RadialMenu)
+	{
+		ConfirmRadialAction();
+
+		return;
+	}
+
+	//=================================================
+	// Menuが開く前にMouseを離した
+	//=================================================
+
+	m_RadialPressActive =
+		false;
+
+	m_RadialHoldTime =
+		0.0f;
+}
+
+void FieldScene::OpenRadialMenu()
+{
+	if (!m_SelectedPlayer)
+	{
+		return;
+	}
+
+	m_PlayerInputMode =
+		PlayerInputMode::RadialMenu;
+
+	m_HasRadialAction =
+		false;
+
+	m_RadialMenuUI.
+		SetCenter(
+			m_RadialOriginX,
+			m_RadialOriginY);
+
+	m_RadialMenuUI.
+		ClearHighlight();
+
+	m_RadialMenuUI.
+		SetVisible(
+			true);
+}
+
+void FieldScene::CloseRadialMenu()
+{
+	//=================================================
+	// Radial UIを閉じる
+	//=================================================
+
+	m_RadialMenuUI.
+		SetVisible(
+			false);
+
+	m_RadialMenuUI.
+		ClearHighlight();
+
+	//=================================================
+	// Radial入力状態をReset
+	//=================================================
+
+	m_RadialPressActive =
+		false;
+
+	m_RadialHoldTime =
+		0.0f;
+
+	m_HasRadialAction =
+		false;
+
+	// RadialMenu状態なら通常状態へ戻す。
+	if (m_PlayerInputMode ==
+		PlayerInputMode::RadialMenu)
+	{
+		m_PlayerInputMode =
+			PlayerInputMode::None;
+	}
+}
+
+//=====================================================
+// Confirm Radial Action
+//=====================================================
+void FieldScene::ConfirmRadialAction()
+{
+	//=================================================
+	// Dead Zone
+	//=================================================
+
+	if (!m_HasRadialAction)
+	{
+		CloseRadialMenu();
+
+		return;
+	}
+
+	const PlayerActionType action =
+		m_RadialAction;
+
+	//=================================================
+	// Action選択
+	//=================================================
+
+	BeginActionSelection(
+		action);
+
+	//=================================================
+	// RadialMenu終了
+	//=================================================
+	//
+	// TargetSelectionへ進んだ場合でも、
+	// 選択不可でNoneへ戻った場合でも、
+	// RadialMenu自体は必ず閉じる。
+	//=================================================
+
+	m_RadialMenuUI.
+		SetVisible(
+			false);
+
+	m_RadialMenuUI.
+		ClearHighlight();
+
+	m_RadialPressActive =
+		false;
+
+	m_RadialHoldTime =
+		0.0f;
+
+	m_HasRadialAction =
+		false;
+}
+
+bool FieldScene::CalculateRadialAction(
+	float deltaX,
+	float deltaY,
+	PlayerActionType& outAction) const
+{
+	//=================================================
+	// Dead Zone
+	//=================================================
+
+	const float distanceSquared =
+		deltaX * deltaX +
+		deltaY * deltaY;
+
+	const float deadZoneSquared =
+		m_RadialDeadZone *
+		m_RadialDeadZone;
+
+	if (distanceSquared <
+		deadZoneSquared)
+	{
+		return false;
+	}
+
+	//=================================================
+	// Angle
+	//=================================================
+	//
+	// Screen座標は
+	// +X = 右
+	// +Y = 下
+	//
+	// atan2(-Y, X) にすることで
+	// 上方向を通常の数学座標として扱う。
+	//=================================================
+
+	const float angle =
+		std::atan2(
+			-deltaY,
+			deltaX);
+
+	constexpr float Pi =
+		3.14159265358979323846f;
+
+	constexpr float TwoPi =
+		Pi * 2.0f;
+
+	//=================================================
+	// 上方向をSector 0にする
+	//=================================================
+	//
+	// atan2:
+	//
+	// 右 = 0
+	// 上 = +PI/2
+	//
+	// 上を0度に変換する。
+	//=================================================
+
+	float radialAngle =
+		(Pi * 0.5f) -
+		angle;
+
+	if (radialAngle <
+		0.0f)
+	{
+		radialAngle +=
+			TwoPi;
+	}
+
+	if (radialAngle >=
+		TwoPi)
+	{
+		radialAngle -=
+			TwoPi;
+	}
+
+	//=================================================
+	// 6 Sector
+	//=================================================
+	//
+	// 1Sector = 60度。
+	//
+	// 境界を±30度にするため
+	// 半Sector分ずらしてからindex化する。
+	//=================================================
+
+	constexpr float sectorSize =
+		TwoPi /
+		6.0f;
+
+	const float shiftedAngle =
+		radialAngle +
+		sectorSize *
+		0.5f;
+
+	const int sector =
+		static_cast<int>(
+			shiftedAngle /
+			sectorSize) %
+		6;
+
+	//=================================================
+	// Clockwise
+	//=================================================
+	//
+	// 0 : Move
+	// 1 : NormalAttack
+	// 2 : Skill1
+	// 3 : Skill2
+	// 4 : Ultimate
+	// 5 : Item
+	//=================================================
+
+	switch (sector)
+	{
+	case 0:
+		outAction =
+			PlayerActionType::Move;
+		break;
+
+	case 1:
+		outAction =
+			PlayerActionType::NormalAttack;
+		break;
+
+	case 2:
+		outAction =
+			PlayerActionType::Skill1;
+		break;
+
+	case 3:
+		outAction =
+			PlayerActionType::Skill2;
+		break;
+
+	case 4:
+		outAction =
+			PlayerActionType::Ultimate;
+		break;
+
+	case 5:
+		outAction =
+			PlayerActionType::Item;
+		break;
+
+	default:
+		return false;
+	}
+
+	return true;
+}
+
+//=====================================================
+// Begin Action Selection
+//=====================================================
+void FieldScene::BeginActionSelection(
+	PlayerActionType action)
+{
+	if (!m_SelectedPlayer)
+	{
+		CloseRadialMenu();
+
+		return;
+	}
+
+	auto* playerAction =
+		m_SelectedPlayer->
+		GetComponent<
+		PlayerActionComponent>();
+
+	auto* controller =
+		m_SelectedPlayer->
+		GetComponent<
+		PlayerControllerComponent>();
+
+	if (!playerAction ||
+		!controller)
+	{
+		CloseRadialMenu();
+
+		return;
+	}
+
+	//=================================================
+	// Action使用可能確認
+	//=================================================
+	//
+	// AP / MP不足の場合も
+	// TargetSelectionへは進まない。
+	//=================================================
+	if (!playerAction->
+		CanUseAction(
+			action))
+	{
+		OutputDebugStringA(
+			"[FieldScene] "
+			"Selected action cannot be used.\n");
+
+		// AP / MP不足時も通常状態へ戻す。
+		m_PlayerInputMode =
+			PlayerInputMode::None;
+
+		return;
+	}
+
+	//=================================================
+	// Definition
+	//=================================================
+
+	const PlayerActionDefinition definition =
+		playerAction->
+		GetActionDefinition(
+			action);
+
+	if (!definition.Enabled)
+	{
+		OutputDebugStringA(
+			"[FieldScene] "
+			"Selected action is disabled.\n");
+
+		m_PlayerInputMode =
+			PlayerInputMode::None;
+
+		return;
+	}
+
+	m_SelectedAction =
+		action;
+
+	//=================================================
+	// Target Mode
+	//=================================================
+
+	switch (definition.TargetMode)
+	{
+		//=================================================
+		// Self
+		//=================================================
+
+	case TargetingMode::Self:
+	{
+		// Self ActionはTarget選択不要。
+		PlayerActionRequest request;
+
+		request.Type =
+			action;
+
+		if (controller->
+			RequestAction(
+				request))
+		{
+			m_PlayerInputMode =
+				PlayerInputMode::Executing;
+		}
+		else
+		{
+			// Skill未実装などで開始できなかった場合は
+			// RadialMenuへ戻る。
+			m_PlayerInputMode =
+				PlayerInputMode::RadialMenu;
+		}
+
+		break;
+	}
+
+	//=================================================
+	// Unit / Grid
+	//=================================================
+	case TargetingMode::Unit:
+	case TargetingMode::Grid:
+	{
+		//=============================================
+		// Target候補存在確認
+		//=============================================
+		//
+		// 選択可能Targetが1件も無い場合は、
+		// TargetSelectionへ入らず、
+		// RadialMenuも閉じて通常状態へ戻す。
+		//=============================================
+
+		if (!HasSelectableTarget(
+			action,
+			definition))
+		{
+			OutputDebugStringA(
+				"[FieldScene] "
+				"No selectable target.\n");
+
+			m_PlayerInputMode =
+				PlayerInputMode::None;
+
+			return;
+		}
+
+		m_PlayerInputMode =
+			PlayerInputMode::TargetSelection;
+
+		OutputDebugStringA(
+			"[FieldScene] "
+			"Entered TargetSelection.\n");
+
+		break;
+	}
+
+	//=================================================
+	// Direction
+	//=================================================
+
+	case TargetingMode::Direction:
+	{
+		// Direction Skillは
+		// Skill実装時にEffectPatternを利用して
+		// 選択可能方向を判定する。
+		//
+		// 現段階ではDirection選択へ進める。
+		m_PlayerInputMode =
+			PlayerInputMode::TargetSelection;
+
+		break;
+	}
+
+	//=================================================
+	// None
+	//=================================================
+
+	case TargetingMode::None:
+	default:
+	{
+		// Item等はまだ未実装。
+		m_PlayerInputMode =
+			PlayerInputMode::RadialMenu;
+
+		break;
+	}
+	}
+}
+
+void FieldScene::
+CancelPlayerActionSelection()
+{
+	//=================================================
+	// Radial操作終了
+	//=================================================
+
+	CloseRadialMenu();
+
+	//=================================================
+	// Action選択状態Reset
+	//=================================================
+
+	m_PlayerInputMode =
+		PlayerInputMode::None;
+
+	m_SelectedAction =
+		PlayerActionType::Move;
+}
+
+//=====================================================
+// Target Selection
+//=====================================================
+void FieldScene::UpdateTargetSelection()
+{
+	//=================================================
+	// 左クリックされた瞬間のみ処理
+	//=================================================
+
+	if (!INPUT_MANAGER.IsMousePressed(
+		MouseButton::Left))
+	{
+		return;
+	}
+
+	//=================================================
+	// Selected Player
+	//=================================================
+
+	if (!m_SelectedPlayer ||
+		m_SelectedPlayer->
+		IsDestroy())
+	{
+		CancelPlayerActionSelection();
+
+		return;
+	}
+
+	auto* controller =
+		m_SelectedPlayer->
+		GetComponent<
+		PlayerControllerComponent>();
+
+	auto* playerAction =
+		m_SelectedPlayer->
+		GetComponent<
+		PlayerActionComponent>();
+
+	auto* playerGrid =
+		m_SelectedPlayer->
+		GetComponent<
+		GridPositionComponent>();
+
+	if (!controller ||
+		!playerAction ||
+		!playerGrid)
+	{
+		CancelPlayerActionSelection();
+
+		return;
+	}
+
+	//=================================================
+	// Action Definition
+	//=================================================
+
+	const PlayerActionDefinition definition =
+		playerAction->
+		GetActionDefinition(
+			m_SelectedAction);
+
+	if (!definition.Enabled)
+	{
+		CancelPlayerActionSelection();
+
+		return;
+	}
+
+	//=================================================
+	// Mouse Grid
+	//=================================================
+
+	GridPosition clickedGrid
+	{
+		0,
+		0
+	};
+
+	if (!TryGetMouseGrid(
+		clickedGrid))
+	{
+		return;
+	}
+
+	//=================================================
+	// Request
+	//=================================================
+
+	PlayerActionRequest request;
+
+	request.Type =
+		m_SelectedAction;
+
+	bool actionStarted =
+		false;
+
+	//=================================================
+	// Target Mode
+	//=================================================
+
+	switch (definition.TargetMode)
+	{
+		//=================================================
+		// Grid
+		//=================================================
+
+	case TargetingMode::Grid:
+	{
+		request.TargetGrid =
+			clickedGrid;
+
+		actionStarted =
+			controller->
+			RequestAction(
+				request);
+
+		break;
+	}
+
+	//=================================================
+	// Unit
+	//=================================================
+
+	case TargetingMode::Unit:
+	{
+		GameObject* target =
+			m_GridMap.GetOccupant(
+				clickedGrid);
+
+		if (!target ||
+			target->IsDestroy())
+		{
+			return;
+		}
+
+		request.TargetObject =
+			target;
+
+		actionStarted =
+			controller->
+			RequestAction(
+				request);
+
+		break;
+	}
+
+	//=================================================
+	// Direction
+	//=================================================
+
+	case TargetingMode::Direction:
+	{
+		const GridPosition origin =
+			playerGrid->
+			GetGridPosition();
+
+		GridDirection direction =
+			GridDirection::North;
+
+		if (!CalculateGridDirection(
+			origin,
+			clickedGrid,
+			direction))
+		{
+			return;
+		}
+
+		request.Direction =
+			direction;
+
+		actionStarted =
+			controller->
+			RequestAction(
+				request);
+
+		break;
+	}
+
+	//=================================================
+	// Self
+	//=================================================
+	//
+	// SelfはBeginActionSelection()時点で
+	// 即実行されるため、
+	// 通常ここには来ない。
+	//=================================================
+
+	case TargetingMode::Self:
+	{
+		return;
+	}
+
+	case TargetingMode::None:
+	default:
+	{
+		return;
+	}
+	}
+
+	//=================================================
+	// Action開始成功
+	//=================================================
+
+	if (actionStarted)
+	{
+		m_PlayerInputMode =
+			PlayerInputMode::Executing;
+
+		OutputDebugStringA(
+			"[FieldScene] "
+			"Action execution started.\n");
+
+		return;
+	}
+
+	//=================================================
+	// Action開始失敗
+	//=================================================
+	//
+	// 無効なTargetをクリックしても、
+	// TargetSelection自体は終了しない。
+	//
+	// 別のTargetを選び直せるようにする。
+	//=================================================
+
+	OutputDebugStringA(
+		"[FieldScene] "
+		"Invalid action target.\n");
+}
+
+//=====================================================
+// Mouse Grid Picking
+//=====================================================
+bool FieldScene::TryGetMouseGrid(
+	GridPosition& outGrid) const
+{
+	//=================================================
+	// Camera
+	//=================================================
+
+	GameObject* cameraObject =
+		m_gameObjectManager.FindByName(
+			"MainCamera");
+
+	if (!cameraObject)
+	{
+		return false;
+	}
+
+	auto* camera =
+		cameraObject->GetComponent<
+		CameraComponent>();
+
+	if (!camera)
+	{
+		return false;
+	}
+
+	//=================================================
+	// Mouse
+	//=================================================
+
+	const Vector2 mousePosition =
+		INPUT_MANAGER.
+		GetMousePosition();
+
+	const Matrix4x4 view =
+		camera->
+		GetViewMatrix();
+
+	const Matrix4x4 projection =
+		camera->
+		GetProjectionMatrix();
+
+	Vector3 worldPosition(
+		0.0f,
+		0.0f,
+		0.0f);
+
+	//=================================================
+	// Ground Picking
+	//=================================================
+
+	if (!MousePicker::PickGround(
+		mousePosition,
+		static_cast<float>(
+			Window::GetWidth()),
+		static_cast<float>(
+			Window::GetHeight()),
+		view,
+		projection,
+		0.0f,
+		worldPosition))
+	{
+		return false;
+	}
+
+	//=================================================
+	// World → Grid
+	//=================================================
+
+	const GridPosition grid =
+		m_GridMap.WorldToGrid(
+			worldPosition);
+
+	if (!m_GridMap.IsInside(
+		grid))
+	{
+		return false;
+	}
+
+	outGrid =
+		grid;
+
+	return true;
+}
+
+//=====================================================
+// Calculate Grid Direction
+//=====================================================
+bool FieldScene::CalculateGridDirection(
+	const GridPosition& origin,
+	const GridPosition& target,
+	GridDirection& outDirection) const
+{
+	const int dx =
+		target.X -
+		origin.X;
+
+	const int dy =
+		target.Y -
+		origin.Y;
+
+	// 自分自身のCellでは
+	// 方向を決定できない。
+	if (dx == 0 &&
+		dy == 0)
+	{
+		return false;
+	}
+
+	//=================================================
+	// 大きく動いたAxisを優先
+	//=================================================
+	//
+	// Grid:
+	// X+ = East
+	// X- = West
+	// Y- = North
+	// Y+ = South
+	//=================================================
+
+	if (std::abs(dx) >=
+		std::abs(dy))
+	{
+		if (dx > 0)
+		{
+			outDirection =
+				GridDirection::East;
+		}
+		else
+		{
+			outDirection =
+				GridDirection::West;
+		}
+	}
+	else
+	{
+		if (dy > 0)
+		{
+			outDirection =
+				GridDirection::South;
+		}
+		else
+		{
+			outDirection =
+				GridDirection::North;
+		}
+	}
+
+	return true;
+}
+
+//=====================================================
+// Has Selectable Target
+//=====================================================
+
+bool FieldScene::HasSelectableTarget(
+	PlayerActionType action,
+	const PlayerActionDefinition& definition) const
+{
+	if (!m_SelectedPlayer)
+	{
+		return false;
+	}
+
+	auto* gridPosition =
+		m_SelectedPlayer->
+		GetComponent<
+		GridPositionComponent>();
+
+	if (!gridPosition)
+	{
+		return false;
+	}
+
+	const GridPosition playerGrid =
+		gridPosition->
+		GetGridPosition();
+
+	//=================================================
+	// Move
+	//=================================================
+	//
+	// MoveはTargetingSystemではなく、
+	// CharacterStatusの移動距離と
+	// GridRangeCalculatorを使用する。
+	//=================================================
+
+	if (action ==
+		PlayerActionType::Move)
+	{
+		auto* status =
+			m_SelectedPlayer->
+			GetComponent<
+			CharacterStatusComponent>();
+
+		if (!status)
+		{
+			return false;
+		}
+
+		const int moveRangeDistance =
+			status->
+			CalculateMoveRange();
+
+		if (moveRangeDistance <= 0)
+		{
+			return false;
+		}
+
+		const auto moveRange =
+			GridRangeCalculator::
+			CalculateMoveRange(
+				m_GridMap,
+				playerGrid,
+				moveRangeDistance);
+
+		return !moveRange.empty();
+	}
+
+	//=================================================
+	// Unit / Grid Target
+	//=================================================
+
+	if (definition.TargetMode ==
+		TargetingMode::Unit ||
+		definition.TargetMode ==
+		TargetingMode::Grid)
+	{
+		// TargetPatternが無効なら
+		// TargetSelectionには入れない。
+		if (!definition.TargetPattern.
+			IsValid())
+		{
+			return false;
+		}
+
+		const auto targetableCells =
+			TargetingSystem::
+			GetTargetableCells(
+				m_GridMap,
+				m_SelectedPlayer,
+				playerGrid,
+				definition.TargetPattern,
+				definition.Targeting);
+
+		return !targetableCells.empty();
+	}
+
+	//=================================================
+	// Direction / Self
+	//=================================================
+	//
+	// Directionは方向選択そのものがTargetなので、
+	// Skill実装時にEffectPatternから別途判定する。
+	//
+	// SelfはTargetSelection不要。
+	//=================================================
 
 	return true;
 }

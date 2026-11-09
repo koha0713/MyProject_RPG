@@ -14,6 +14,35 @@
 #include "TurnManager.h"
 #include "Quest.h"
 #include "TerrainMapData.h"
+#include "RadialMenuUI.h"
+#include "GridPattern.h"
+#include "PlayerActionDefinition.h"
+
+/**
+ * @brief Player操作状態
+ */
+enum class PlayerInputMode
+{
+	/**
+	 * @brief 通常状態
+	 */
+	None,
+
+	/**
+	 * @brief RadialMenu操作中
+	 */
+	RadialMenu,
+
+	/**
+	 * @brief Action対象選択中
+	 */
+	TargetSelection,
+
+	/**
+	 * @brief Action実行中
+	 */
+	Executing
+};
 
 class GameObject;
 struct CharacterSpawnData;
@@ -94,6 +123,110 @@ private:
 	 */
 	bool AreAllPlayersOutOfAP() const;
 
+	//=================================================
+	// Radial Input
+	//=================================================
+
+	/**
+	 * @brief Player上で左Mouseが押された
+	 */
+	void BeginRadialPress(
+		float mouseX,
+		float mouseY);
+
+	/**
+	 * @brief Radial操作更新
+	 */
+	void UpdateRadialInput(
+		uint64_t delta,
+		float mouseX,
+		float mouseY,
+		bool leftHeld,
+		bool leftReleased);
+
+	/**
+	 * @brief Radial Menuを実際に開く
+	 */
+	void OpenRadialMenu();
+
+	/**
+	 * @brief Radial操作を終了
+	 */
+	void CloseRadialMenu();
+
+	/**
+	 * @brief Radialから選択されたActionを確定
+	 */
+	void ConfirmRadialAction();
+
+	/**
+	 * @brief Mouse方向からActionを求める
+	 *
+	 * @return
+	 * DeadZone外ならtrue。
+	 */
+	bool CalculateRadialAction(
+		float deltaX,
+		float deltaY,
+		PlayerActionType& outAction) const;
+
+	/**
+	 * @brief Action選択後のInputModeへ遷移
+	 */
+	void BeginActionSelection(
+		PlayerActionType action);
+
+	/**
+	 * @brief Target選択をキャンセル
+	 */
+	void CancelPlayerActionSelection();
+
+	/**
+	 * @brief Action選択後のTarget入力処理
+	 *
+	 * @details
+	 * TargetingModeに応じて、
+	 *
+	 * ・Grid
+	 * ・Unit
+	 * ・Direction
+	 *
+	 * の入力を処理する。
+	 */
+	void UpdateTargetSelection();
+
+	/**
+	 * @brief Mouse位置からGridを取得
+	 *
+	 * @param outGrid 取得したGrid
+	 *
+	 * @return
+	 * Grid上をPickできた場合true
+	 */
+	bool TryGetMouseGrid(
+		GridPosition& outGrid) const;
+
+	/**
+	 * @brief PlayerからTargetへの方向を4方向へ変換
+	 */
+	bool CalculateGridDirection(
+		const GridPosition& origin,
+		const GridPosition& target,
+		GridDirection& outDirection) const;
+
+	/**
+	 * @brief Actionに選択可能なTargetが存在するか確認
+	 *
+	 * @details
+	 * Moveは移動可能範囲、
+	 * Unit / Grid ActionはTargetingSystemを使用して判定する。
+	 *
+	 * Direction / Selfはこの関数では制限しない。
+	 */
+	bool HasSelectableTarget(
+		PlayerActionType action,
+		const PlayerActionDefinition& definition) const;
+
 private:
 
 	//=================================================
@@ -125,6 +258,9 @@ private:
 
 	std::unique_ptr<FieldSceneUI>
 		m_FieldUI;
+
+	RadialMenuUI
+		m_RadialMenuUI;
 
 	//=================================================
 	// Selected Player
@@ -177,6 +313,75 @@ private:
 
 	std::vector<GameObject*>
 		m_TerrainObjects;
+
+	//=================================================
+	// Player Input
+	//=================================================
+
+	PlayerInputMode
+		m_PlayerInputMode =
+		PlayerInputMode::None;
+
+	/**
+	 * @brief Radial Menuから選択したAction
+	 */
+	PlayerActionType
+		m_SelectedAction =
+		PlayerActionType::Move;
+
+	//=================================================
+	// Radial Menu
+	//=================================================
+
+	/**
+	 * @brief Player上で左Mouseを押しているか
+	 */
+	bool
+		m_RadialPressActive =
+		false;
+
+	/**
+	 * @brief 長押し経過時間 [sec]
+	 */
+	float
+		m_RadialHoldTime =
+		0.0f;
+
+	/**
+	 * @brief Radial Menuを開くまでの時間
+	 */
+	float
+		m_RadialHoldThreshold =
+		0.18f;
+
+	/**
+	 * @brief Radial Menu中心
+	 */
+	float
+		m_RadialOriginX =
+		0.0f;
+
+	float
+		m_RadialOriginY =
+		0.0f;
+
+	/**
+	 * @brief Action未選択とする中心半径
+	 */
+	float
+		m_RadialDeadZone =
+		30.0f;
+
+	/**
+	 * @brief 現在Action候補が存在するか
+	 */
+	bool
+		m_HasRadialAction =
+		false;
+
+	PlayerActionType
+		m_RadialAction =
+		PlayerActionType::Move;
 };
 
 // Scene登録

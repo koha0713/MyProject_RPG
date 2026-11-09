@@ -109,6 +109,29 @@ WarriorClassComponent::GetActionDefinition(
 		definition.HasEffectPattern =
 			false;
 
+		// 以下、Effectの設定は仮値。
+		EffectDefinition damage;
+
+		damage.Type =
+			EffectType::Damage;
+
+		// 現段階では仮値。
+		// 後でSTR + Weaponなどへ移行する。
+		damage.Power =
+			3;
+
+		damage.AffectEnemies =
+			true;
+
+		damage.AffectAllies =
+			false;
+
+		damage.AffectSelf =
+			false;
+
+		definition.Effects.push_back(
+			damage);
+
 		break;
 	}
 	case PlayerActionType::Skill1:

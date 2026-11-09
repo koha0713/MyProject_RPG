@@ -329,6 +329,12 @@ PlayerClassComponent::GetActionDefinition(
 	{
 	case PlayerActionType::Move:
 	{
+		definition.Type =
+			PlayerActionType::Move;
+
+		definition.Enabled =
+			true;
+
 		definition.Cost.AP =
 			2;
 
@@ -336,13 +342,11 @@ PlayerClassComponent::GetActionDefinition(
 			0;
 
 		//=================================================
-		// MoveはTargetingSystemとは別扱い
+		// MoveはGridを選択するAction
 		//=================================================
-		//
-		// 移動範囲はCharacterStatusComponentの
-		// CalculateMoveRange()を使用するため、
-		// TargetPatternはここでは設定しない。
-		//=================================================
+
+		definition.TargetMode =
+			TargetingMode::Grid;
 
 		break;
 	}

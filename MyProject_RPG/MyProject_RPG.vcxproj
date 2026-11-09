@@ -148,6 +148,9 @@
     <ClInclude Include="CommonType.h" />
     <ClInclude Include="Component.h" />
     <ClInclude Include="DirectionalLight.h" />
+    <ClInclude Include="EffectDefinition.h" />
+    <ClInclude Include="EffectSystem.h" />
+    <ClInclude Include="EffectType.h" />
     <ClInclude Include="EnemyAIComponent.h" />
     <ClInclude Include="FieldExitComponent.h" />
     <ClInclude Include="FieldScene.h" />
@@ -188,6 +191,7 @@
     <ClInclude Include="OutlineSetting.h" />
     <ClInclude Include="PlayerActionComponent.h" />
     <ClInclude Include="PlayerActionDefinition.h" />
+    <ClInclude Include="PlayerActionRequest.h" />
     <ClInclude Include="PlayerActionType.h" />
     <ClInclude Include="PlayerClassComponent.h" />
     <ClInclude Include="PlayerClassType.h" />
@@ -195,6 +199,7 @@
     <ClInclude Include="PrimitiveRenderer.h" />
     <ClInclude Include="Quest.h" />
     <ClInclude Include="QuestManager.h" />
+    <ClInclude Include="RadialMenuUI.h" />
     <ClInclude Include="RangerClassComponent.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="ResourceManager.h" />
@@ -237,6 +242,7 @@
     <ClCompile Include="CharacterAnimationComponent.cpp" />
     <ClCompile Include="CharacterStatusComponent.cpp" />
     <ClCompile Include="CharaMapLoader.cpp" />
+    <ClCompile Include="EffectSystem.cpp" />
     <ClCompile Include="EnemyAIComponent.cpp" />
     <ClCompile Include="FieldExitComponent.cpp" />
     <ClCompile Include="FieldScene.cpp" />
@@ -273,6 +279,7 @@
     <ClCompile Include="PrimitiveRenderer.cpp" />
     <ClCompile Include="Quest.cpp" />
     <ClCompile Include="QuestManager.cpp" />
+    <ClCompile Include="RadialMenuUI.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="SceneManager.cpp" />

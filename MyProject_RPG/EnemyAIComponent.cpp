@@ -11,6 +11,10 @@
 #include "TransformComponent.h"
 #include "DebugUI.h"
 
+#include "EffectSystem.h"
+#include "EffectDefinition.h"
+#include "EffectType.h"
+
 #include "AnimatorComponent.h"
 
 //=====================================================
@@ -453,18 +457,62 @@ bool EnemyAIComponent::TryAttack(
 	}
 
 	//=================================================
-	// Damage
+	// Damage Effect
 	//=================================================
 	//
-	// 現段階ではAttack開始時にDamageを発生させる。
-	// 将来Animation Eventで命中タイミングへ移動可能。
+	// Damage適用はEffectSystemへ統一する。
 	//
+	// 現段階ではDamage値として
+	// CharacterStatusComponent::GetAttackPower()
+	// を使用する。
+	//=================================================
 
-	const int damage =
-		enemyStatus->GetAttackPower();
+	GridMap* gridMap =
+		enemyGrid->
+		GetGridMap();
 
-	playerStatus->TakeDamage(
-		damage);
+	if (!gridMap)
+	{
+		m_ActionState =
+			EnemyActionState::Finished;
+
+		return false;
+	}
+
+	EffectDefinition damageEffect;
+
+	damageEffect.Type =
+		EffectType::Damage;
+
+	damageEffect.Power =
+		enemyStatus->
+		GetAttackPower();
+
+	damageEffect.AffectSelf =
+		false;
+
+	damageEffect.AffectAllies =
+		false;
+
+	damageEffect.AffectEnemies =
+		true;
+
+	const bool applied =
+		EffectSystem::
+		ApplyEffect(
+			*gridMap,
+			owner,
+			player,
+			damageEffect);
+
+	if (!applied)
+	{
+		OutputDebugStringA(
+			"[EnemyAI] "
+			"Attack Effect failed.\n");
+
+		return false;
+	}
 
 	char buffer[128]{};
 
@@ -472,7 +520,7 @@ bool EnemyAIComponent::TryAttack(
 		buffer,
 		"[EnemyAI] "
 		"Attack Player Damage=%d\n",
-		damage);
+		damageEffect.Power);
 
 	OutputDebugStringA(
 		buffer);

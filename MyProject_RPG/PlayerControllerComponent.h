@@ -12,6 +12,7 @@
 #include "Component.h"
 #include "GridPosition.h"
 #include "TurnManager.h"
+#include "PlayerActionRequest.h"
 
 class GameObject;
 class CharacterStatusComponent;
@@ -178,6 +179,16 @@ public:
 			PlayerActionState::Idle;
 	}
 
+	/**
+	 * @brief Action実行要求
+	 *
+	 * @details
+	 * ActionDefinitionのTargetingModeに応じて、
+	 * 適切なAction処理へ振り分ける。
+	 */
+	bool RequestAction(
+		const PlayerActionRequest& request);
+
 	//=================================================
 	// Debug
 	//=================================================
@@ -243,6 +254,34 @@ private:
 	 * を確認する。
 	 */
 	bool CanAcceptActionRequest() const;
+
+
+	/**
+	 * @brief Unit Target Action
+	 */
+	bool RequestUnitAction(
+		PlayerActionType type,
+		GameObject* target);
+
+	/**
+	 * @brief Grid Target Action
+	 */
+	bool RequestGridAction(
+		PlayerActionType type,
+		const GridPosition& target);
+
+	/**
+	 * @brief Self Target Action
+	 */
+	bool RequestSelfAction(
+		PlayerActionType type);
+
+	/**
+	 * @brief Direction Target Action
+	 */
+	bool RequestDirectionAction(
+		PlayerActionType type,
+		GridDirection direction);
 
 private:
 
