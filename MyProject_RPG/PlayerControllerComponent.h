@@ -14,6 +14,10 @@
 #include "TurnManager.h"
 #include "PlayerActionRequest.h"
 
+#include "EffectDefinition.h"
+#include "PlayerActionDefinition.h"
+#include "GridPattern.h"
+
 class GameObject;
 class CharacterStatusComponent;
 class PlayerActionComponent;
@@ -281,6 +285,52 @@ private:
 	 */
 	bool RequestDirectionAction(
 		PlayerActionType type,
+		GridDirection direction);
+
+	//=====================================================
+	// Skill Action
+	//=====================================================
+	/**
+	 * @brief Unit Target Skill実行
+	 */
+	bool ExecuteUnitSkill(
+		PlayerActionType type,
+		GameObject* target);
+
+	/**
+	 * @brief Direction Skill実行
+	 */
+	bool ExecuteDirectionSkill(
+		PlayerActionType type,
+		GridDirection direction);
+
+	/**
+	 * @brief Self Skill実行
+	 */
+	bool ExecuteSelfSkill(
+		PlayerActionType type);
+
+	/**
+	 * @brief EffectDefinitionをRuntime値へ変換
+	 *
+	 * AttackPower倍率などをここで解決する。
+	 */
+	EffectDefinition BuildRuntimeEffect(
+		const EffectDefinition& definition) const;
+
+	/**
+	 * @brief 単一TargetへAction Effectsを適用
+	 */
+	bool ApplyActionEffectsToTarget(
+		const PlayerActionDefinition& definition,
+		GameObject* target);
+
+	/**
+	 * @brief EffectPatternにAction Effectsを適用
+	 */
+	bool ApplyActionEffectsToPattern(
+		const PlayerActionDefinition& definition,
+		const GridPosition& origin,
 		GridDirection direction);
 
 private:

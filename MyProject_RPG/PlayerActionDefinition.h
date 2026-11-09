@@ -9,6 +9,7 @@
 #include "GridPattern.h"
 #include "TargetingRules.h"
 #include "EffectDefinition.h"
+#include "AnimationData.h"
 
  /**
   * @brief Action選択後のTarget指定方式
@@ -125,6 +126,30 @@ struct PlayerActionDefinition
 
 	TargetingMode TargetMode =
 		TargetingMode::None;
+
+	//=================================================
+	// Animation
+	//=================================================
+
+	/**
+	 * @brief Action実行時に使用するAnimation
+	 *
+	 * NoneならAnimationを再生しない。
+	 */
+	AnimationID Animation =
+		AnimationID::None;
+
+	/**
+	 * @brief Animation Loop
+	 */
+	bool AnimationLoop =
+		false;
+
+	/**
+	 * @brief Blend時間
+	 */
+	float AnimationBlendTime =
+		0.10f;
 
 	//=================================================
 	// Effect

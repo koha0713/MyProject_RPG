@@ -7,6 +7,7 @@
 
 #include "CharacterStatusComponent.h"
 #include "GridPositionComponent.h"
+#include "TransformComponent.h"
 
 //=====================================================
 // Apply Effect
@@ -216,6 +217,16 @@ bool EffectSystem::ApplyKnockback(
 	GameObject* target,
 	const EffectDefinition& effect)
 {
+	auto* targetStatus =
+		target->GetComponent<
+		CharacterStatusComponent>();
+
+	if (targetStatus &&
+		targetStatus->IsDead())
+	{
+		return false;
+	}
+
 	if (!source ||
 		!target ||
 		effect.KnockbackDistance <= 0)
@@ -318,29 +329,47 @@ bool EffectSystem::ApplyKnockback(
 	}
 
 	//=================================================
-	// Occupant更新
+	// Grid Position更新
+	//=================================================
+	//
+	// GridPositionComponent::SetGridPosition()へ
+	// Grid占有状態の更新を一本化する。
 	//=================================================
 
-	map.ClearOccupant(
-		targetPosition,
-		target);
-
-	if (!map.SetOccupant(
-		current,
-		target))
+	if (!targetGrid->
+		SetGridPosition(
+			current))
 	{
-		// 通常は到達しないが、
-		// 失敗時は元位置へ戻す。
-		map.SetOccupant(
-			targetPosition,
-			target);
+		OutputDebugStringA(
+			"[EffectSystem] "
+			"Knockback SetGridPosition failed.\n");
 
 		return false;
 	}
 
-	targetGrid->
-		SetGridPosition(
-			current);
+	//=================================================
+	// Visual Position更新
+	//=================================================
+
+	auto* transform =
+		target->GetComponent<
+		TransformComponent>();
+
+	if (transform)
+	{
+		Vector3 worldPosition =
+			map.GridToWorld(
+				current);
+
+		// Character固有の高さを維持する。
+		worldPosition.y =
+			transform->
+			GetPosition().y;
+
+		transform->
+			SetPosition(
+				worldPosition);
+	}
 
 	return true;
 }

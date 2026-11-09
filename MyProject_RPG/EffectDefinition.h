@@ -63,4 +63,26 @@ struct EffectDefinition
 	 */
 	bool AffectEnemies =
 		true;
+
+
+	//=================================================
+	// Runtime Power Calculation
+	//=================================================
+	/**
+	 * @brief SourceのAttackPowerを使用するか
+	 *
+	 * trueの場合、
+	 * Power = AttackPower * PowerMultiplier
+	 * としてRuntime値を生成する。
+	 */
+	bool UseSourceAttackPower =
+		false;
+
+	/**
+	 * @brief AttackPower倍率
+	 *
+	 * UseSourceAttackPower == true の場合に使用。
+	 */
+	float PowerMultiplier =
+		1.0f;
 };

@@ -898,12 +898,77 @@ void FieldScene::Draw(uint64_t delta)
 						// Direction Target
 						//=====================================
 						//
-						// Direction Skillは、
-						// マウス方向に応じたEffectPatternを
-						// Previewする必要がある。
+						// Mouse位置から4方向を決定し、
+						// EffectPatternそのものをPreviewする。
 						//
-						// Skill実装時に追加する。
+						// Enemyの有無に関係なく表示する。
 						//=====================================
+
+						if (definition.TargetMode ==
+							TargetingMode::Direction &&
+							definition.HasEffectPattern &&
+							definition.EffectPattern.IsValid())
+						{
+							GridPosition mouseGrid
+							{
+								0,
+								0
+							};
+
+							if (TryGetMouseGrid(
+								mouseGrid))
+							{
+								GridDirection direction =
+									GridDirection::North;
+
+								if (CalculateGridDirection(
+									playerGrid,
+									mouseGrid,
+									direction))
+								{
+									const auto offsets =
+										definition.EffectPattern.
+										GetOffsets(
+											direction);
+
+									std::vector<GridPosition>
+										effectCells;
+
+									for (const GridOffset& offset :
+										offsets)
+									{
+										const GridPosition cellPosition
+										{
+											playerGrid.X +
+												offset.X,
+
+											playerGrid.Y +
+												offset.Y
+										};
+
+										// Map外は描画しない。
+										if (!m_GridMap.IsInside(
+											cellPosition))
+										{
+											continue;
+										}
+
+										effectCells.push_back(
+											cellPosition);
+									}
+
+									GridRangeRenderer::DrawCells(
+										m_GridMap,
+										effectCells,
+										Color(
+											1.0f,
+											0.35f,
+											0.1f,
+											0.40f),
+										0.05f);
+								}
+							}
+						}
 
 						break;
 					}
@@ -3442,14 +3507,77 @@ bool FieldScene::HasSelectableTarget(
 	}
 
 	//=================================================
-	// Direction / Self
+	// Self + Effect Pattern
 	//=================================================
 	//
-	// Directionは方向選択そのものがTargetなので、
-	// Skill実装時にEffectPatternから別途判定する。
-	//
-	// SelfはTargetSelection不要。
+	// Whirlwindなど、Self中心範囲Skill。
+	// EffectPattern内に実際にEffectを適用できる対象が
+	// 1体以上存在する場合のみ使用可能。
 	//=================================================
+
+	if (definition.TargetMode ==
+		TargetingMode::Self &&
+		definition.HasEffectPattern &&
+		definition.EffectPattern.IsValid())
+	{
+		const auto offsets =
+			definition.EffectPattern.
+			GetOffsets(
+				GridDirection::North);
+
+		for (const GridOffset& offset :
+			offsets)
+		{
+			const GridPosition targetPosition
+			{
+				playerGrid.X +
+					offset.X,
+
+				playerGrid.Y +
+					offset.Y
+			};
+
+			if (!m_GridMap.IsInside(
+				targetPosition))
+			{
+				continue;
+			}
+
+			const GameObject* target =
+				m_GridMap.GetOccupant(
+					targetPosition);
+
+			if (!target ||
+				target->IsDestroy())
+			{
+				continue;
+			}
+
+			// 現在のWarrior Ultimateは
+			// Enemyのみ対象。
+			if (target->GetTag() ==
+				Tag::Enemy)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	//=================================================
+	// Direction
+	//=================================================
+	//
+	// DirectionはMouse方向を決めてから判定するため、
+	// この段階では許可する。
+	//=================================================
+
+	if (definition.TargetMode ==
+		TargetingMode::Direction)
+	{
+		return true;
+	}
 
 	return true;
 }

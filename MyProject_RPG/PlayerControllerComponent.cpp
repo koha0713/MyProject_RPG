@@ -253,12 +253,9 @@ bool PlayerControllerComponent::RequestUnitAction(
 	case PlayerActionType::Skill2:
 	case PlayerActionType::Ultimate:
 	{
-		// Skill実装時に追加する。
-		OutputDebugStringA(
-			"[PlayerController] "
-			"Unit Skill is not implemented yet.\n");
-
-		return false;
+		return ExecuteUnitSkill(
+			type,
+			target);
 	}
 
 	default:
@@ -308,23 +305,18 @@ bool PlayerControllerComponent::RequestGridAction(
 //=====================================================
 // Self Action
 //=====================================================
-
-bool PlayerControllerComponent::RequestSelfAction(
+bool PlayerControllerComponent::
+RequestSelfAction(
 	PlayerActionType type)
 {
 	switch (type)
 	{
-	case PlayerActionType::Ultimate:
 	case PlayerActionType::Skill1:
 	case PlayerActionType::Skill2:
+	case PlayerActionType::Ultimate:
 	{
-		// Warrior Whirlwindなどを
-		// Skill実装段階で接続する。
-		OutputDebugStringA(
-			"[PlayerController] "
-			"Self Skill is not implemented yet.\n");
-
-		return false;
+		return ExecuteSelfSkill(
+			type);
 	}
 
 	default:
@@ -337,27 +329,20 @@ bool PlayerControllerComponent::RequestSelfAction(
 //=====================================================
 // Direction Action
 //=====================================================
-
 bool PlayerControllerComponent::
 RequestDirectionAction(
 	PlayerActionType type,
 	GridDirection direction)
 {
-	(void)direction;
-
 	switch (type)
 	{
 	case PlayerActionType::Skill1:
 	case PlayerActionType::Skill2:
 	case PlayerActionType::Ultimate:
 	{
-		// Sweep / PiercingShot等を
-		// Skill実装段階で接続する。
-		OutputDebugStringA(
-			"[PlayerController] "
-			"Direction Skill is not implemented yet.\n");
-
-		return false;
+		return ExecuteDirectionSkill(
+			type,
+			direction);
 	}
 
 	default:
@@ -365,6 +350,626 @@ RequestDirectionAction(
 	}
 
 	return false;
+}
+
+//=====================================================
+// Execute Unit Skill
+//=====================================================
+
+bool PlayerControllerComponent::
+ExecuteUnitSkill(
+	PlayerActionType type,
+	GameObject* target)
+{
+	if (!target ||
+		target->IsDestroy())
+	{
+		return false;
+	}
+
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		return false;
+	}
+
+	auto* playerAction =
+		GetPlayerAction();
+
+	auto* playerGrid =
+		owner->GetComponent<
+		GridPositionComponent>();
+
+	auto* targetGrid =
+		target->GetComponent<
+		GridPositionComponent>();
+
+	if (!playerAction ||
+		!playerGrid ||
+		!targetGrid)
+	{
+		return false;
+	}
+
+	GridMap* gridMap =
+		playerGrid->
+		GetGridMap();
+
+	if (!gridMap)
+	{
+		return false;
+	}
+
+	const PlayerActionDefinition definition =
+		playerAction->
+		GetActionDefinition(
+			type);
+
+	if (!definition.Enabled)
+	{
+		return false;
+	}
+
+	//=================================================
+	// Target Validation
+	//=================================================
+
+	const GridPosition origin =
+		playerGrid->
+		GetGridPosition();
+
+	const GridPosition targetPosition =
+		targetGrid->
+		GetGridPosition();
+
+	if (!TargetingSystem::
+		IsTargetableCell(
+			*gridMap,
+			owner,
+			origin,
+			targetPosition,
+			definition.TargetPattern,
+			definition.Targeting))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Face Target
+	//=================================================
+
+	auto* transform =
+		owner->GetComponent<
+		TransformComponent>();
+
+	if (transform)
+	{
+		transform->
+			FaceGridPosition(
+				origin,
+				targetPosition);
+	}
+
+	//=================================================
+	// Effect
+	//=================================================
+
+	if (!ApplyActionEffectsToTarget(
+		definition,
+		target))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Cost
+	//=================================================
+
+	if (!playerAction->
+		ConsumeActionCost(
+			type))
+	{
+		OutputDebugStringA(
+			"[PlayerController] "
+			"Skill cost consume failed.\n");
+
+		return false;
+	}
+
+	OutputDebugStringA(
+		"[PlayerController] "
+		"Unit Skill executed.\n");
+
+	return true;
+}
+
+//=====================================================
+// Execute Direction Skill
+//=====================================================
+bool PlayerControllerComponent::
+ExecuteDirectionSkill(
+	PlayerActionType type,
+	GridDirection direction)
+{
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		return false;
+	}
+
+	auto* playerAction =
+		GetPlayerAction();
+
+	auto* playerGrid =
+		owner->GetComponent<
+		GridPositionComponent>();
+
+	if (!playerAction ||
+		!playerGrid)
+	{
+		return false;
+	}
+
+	//=================================================
+	// Action使用可能確認
+	//=================================================
+
+	if (!playerAction->
+		CanUseAction(
+			type))
+	{
+		return false;
+	}
+
+	const PlayerActionDefinition definition =
+		playerAction->
+		GetActionDefinition(
+			type);
+
+	if (!definition.Enabled ||
+		!definition.HasEffectPattern ||
+		!definition.EffectPattern.IsValid())
+	{
+		return false;
+	}
+
+	const GridPosition origin =
+		playerGrid->
+		GetGridPosition();
+
+	//=================================================
+	// Facing Target Position
+	//=================================================
+
+	GridPosition facingTarget =
+		origin;
+
+	switch (direction)
+	{
+	case GridDirection::North:
+
+		facingTarget.Y -= 1;
+		break;
+
+	case GridDirection::East:
+
+		facingTarget.X += 1;
+		break;
+
+	case GridDirection::South:
+
+		facingTarget.Y += 1;
+		break;
+
+	case GridDirection::West:
+
+		facingTarget.X -= 1;
+		break;
+
+	default:
+
+		return false;
+	}
+
+	//=================================================
+	// Face Direction
+	//=================================================
+
+	auto* transform =
+		owner->GetComponent<
+		TransformComponent>();
+
+	if (transform)
+	{
+		transform->
+			FaceGridPosition(
+				origin,
+				facingTarget);
+	}
+
+	//=================================================
+	// Effect
+	//=================================================
+	//
+	// 対象が存在しなくてもSkill自体は成立させる。
+	//
+	// これによりDirection Skillは
+	// 「方向を選択して空振りする」ことも可能。
+	//=================================================
+
+	ApplyActionEffectsToPattern(
+		definition,
+		origin,
+		direction);
+
+	//=================================================
+	// Cost
+	//=================================================
+
+	if (!playerAction->
+		ConsumeActionCost(
+			type))
+	{
+		return false;
+	}
+
+	OutputDebugStringA(
+		"[PlayerController] "
+		"Direction Skill executed.\n");
+
+	return true;
+}
+
+//=====================================================
+// Execute Self Skill
+//=====================================================
+
+bool PlayerControllerComponent::
+ExecuteSelfSkill(
+	PlayerActionType type)
+{
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		return false;
+	}
+
+	auto* playerAction =
+		GetPlayerAction();
+
+	auto* playerGrid =
+		owner->GetComponent<
+		GridPositionComponent>();
+
+	if (!playerAction ||
+		!playerGrid)
+	{
+		return false;
+	}
+
+	const PlayerActionDefinition definition =
+		playerAction->
+		GetActionDefinition(
+			type);
+
+	if (!definition.Enabled)
+	{
+		return false;
+	}
+
+	const GridPosition origin =
+		playerGrid->
+		GetGridPosition();
+
+	//=================================================
+	// Pattern Effect
+	//=================================================
+	//
+	// Self Skillは方向回転不要なので
+	// Northを基準方向として渡す。
+	//
+	// Square等のRotateWithFacing=false Patternなら
+	// 結果は方向に依存しない。
+	//=================================================
+
+	const bool applied =
+		ApplyActionEffectsToPattern(
+			definition,
+			origin,
+			GridDirection::North);
+
+	if (!applied)
+	{
+		// 周囲にEnemyがいなければ
+		// Ultimateを消費しない。
+		return false;
+	}
+
+	//=================================================
+	// Cost
+	//=================================================
+
+	if (!playerAction->
+		ConsumeActionCost(
+			type))
+	{
+		return false;
+	}
+
+	OutputDebugStringA(
+		"[PlayerController] "
+		"Self Skill executed.\n");
+
+	return true;
+}
+
+//=====================================================
+// Build Runtime Effect
+//=====================================================
+EffectDefinition
+PlayerControllerComponent::BuildRuntimeEffect(
+	const EffectDefinition& definition) const
+{
+	EffectDefinition runtimeEffect =
+		definition;
+
+	//=================================================
+	// Source AttackPower
+	//=================================================
+
+	if (!definition.UseSourceAttackPower)
+	{
+		return runtimeEffect;
+	}
+
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		runtimeEffect.Power =
+			0;
+
+		return runtimeEffect;
+	}
+
+	auto* status =
+		owner->GetComponent<
+		CharacterStatusComponent>();
+
+	if (!status)
+	{
+		runtimeEffect.Power =
+			0;
+
+		return runtimeEffect;
+	}
+
+	const int attackPower =
+		status->
+		GetAttackPower();
+
+	//=================================================
+	// Damage Calculation
+	//=================================================
+	//
+	// 現段階では
+	// AttackPower × Skill倍率。
+	//
+	// 将来はBattleCalculatorへ移行する。
+	//=================================================
+
+	const float calculatedPower =
+		static_cast<float>(
+			attackPower) *
+		definition.PowerMultiplier;
+
+	runtimeEffect.Power =
+		static_cast<int>(
+			calculatedPower);
+
+	// 最低1Damageを保証。
+	if (runtimeEffect.Power <= 0)
+	{
+		runtimeEffect.Power =
+			1;
+	}
+
+	return runtimeEffect;
+}
+
+//=====================================================
+// Apply Action Effects To Target
+//=====================================================
+bool PlayerControllerComponent::
+ApplyActionEffectsToTarget(
+	const PlayerActionDefinition& definition,
+	GameObject* target)
+{
+	if (!target ||
+		target->IsDestroy())
+	{
+		return false;
+	}
+
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		return false;
+	}
+
+	auto* gridPosition =
+		owner->GetComponent<
+		GridPositionComponent>();
+
+	if (!gridPosition)
+	{
+		return false;
+	}
+
+	GridMap* gridMap =
+		gridPosition->
+		GetGridMap();
+
+	if (!gridMap)
+	{
+		return false;
+	}
+
+	bool appliedAny =
+		false;
+
+	//=================================================
+	// Effect順に適用
+	//=================================================
+	//
+	// Shield Bashなら
+	//
+	// Damage
+	// ↓
+	// Knockback
+	//
+	// の順番になる。
+	//=================================================
+
+	for (const EffectDefinition& effectDefinition :
+		definition.Effects)
+	{
+		const EffectDefinition runtimeEffect =
+			BuildRuntimeEffect(
+				effectDefinition);
+
+		if (EffectSystem::ApplyEffect(
+			*gridMap,
+			owner,
+			target,
+			runtimeEffect))
+		{
+			appliedAny =
+				true;
+		}
+	}
+
+	return appliedAny;
+}
+
+//=====================================================
+// Apply Action Effects To Pattern
+//=====================================================
+bool PlayerControllerComponent::
+ApplyActionEffectsToPattern(
+	const PlayerActionDefinition& definition,
+	const GridPosition& origin,
+	GridDirection direction)
+{
+	if (!definition.HasEffectPattern ||
+		!definition.EffectPattern.IsValid())
+	{
+		return false;
+	}
+
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		return false;
+	}
+
+	auto* gridPosition =
+		owner->GetComponent<
+		GridPositionComponent>();
+
+	if (!gridPosition)
+	{
+		return false;
+	}
+
+	GridMap* gridMap =
+		gridPosition->
+		GetGridMap();
+
+	if (!gridMap)
+	{
+		return false;
+	}
+
+	//=================================================
+	// Pattern展開
+	//=================================================
+
+	const auto offsets =
+		definition.EffectPattern.
+		GetOffsets(
+			direction);
+
+	bool appliedAny =
+		false;
+
+	for (const GridOffset& offset :
+		offsets)
+	{
+		const GridPosition targetPosition
+		{
+			origin.X +
+				offset.X,
+
+			origin.Y +
+				offset.Y
+		};
+
+		if (!gridMap->
+			IsInside(
+				targetPosition))
+		{
+			continue;
+		}
+
+		GameObject* target =
+			gridMap->
+			GetOccupant(
+				targetPosition);
+
+		// 空マスはEffect適用対象ではない。
+		if (!target ||
+			target->IsDestroy())
+		{
+			continue;
+		}
+
+		//=============================================
+		// 全Effect適用
+		//=============================================
+
+		for (const EffectDefinition& effectDefinition :
+			definition.Effects)
+		{
+			const EffectDefinition runtimeEffect =
+				BuildRuntimeEffect(
+					effectDefinition);
+
+			if (EffectSystem::
+				ApplyEffect(
+					*gridMap,
+					owner,
+					target,
+					runtimeEffect))
+			{
+				appliedAny =
+					true;
+			}
+		}
+	}
+
+	return appliedAny;
 }
 
 //=====================================================

@@ -109,6 +109,9 @@ WarriorClassComponent::GetActionDefinition(
 		definition.HasEffectPattern =
 			false;
 
+		definition.Animation =
+			AnimationID::Attack;
+
 		// 以下、Effectの設定は仮値。
 		EffectDefinition damage;
 
@@ -136,30 +139,25 @@ WarriorClassComponent::GetActionDefinition(
 	}
 	case PlayerActionType::Skill1:
 	{
+		definition.Enabled =
+			true;
+
 		definition.Cost.AP =
 			3;
 
 		definition.Cost.MP =
 			5;
 
-		definition.Enabled =
-			true;
-
 		definition.TargetMode =
 			TargetingMode::Direction;
 
-		definition.Targeting.AllowedTargets =
-			TargetType::Enemy |
-			TargetType::EmptyCell;
-
-		definition.Targeting.LineOfSight =
-			LineOfSightType::None;
+		//=================================================
+		// Effect Pattern
+		//=================================================
 
 		definition.HasEffectPattern =
 			true;
 
-		// North向きを基準として、
-		// Characterの向きに合わせて回転する。
 		definition.EffectPattern =
 			GridPattern::FromMask(
 				3,
@@ -170,33 +168,133 @@ WarriorClassComponent::GetActionDefinition(
 				},
 				true);
 
+		definition.Animation =
+			AnimationID::Attack;
+
+		//=================================================
+		// Damage
+		//=================================================
+
+		EffectDefinition damage;
+
+		damage.Type =
+			EffectType::Damage;
+
+		damage.UseSourceAttackPower =
+			true;
+
+		damage.PowerMultiplier =
+			0.8f;
+
+		damage.AffectSelf =
+			false;
+
+		damage.AffectAllies =
+			false;
+
+		damage.AffectEnemies =
+			true;
+
+		definition.Effects.push_back(
+			damage);
+
 		break;
 	}
 	case PlayerActionType::Skill2:
 	{
+		definition.Enabled =
+			true;
+
 		definition.Cost.AP =
 			2;
 
 		definition.Cost.MP =
 			5;
 
-		definition.Enabled =
+		//=================================================
+		// Unit Target
+		//=================================================
+
+		definition.TargetMode =
+			TargetingMode::Unit;
+
+		definition.TargetPattern =
+			GridPattern::CreateCross(
+				1,
+				false);
+
+		definition.Targeting.AllowedTargets =
+			TargetType::Enemy;
+
+		definition.Targeting.LineOfSight =
+			LineOfSightType::None;
+
+		definition.Targeting.WallsBlock =
+			false;
+
+		definition.Targeting.UnitsBlock =
+			false;
+
+		definition.Animation =
+			AnimationID::Punch;
+
+		//=================================================
+		// Damage
+		//=================================================
+
+		EffectDefinition damage;
+
+		damage.Type =
+			EffectType::Damage;
+
+		damage.UseSourceAttackPower =
 			true;
 
-		// Target / Effectは
-		// Knockback実装時に設定する。
+		damage.PowerMultiplier =
+			0.7f;
+
+		damage.AffectEnemies =
+			true;
+
+		definition.Effects.
+			push_back(
+				damage);
+
+		//=================================================
+		// Knockback
+		//=================================================
+
+		EffectDefinition knockback;
+
+		knockback.Type =
+			EffectType::Knockback;
+
+		knockback.KnockbackDistance =
+			1;
+
+		knockback.AffectEnemies =
+			true;
+
+		definition.Effects.
+			push_back(
+				knockback);
+
 		break;
 	}
 	case PlayerActionType::Ultimate:
 	{
+		definition.Enabled =
+			true;
+
 		definition.Cost.AP =
 			4;
 
 		definition.Cost.MP =
 			20;
 
-		definition.Enabled =
-			true;
+		//=================================================
+		// Self Center
+		//=================================================
 
 		definition.TargetMode =
 			TargetingMode::Self;
@@ -204,16 +302,48 @@ WarriorClassComponent::GetActionDefinition(
 		definition.Targeting.AllowedTargets =
 			TargetType::Self;
 
-		definition.Targeting.LineOfSight =
-			LineOfSightType::None;
+		//=================================================
+		// Surrounding 8 Cells
+		//=================================================
 
 		definition.HasEffectPattern =
 			true;
 
-		// 自分を除いた周囲8マス
 		definition.EffectPattern =
 			GridPattern::CreateSquare(
-				1);
+				1,
+				false);
+
+		definition.Animation =
+			AnimationID::Attack;
+
+		//=================================================
+		// Damage
+		//=================================================
+
+		EffectDefinition damage;
+
+		damage.Type =
+			EffectType::Damage;
+
+		damage.UseSourceAttackPower =
+			true;
+
+		damage.PowerMultiplier =
+			2.0f;
+
+		damage.AffectEnemies =
+			true;
+
+		damage.AffectAllies =
+			false;
+
+		damage.AffectSelf =
+			false;
+
+		definition.Effects.
+			push_back(
+				damage);
 
 		break;
 	}
