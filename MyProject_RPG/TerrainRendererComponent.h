@@ -129,6 +129,10 @@ public:
 	float GetTerrainTextureIndex(
 		TerrainType type) const;
 
+	float GetTerrainTextureIndexAt(
+		const GridPosition& position,
+		float fallback) const;
+
 private:
 
 	/**

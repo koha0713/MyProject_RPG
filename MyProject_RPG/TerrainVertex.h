@@ -39,4 +39,19 @@ struct TerrainVertex
 	 */
 	float TerrainIndex =
 		0;
+
+	/**
+	 * @brief üˆÍ4•ûŒü‚ÌTerrain”Ô†
+	 *
+	 * x = Up
+	 * y = Right
+	 * z = Down
+	 * w = Left
+	 */
+	Vector4 NeighborTerrainIndices =
+		Vector4(
+			0.0f,
+			0.0f,
+			0.0f,
+			0.0f);
 };

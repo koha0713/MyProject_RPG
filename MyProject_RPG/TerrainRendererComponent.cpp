@@ -393,6 +393,48 @@ GetTerrainTextureIndex(
 	}
 }
 
+/**
+ * @brief éwíËà íuÇÃTerrain Textureî‘çÜÇéÊìæ
+ *
+ * @param position Gridç¿ïW
+ * @param fallback å©Ç¬Ç©ÇÁÇ»Ç©Ç¡ÇΩèÍçáÇÃTerrainî‘çÜ
+ */
+float TerrainRendererComponent::
+GetTerrainTextureIndexAt(
+	const GridPosition& position,
+	float fallback) const
+{
+	if (!m_TerrainData)
+	{
+		return fallback;
+	}
+
+	const TerrainCellData* cell =
+		m_TerrainData->
+		FindCell(
+			position);
+
+	if (!cell)
+	{
+		return fallback;
+	}
+
+	//=================================================
+	// WaterÇ»Ç«Ground MeshÇ…ä‹Ç‹ÇÍÇ»Ç¢TerrainÇÕ
+	// BlendëŒè€Ç…ÇµÇ»Ç¢
+	//=================================================
+
+	if (!IsGroundTerrain(
+		cell->Type))
+	{
+		return fallback;
+	}
+
+	return
+		GetTerrainTextureIndex(
+			cell->Type);
+}
+
 //=====================================================
 // Build Chunks
 //=====================================================
@@ -605,6 +647,70 @@ BuildGroundMesh(
 				cell->Type);
 
 		//=================================================
+		// Neighbor Terrain
+		//=================================================
+		//
+		// Grid Y:
+		// -1 = Up
+		// +1 = Down
+		//
+		// Grid X:
+		// +1 = Right
+		// -1 = Left
+		//=================================================
+
+		const GridPosition upPosition
+		{
+			cell->Position.X,
+			cell->Position.Y - 1
+		};
+
+		const GridPosition rightPosition
+		{
+			cell->Position.X + 1,
+			cell->Position.Y
+		};
+
+		const GridPosition downPosition
+		{
+			cell->Position.X,
+			cell->Position.Y + 1
+		};
+
+		const GridPosition leftPosition
+		{
+			cell->Position.X - 1,
+			cell->Position.Y
+		};
+
+		const float terrainUp =
+			GetTerrainTextureIndexAt(
+				upPosition,
+				terrainIndex);
+
+		const float terrainRight =
+			GetTerrainTextureIndexAt(
+				rightPosition,
+				terrainIndex);
+
+		const float terrainDown =
+			GetTerrainTextureIndexAt(
+				downPosition,
+				terrainIndex);
+
+		const float terrainLeft =
+			GetTerrainTextureIndexAt(
+				leftPosition,
+				terrainIndex);
+
+		const Vector4 neighborTerrainIndices =
+			Vector4(
+				terrainUp,
+				terrainRight,
+				terrainDown,
+				terrainLeft);
+
+		//=================================================
 		// Grid Å® World
 		//=================================================
 		//
@@ -658,6 +764,12 @@ BuildGroundMesh(
 		vertex0.TerrainIndex =
 			terrainIndex;
 
+		vertex0.TerrainIndex =
+			terrainIndex;
+
+		vertex0.NeighborTerrainIndices =
+			neighborTerrainIndices;
+
 		//=================================================
 		// Vertex 1
 		//=================================================
@@ -683,6 +795,12 @@ BuildGroundMesh(
 
 		vertex1.TerrainIndex =
 			terrainIndex;
+
+		vertex1.TerrainIndex =
+			terrainIndex;
+
+		vertex1.NeighborTerrainIndices =
+			neighborTerrainIndices;
 
 		//=================================================
 		// Vertex 2
@@ -710,6 +828,12 @@ BuildGroundMesh(
 		vertex2.TerrainIndex =
 			terrainIndex;
 
+		vertex2.TerrainIndex =
+			terrainIndex;
+
+		vertex2.NeighborTerrainIndices =
+			neighborTerrainIndices;
+
 		//=================================================
 		// Vertex 3
 		//=================================================
@@ -735,6 +859,12 @@ BuildGroundMesh(
 
 		vertex3.TerrainIndex =
 			terrainIndex;
+
+		vertex3.TerrainIndex =
+			terrainIndex;
+
+		vertex3.NeighborTerrainIndices =
+			neighborTerrainIndices;
 
 		//=================================================
 		// Vertexí«â¡

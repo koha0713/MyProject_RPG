@@ -8,8 +8,13 @@ struct VSInput
 
     float2 TexCoord : TEXCOORD;
 
-	// Terrainî‘çÜÇÕfloatÇ∆ÇµÇƒéÛÇØéÊÇÈ
     float TerrainIndex : TERRAININDEX;
+
+	// x = Up
+	// y = Right
+	// z = Down
+	// w = Left
+    float4 NeighborTerrain : NEIGHBORTERRAIN;
 };
 
 struct VSOutput
@@ -20,7 +25,17 @@ struct VSOutput
 
     float3 WorldNormal : TEXCOORD1;
 
-    float TerrainIndex : TEXCOORD2;
+	// Cellì‡0Å`1
+    float2 LocalUV : TEXCOORD2;
+
+	// x = Center Terrain
+	// y = Up
+	// z = Right
+	// w = Down
+    float4 TerrainInfo : TEXCOORD3;
+
+	// x = Left
+    float4 TerrainInfo2 : TEXCOORD4;
 };
 
 VSOutput main(
@@ -33,6 +48,10 @@ VSOutput main(
 			input.Position,
 			1.0f);
 
+	//=================================================
+	// Position
+	//=================================================
+
     output.Position =
 		mul(
 			localPosition,
@@ -43,6 +62,10 @@ VSOutput main(
 			localPosition,
 			World).xyz;
 
+	//=================================================
+	// Normal
+	//=================================================
+
     output.WorldNormal =
 		normalize(
 			mul(
@@ -51,8 +74,26 @@ VSOutput main(
 					0.0f),
 				World).xyz);
 
-    output.TerrainIndex =
-		input.TerrainIndex;
+	//=================================================
+	// Terrain Data
+	//=================================================
+
+    output.LocalUV =
+		input.TexCoord;
+
+    output.TerrainInfo =
+		float4(
+			input.TerrainIndex,
+			input.NeighborTerrain.x,
+			input.NeighborTerrain.y,
+			input.NeighborTerrain.z);
+
+    output.TerrainInfo2 =
+		float4(
+			input.NeighborTerrain.w,
+			0.0f,
+			0.0f,
+			0.0f);
 
     return output;
 }

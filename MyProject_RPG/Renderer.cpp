@@ -1937,6 +1937,19 @@ bool Renderer::CreateTerrainPipeline()
 					TerrainIndex)),
 			D3D11_INPUT_PER_VERTEX_DATA,
 			0
+		},
+
+		{
+			"NEIGHBORTERRAIN",
+			0,
+			DXGI_FORMAT_R32G32B32A32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					TerrainVertex,
+					NeighborTerrainIndices)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
 		}
 	};
 

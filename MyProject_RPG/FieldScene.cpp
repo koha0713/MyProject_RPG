@@ -71,8 +71,8 @@ default;
 void FieldScene::Initialize()
 {
 	if (!m_GridMap.Initialize(
-		10,
-		10,
+		20,
+		20,
 		2.0f))
 	{
 		return;
@@ -166,7 +166,7 @@ void FieldScene::Initialize()
 
 		auto dirtTexture =
 			RESOURCE_MANAGER.LoadTexture(
-				"Assets/Textures/Terrain/Dirt01.png");
+				"Assets/Textures/Terrain/Sand01.png");
 
 		auto rockTexture =
 			RESOURCE_MANAGER.LoadTexture(

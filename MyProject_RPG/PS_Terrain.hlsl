@@ -17,26 +17,33 @@ SamplerState TerrainSampler :
 
 struct PSInput
 {
-	float4 Position : SV_POSITION;
+    float4 Position : SV_POSITION;
 
-	float3 WorldPosition : TEXCOORD0;
+    float3 WorldPosition : TEXCOORD0;
 
-	float3 WorldNormal : TEXCOORD1;
+    float3 WorldNormal : TEXCOORD1;
 
-	float TerrainIndex : TEXCOORD2;
+    float2 LocalUV : TEXCOORD2;
+
+	// x = Center
+	// y = Up
+	// z = Right
+	// w = Down
+    float4 TerrainInfo : TEXCOORD3;
+
+	// x = Left
+    float4 TerrainInfo2 : TEXCOORD4;
 };
 
-/**
- * @brief Terrain種類に応じてTextureを選択
- */
+
+//=====================================================
+// Sample Terrain Texture
+//=====================================================
+
 float4 SampleTerrainTexture(
 	float terrainIndex,
 	float2 uv)
 {
-	//=============================================
-	// Grass
-	//=============================================
-
     if (terrainIndex < 0.5f)
     {
         return
@@ -44,10 +51,6 @@ float4 SampleTerrainTexture(
 				TerrainSampler,
 				uv);
     }
-
-	//=============================================
-	// Dirt
-	//=============================================
 
     if (terrainIndex < 1.5f)
     {
@@ -57,10 +60,6 @@ float4 SampleTerrainTexture(
 				uv);
     }
 
-	//=============================================
-	// Rock
-	//=============================================
-
     if (terrainIndex < 2.5f)
     {
         return
@@ -69,19 +68,39 @@ float4 SampleTerrainTexture(
 				uv);
     }
 
-	//=============================================
-	// Sand
-	//=============================================
-
     return
 		SandTexture.Sample(
 			TerrainSampler,
 			uv);
 }
 
+
+//=====================================================
+// Main
+//=====================================================
+
 float4 main(
 	PSInput input) : SV_TARGET
 {
+	//=================================================
+	// Terrain Information
+	//=================================================
+
+    const float centerTerrain =
+		input.TerrainInfo.x;
+
+    const float terrainUp =
+		input.TerrainInfo.y;
+
+    const float terrainRight =
+		input.TerrainInfo.z;
+
+    const float terrainDown =
+		input.TerrainInfo.w;
+
+    const float terrainLeft =
+		input.TerrainInfo2.x;
+
 	//=================================================
 	// World Space UV
 	//=================================================
@@ -91,13 +110,147 @@ float4 main(
 		TerrainParameters.x;
 
 	//=================================================
-	// Terrain Texture
+	// Base Terrain
 	//=================================================
 
-    const float4 textureColor =
+    float4 terrainColor =
 		SampleTerrainTexture(
-			input.TerrainIndex,
+			centerTerrain,
 			terrainUV);
+
+	//=================================================
+	// Border Blend
+	//=================================================
+	//
+	// 1Cell全体をBlendするのではなく、
+	// Cell端から18%程度だけを使用する。
+	//
+	// さらに共有境界では最大0.5までしか混ぜない。
+	//
+	// これにより、
+	//
+	// Grass側 = Grass50% + Dirt50%
+	// Dirt側  = Dirt50%  + Grass50%
+	//
+	// となり境界の色が一致する。
+	//=================================================
+
+    const float BLEND_WIDTH =
+		0.18f;
+
+	//=================================================
+	// Up
+	//=================================================
+
+    if (abs(
+		terrainUp -
+		centerTerrain) >
+		0.1f)
+    {
+        const float blend =
+			smoothstep(
+				BLEND_WIDTH,
+				0.0f,
+				input.LocalUV.y) *
+			0.5f;
+
+        const float4 neighborColor =
+			SampleTerrainTexture(
+				terrainUp,
+				terrainUV);
+
+        terrainColor =
+			lerp(
+				terrainColor,
+				neighborColor,
+				blend);
+    }
+
+	//=================================================
+	// Right
+	//=================================================
+
+    if (abs(
+		terrainRight -
+		centerTerrain) >
+		0.1f)
+    {
+        const float blend =
+			smoothstep(
+				1.0f -
+					BLEND_WIDTH,
+				1.0f,
+				input.LocalUV.x) *
+			0.5f;
+
+        const float4 neighborColor =
+			SampleTerrainTexture(
+				terrainRight,
+				terrainUV);
+
+        terrainColor =
+			lerp(
+				terrainColor,
+				neighborColor,
+				blend);
+    }
+
+	//=================================================
+	// Down
+	//=================================================
+
+    if (abs(
+		terrainDown -
+		centerTerrain) >
+		0.1f)
+    {
+        const float blend =
+			smoothstep(
+				1.0f -
+					BLEND_WIDTH,
+				1.0f,
+				input.LocalUV.y) *
+			0.5f;
+
+        const float4 neighborColor =
+			SampleTerrainTexture(
+				terrainDown,
+				terrainUV);
+
+        terrainColor =
+			lerp(
+				terrainColor,
+				neighborColor,
+				blend);
+    }
+
+	//=================================================
+	// Left
+	//=================================================
+
+    if (abs(
+		terrainLeft -
+		centerTerrain) >
+		0.1f)
+    {
+        const float blend =
+			smoothstep(
+				BLEND_WIDTH,
+				0.0f,
+				input.LocalUV.x) *
+			0.5f;
+
+        const float4 neighborColor =
+			SampleTerrainTexture(
+				terrainLeft,
+				terrainUV);
+
+        terrainColor =
+			lerp(
+				terrainColor,
+				neighborColor,
+				blend);
+    }
 
 	//=================================================
 	// Lighting
@@ -160,7 +313,7 @@ float4 main(
 	//=================================================
 
     const float3 finalColor =
-		textureColor.rgb *
+		terrainColor.rgb *
 		TerrainColor.rgb *
 		lighting;
 
