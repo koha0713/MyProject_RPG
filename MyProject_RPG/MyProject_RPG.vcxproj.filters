@@ -97,6 +97,9 @@
     <Filter Include="ソース ファイル\Effect">
       <UniqueIdentifier>{a8fe7ed6-c327-4798-849e-a66db18c10a7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\System\Map\Grass">
+      <UniqueIdentifier>{030815b1-74b3-425f-940d-ea5caf56fe76}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -417,6 +420,12 @@
     <ClInclude Include="TerrainRenderSettings.h">
       <Filter>ソース ファイル\System\Map</Filter>
     </ClInclude>
+    <ClInclude Include="GrassRenderData.h">
+      <Filter>ソース ファイル\System\Map\Grass</Filter>
+    </ClInclude>
+    <ClInclude Include="GrassRendererComponent.h">
+      <Filter>ソース ファイル\Component\Map</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -617,6 +626,9 @@
     <ClCompile Include="TerrainRendererComponent.cpp">
       <Filter>ソース ファイル\Component\Map</Filter>
     </ClCompile>
+    <ClCompile Include="GrassRendererComponent.cpp">
+      <Filter>ソース ファイル\Component\Map</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="VS_Model.hlsl">
@@ -655,12 +667,21 @@
     <FxCompile Include="PS_Terrain.hlsl">
       <Filter>リソース ファイル\PS</Filter>
     </FxCompile>
+    <FxCompile Include="VS_Grass.hlsl">
+      <Filter>リソース ファイル\VS</Filter>
+    </FxCompile>
+    <FxCompile Include="PS_Grass.hlsl">
+      <Filter>リソース ファイル\PS</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="WaterCommon.hlsli">
       <Filter>リソース ファイル</Filter>
     </None>
     <None Include="TerrainCommon.hlsli">
+      <Filter>リソース ファイル</Filter>
+    </None>
+    <None Include="GrassCommon.hlsli">
       <Filter>リソース ファイル</Filter>
     </None>
   </ItemGroup>

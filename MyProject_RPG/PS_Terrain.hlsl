@@ -74,6 +74,26 @@ float4 SampleTerrainTexture(
 			uv);
 }
 
+/**
+ * @brief World座標から固定Noiseを生成
+ *
+ * @return 0.0 ～ 1.0
+ */
+float HashNoise(
+	float2 p)
+{
+    const float value =
+		sin(
+			dot(
+				p,
+				float2(
+					12.9898f,
+					78.233f))) *
+		43758.5453f;
+
+    return frac(value);
+}
+
 
 //=====================================================
 // Main
@@ -117,6 +137,35 @@ float4 main(
 		SampleTerrainTexture(
 			centerTerrain,
 			terrainUV);
+	
+	//=====================================================
+	// Border Noise
+	//=====================================================
+	//
+	// World座標ベースなのでChunkやCellをまたいでも
+	// 同じ位置では同じNoise値になる。
+	//=====================================================
+
+		const float noise =
+		HashNoise(
+			floor(
+				input.WorldPosition.xz *
+				3.0f));
+
+	// -1 ～ +1
+		const float signedNoise =
+		noise *
+		2.0f -
+		1.0f;
+
+	// 境界を揺らす量。
+	// 大きすぎるとギザギザしすぎるため小さめ。
+    const float BORDER_NOISE_STRENGTH =
+	0.035f;
+
+    const float borderOffset =
+	signedNoise *
+	BORDER_NOISE_STRENGTH;
 
 	//=================================================
 	// Border Blend
@@ -149,8 +198,12 @@ float4 main(
     {
         const float blend =
 			smoothstep(
-				BLEND_WIDTH,
-				0.0f,
+				BLEND_WIDTH +
+					borderOffset,
+
+				0.0f +
+					borderOffset,
+
 				input.LocalUV.y) *
 			0.5f;
 
@@ -178,8 +231,12 @@ float4 main(
         const float blend =
 			smoothstep(
 				1.0f -
-					BLEND_WIDTH,
-				1.0f,
+					BLEND_WIDTH +
+					borderOffset,
+
+				1.0f +
+					borderOffset,
+
 				input.LocalUV.x) *
 			0.5f;
 
@@ -207,8 +264,12 @@ float4 main(
         const float blend =
 			smoothstep(
 				1.0f -
-					BLEND_WIDTH,
-				1.0f,
+					BLEND_WIDTH +
+					borderOffset,
+
+				1.0f +
+					borderOffset,
+
 				input.LocalUV.y) *
 			0.5f;
 
@@ -235,8 +296,12 @@ float4 main(
     {
         const float blend =
 			smoothstep(
-				BLEND_WIDTH,
-				0.0f,
+				BLEND_WIDTH +
+					borderOffset,
+
+				0.0f +
+					borderOffset,
+
 				input.LocalUV.x) *
 			0.5f;
 

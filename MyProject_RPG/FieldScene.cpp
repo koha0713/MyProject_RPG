@@ -182,6 +182,39 @@ void FieldScene::Initialize()
 				dirtTexture,
 				rockTexture,
 				sandTexture);
+
+		GameObject* grassObject =
+			m_gameObjectManager.
+			Create<GameObject>();
+
+		grassObject->
+			SetName(
+				"GrassRenderer");
+
+		auto grassTexture_1 =
+			RESOURCE_MANAGER.LoadTexture(
+				"Assets/Textures/Terrain/GrassBlade.png");
+
+		m_GrassRenderer =
+			grassObject->
+			AddComponent<GrassRendererComponent>();
+
+		m_GrassRenderer->
+			SetCellSize(
+				2.0f);
+
+		m_GrassRenderer->
+			SetTerrainData(
+				&m_TerrainMapData);
+
+		m_GrassRenderer->
+			SetGrassTexture(
+				grassTexture_1);
+
+		m_GrassRenderer->
+			BuildGrass(
+				m_TerrainRenderer->
+				GetChunks());
 	}
 	
 
@@ -848,7 +881,7 @@ void FieldScene::Draw(uint64_t delta)
 			1.0f,
 			1.0f,
 			1.0f,
-			0.35f),
+			0.1f),
 		0.02f);
 
 	//=================================================

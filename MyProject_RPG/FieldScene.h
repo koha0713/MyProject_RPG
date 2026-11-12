@@ -18,6 +18,7 @@
 #include "GridPattern.h"
 #include "PlayerActionDefinition.h"
 #include "TerrainRendererComponent.h"
+#include "GrassRendererComponent.h"
 
 /**
  * @brief Player‘€ìó‘Ô
@@ -317,6 +318,10 @@ private:
 
 	TerrainRendererComponent*
 		m_TerrainRenderer =
+		nullptr;
+
+	GrassRendererComponent*
+		m_GrassRenderer =
 		nullptr;
 
 	//=================================================

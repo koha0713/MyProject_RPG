@@ -160,6 +160,8 @@
     <ClInclude Include="Game.h" />
     <ClInclude Include="GameObject.h" />
     <ClInclude Include="GameObjectManager.h" />
+    <ClInclude Include="GrassRenderData.h" />
+    <ClInclude Include="GrassRendererComponent.h" />
     <ClInclude Include="GridCell.h" />
     <ClInclude Include="GridMap.h" />
     <ClInclude Include="GridPathFinder.h" />
@@ -258,6 +260,7 @@
     <ClCompile Include="FontRenderer.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="GameObjectManager.cpp" />
+    <ClCompile Include="GrassRendererComponent.cpp" />
     <ClCompile Include="GridMap.cpp" />
     <ClCompile Include="GridPathFinder.cpp" />
     <ClCompile Include="GridPattern.cpp" />
@@ -312,6 +315,12 @@
     <ClCompile Include="DebugUI.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="PS_Grass.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
     <FxCompile Include="PS_Model.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
@@ -349,6 +358,12 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="VS_Grass.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
     <FxCompile Include="VS_Model.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
@@ -390,6 +405,7 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="GrassCommon.hlsli" />
     <None Include="TerrainCommon.hlsli" />
     <None Include="WaterCommon.hlsli" />
   </ItemGroup>

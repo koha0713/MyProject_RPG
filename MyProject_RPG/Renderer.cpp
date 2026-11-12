@@ -16,6 +16,7 @@
 #include "WaterRenderSettings.h"
 #include "Texture.h"
 #include "WaterRenderData.h"
+#include "GrassRenderData.h"
 #include "TerrainVertex.h"
 
  //=====================================================
@@ -181,6 +182,28 @@ namespace
 	static_assert(
 		sizeof(TerrainConstantBuffer) % 16 == 0,
 		"TerrainConstantBuffer must be 16-byte aligned.");
+
+	/**
+	 * @brief Grass ShaderópConstantBuffer
+	 */
+	struct GrassConstantBuffer
+	{
+		Matrix4x4 ViewProjection;
+
+		// x = Time
+		// y = WindStrength
+		// z = WindSpeed
+		// w = AlphaClip
+		Vector4 GrassParameters;
+
+		// xy = WindDirection
+		Vector4 WindParameters;
+	};
+
+	static_assert(
+		sizeof(
+			GrassConstantBuffer) %
+		16 == 0);
 
 	/**
 	 * @brief GPU SkinningópConstantBuffer
@@ -516,6 +539,20 @@ Renderer::m_TerrainInputLayout;
 Microsoft::WRL::ComPtr<ID3D11Buffer>
 Renderer::m_TerrainConstantBuffer;
 
+//=====================================================
+// Grass Pipeline
+//=====================================================
+Microsoft::WRL::ComPtr<ID3D11VertexShader>
+Renderer::m_GrassVertexShader;
+
+Microsoft::WRL::ComPtr<ID3D11PixelShader>
+Renderer::m_GrassPixelShader;
+
+Microsoft::WRL::ComPtr<ID3D11InputLayout>
+Renderer::m_GrassInputLayout;
+
+Microsoft::WRL::ComPtr<ID3D11Buffer>
+Renderer::m_GrassConstantBuffer;
 
 //=====================================================
 // Initialize
@@ -647,6 +684,11 @@ bool Renderer::Init()
 		return false;
 	}
 
+	if (!CreateGrassPipeline())
+	{
+		return false;
+	}
+
 	//====================
 	// èâä˙State
 	//====================
@@ -694,13 +736,14 @@ void Renderer::Dispose()
 	m_WaterVertexShader.Reset();
 
 	m_TerrainConstantBuffer.Reset();
-
 	m_TerrainInputLayout.Reset();
-
 	m_TerrainPixelShader.Reset();
-
 	m_TerrainVertexShader.Reset();
 
+	m_GrassConstantBuffer.Reset();
+	m_GrassInputLayout.Reset();
+	m_GrassPixelShader.Reset();
+	m_GrassVertexShader.Reset();
 
 	//====================
 	// Rasterizer
@@ -1998,6 +2041,193 @@ bool Renderer::CreateTerrainPipeline()
 	return true;
 }
 
+bool Renderer::
+CreateGrassPipeline()
+{
+	Microsoft::WRL::ComPtr<ID3DBlob>
+		vertexShaderBlob;
+
+	Microsoft::WRL::ComPtr<ID3DBlob>
+		pixelShaderBlob;
+
+	if (!CompileShader(
+		L"VS_Grass.hlsl",
+		"main",
+		"vs_5_0",
+		vertexShaderBlob))
+	{
+		return false;
+	}
+
+	if (!CompileShader(
+		L"PS_Grass.hlsl",
+		"main",
+		"ps_5_0",
+		pixelShaderBlob))
+	{
+		return false;
+	}
+
+	HRESULT hr =
+		m_Device->CreateVertexShader(
+			vertexShaderBlob->
+			GetBufferPointer(),
+			vertexShaderBlob->
+			GetBufferSize(),
+			nullptr,
+			m_GrassVertexShader.
+			GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	hr =
+		m_Device->CreatePixelShader(
+			pixelShaderBlob->
+			GetBufferPointer(),
+			pixelShaderBlob->
+			GetBufferSize(),
+			nullptr,
+			m_GrassPixelShader.
+			GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	const D3D11_INPUT_ELEMENT_DESC inputLayout[] =
+	{
+		//=============================================
+		// Slot 0 : GrassVertex
+		//=============================================
+
+		{
+			"POSITION",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					GrassVertex,
+					Position)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		{
+			"TEXCOORD",
+			0,
+			DXGI_FORMAT_R32G32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					GrassVertex,
+					TexCoord)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		//=============================================
+		// Slot 1 : GrassInstanceData
+		//=============================================
+
+		{
+			"INSTANCEPOSITION",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			1,
+			static_cast<UINT>(
+				offsetof(
+					GrassInstanceData,
+					Position)),
+			D3D11_INPUT_PER_INSTANCE_DATA,
+			1
+		},
+
+		{
+			"INSTANCEROTATION",
+			0,
+			DXGI_FORMAT_R32_FLOAT,
+			1,
+			static_cast<UINT>(
+				offsetof(
+					GrassInstanceData,
+					Rotation)),
+			D3D11_INPUT_PER_INSTANCE_DATA,
+			1
+		},
+
+		{
+			"INSTANCESCALE",
+			0,
+			DXGI_FORMAT_R32_FLOAT,
+			1,
+			static_cast<UINT>(
+				offsetof(
+					GrassInstanceData,
+					Scale)),
+			D3D11_INPUT_PER_INSTANCE_DATA,
+			1
+		},
+
+		{
+			"INSTANCERANDOM",
+			0,
+			DXGI_FORMAT_R32_FLOAT,
+			1,
+			static_cast<UINT>(
+				offsetof(
+					GrassInstanceData,
+					Random)),
+			D3D11_INPUT_PER_INSTANCE_DATA,
+			1
+		}
+	};
+
+	hr =
+		m_Device->CreateInputLayout(
+			inputLayout,
+			static_cast<UINT>(
+				std::size(
+					inputLayout)),
+			vertexShaderBlob->
+			GetBufferPointer(),
+			vertexShaderBlob->
+			GetBufferSize(),
+			m_GrassInputLayout.
+			GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	D3D11_BUFFER_DESC bufferDesc{};
+
+	bufferDesc.ByteWidth =
+		sizeof(
+			GrassConstantBuffer);
+
+	bufferDesc.Usage =
+		D3D11_USAGE_DEFAULT;
+
+	bufferDesc.BindFlags =
+		D3D11_BIND_CONSTANT_BUFFER;
+
+	hr =
+		m_Device->CreateBuffer(
+			&bufferDesc,
+			nullptr,
+			m_GrassConstantBuffer.
+			GetAddressOf());
+
+	return
+		SUCCEEDED(hr);
+}
+
 //=====================================================
 // Modelï`âÊ
 //=====================================================
@@ -2745,6 +2975,185 @@ void Renderer::DrawTerrain(
 		0,
 		4,
 		nullSRVs);
+}
+
+void Renderer::
+DrawGrassInstanced(
+	const MeshBuffer& mesh,
+	ID3D11Buffer* instanceBuffer,
+	uint32_t instanceCount,
+	const Texture* grassTexture,
+	float time,
+	const Vector2& windDirection,
+	float windStrength,
+	float windSpeed)
+{
+	if (!mesh.IsValid() ||
+		!instanceBuffer ||
+		instanceCount == 0 ||
+		!grassTexture ||
+		!grassTexture->IsValid())
+	{
+		return;
+	}
+
+	ID3D11DeviceContext* context =
+		GetDeviceContext();
+
+	if (!context)
+	{
+		return;
+	}
+
+	//=================================================
+	// Constant Buffer
+	//=================================================
+
+	GrassConstantBuffer constantBuffer{};
+
+	const Matrix4x4 viewProjection =
+		m_ViewMatrix *
+		m_ProjectionMatrix;
+
+	constantBuffer.ViewProjection =
+		viewProjection.Transpose();
+
+	constantBuffer.GrassParameters =
+		Vector4(
+			time,
+			windStrength,
+			windSpeed,
+			0.40f);	// AlphaClip threshold
+
+	constantBuffer.WindParameters =
+		Vector4(
+			windDirection.x,
+			windDirection.y,
+			0.0f,
+			0.0f);
+
+	context->UpdateSubresource(
+		m_GrassConstantBuffer.Get(),
+		0,
+		nullptr,
+		&constantBuffer,
+		0,
+		0);
+
+	//=================================================
+	// Pipeline
+	//=================================================
+
+	context->IASetInputLayout(
+		m_GrassInputLayout.Get());
+
+	context->VSSetShader(
+		m_GrassVertexShader.Get(),
+		nullptr,
+		0);
+
+	context->PSSetShader(
+		m_GrassPixelShader.Get(),
+		nullptr,
+		0);
+
+	ID3D11Buffer* constantBuffers[] =
+	{
+		m_GrassConstantBuffer.Get()
+	};
+
+	context->VSSetConstantBuffers(
+		0,
+		1,
+		constantBuffers);
+
+	context->PSSetConstantBuffers(
+		0,
+		1,
+		constantBuffers);
+
+	//=================================================
+	// Grass Texture
+	//=================================================
+
+	ID3D11ShaderResourceView* srv =
+		grassTexture->
+		GetShaderResourceView();
+
+	context->PSSetShaderResources(
+		0,
+		1,
+		&srv);
+
+	ID3D11SamplerState* sampler =
+		m_ModelSamplerState.Get();
+
+	context->PSSetSamplers(
+		0,
+		1,
+		&sampler);
+
+	//=================================================
+	// Base Mesh
+	//=================================================
+
+	mesh.Bind(
+		context);
+
+	//=================================================
+	// Instance Buffer
+	//=================================================
+
+	ID3D11Buffer* instanceBuffers[] =
+	{
+		instanceBuffer
+	};
+
+	const UINT instanceStrides[] =
+	{
+		sizeof(
+			GrassInstanceData)
+	};
+
+	const UINT instanceOffsets[] =
+	{
+		0
+	};
+
+	context->IASetVertexBuffers(
+		1,
+		1,
+		instanceBuffers,
+		instanceStrides,
+		instanceOffsets);
+
+	// ëêÇÕóºñ ï`âÊ
+	SetCulling(
+		false);
+
+	// Alpha BlendÇÕïsóvÅB
+	// Alpha ClipÇ»ÇÃÇ≈í èÌOpaqueÇ∆ÇµÇƒDepthÇ÷èëÇ≠ÅB
+	SetBlendState(
+		BlendState::None);
+
+	context->DrawIndexedInstanced(
+		mesh.GetIndexCount(),
+		instanceCount,
+		0,
+		0,
+		0);
+
+	// ï`âÊStateÇñﬂÇ∑
+	SetCulling(
+		true);
+
+	ID3D11ShaderResourceView* nullSRV =
+		nullptr;
+
+	context->PSSetShaderResources(
+		0,
+		1,
+		&nullSRV);
 }
 
 

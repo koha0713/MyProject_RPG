@@ -133,6 +133,15 @@ public:
 		const GridPosition& position,
 		float fallback) const;
 
+	/**
+	 * @brief Terrain Chunkˆê——Žæ“¾
+	 */
+	const std::vector<TerrainChunk>&
+		GetChunks() const
+	{
+		return m_Chunks;
+	}
+
 private:
 
 	/**

@@ -137,6 +137,19 @@ public:
 		const Texture* rockTexture,
 		const Texture* sandTexture);
 
+	/**
+	 * @brief GrassêÍópï`âÊ
+	 */
+	static void DrawGrassInstanced(
+		const MeshBuffer& mesh,
+		ID3D11Buffer* instanceBuffer,
+		uint32_t instanceCount,
+		const Texture* grassTexture,
+		float time,
+		const Vector2& windDirection,
+		float windStrength,
+		float windSpeed);
+
 	//====================
 	// RenderState
 	//====================
@@ -294,6 +307,11 @@ private:
 	 */
 	static bool CreateTerrainPipeline();
 
+	/**
+	 * @brief Grassï`âÊPepelineê∂ê¨
+	 */
+	static bool CreateGrassPipeline();
+
 private:
 
 	//====================
@@ -412,6 +430,22 @@ private:
 
 	static Microsoft::WRL::ComPtr<ID3D11Buffer>
 		m_TerrainConstantBuffer;
+
+
+	//====================
+	// Grass Pipeline
+	//====================
+	static Microsoft::WRL::ComPtr<ID3D11VertexShader>
+		m_GrassVertexShader;
+
+	static Microsoft::WRL::ComPtr<ID3D11PixelShader>
+		m_GrassPixelShader;
+
+	static Microsoft::WRL::ComPtr<ID3D11InputLayout>
+		m_GrassInputLayout;
+
+	static Microsoft::WRL::ComPtr<ID3D11Buffer>
+		m_GrassConstantBuffer;
 
 	//====================
 	// Lighting
