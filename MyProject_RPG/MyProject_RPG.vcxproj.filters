@@ -393,6 +393,30 @@
     <ClInclude Include="RadialMenuUI.h">
       <Filter>ソース ファイル\Scene\Field</Filter>
     </ClInclude>
+    <ClInclude Include="TerrainChunk.h">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="TerrainVertex.h">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="TerrainChunkMesh.h">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="TerrainRendererComponent.h">
+      <Filter>ソース ファイル\Component\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="TerrainChunkLOD.h">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="WaterRenderSettings.h">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="WaterRenderData.h">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="TerrainRenderSettings.h">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -587,6 +611,12 @@
     <ClCompile Include="RadialMenuUI.cpp">
       <Filter>ソース ファイル\Scene\Field</Filter>
     </ClCompile>
+    <ClCompile Include="TerrainChunk.cpp">
+      <Filter>ソース ファイル\System\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="TerrainRendererComponent.cpp">
+      <Filter>ソース ファイル\Component\Map</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="VS_Model.hlsl">
@@ -613,5 +643,25 @@
     <FxCompile Include="PS_Sprite.hlsl">
       <Filter>リソース ファイル\PS</Filter>
     </FxCompile>
+    <FxCompile Include="VS_Water.hlsl">
+      <Filter>リソース ファイル\VS</Filter>
+    </FxCompile>
+    <FxCompile Include="PS_Water.hlsl">
+      <Filter>リソース ファイル\PS</Filter>
+    </FxCompile>
+    <FxCompile Include="VS_Terrain.hlsl">
+      <Filter>リソース ファイル\VS</Filter>
+    </FxCompile>
+    <FxCompile Include="PS_Terrain.hlsl">
+      <Filter>リソース ファイル\PS</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="WaterCommon.hlsli">
+      <Filter>リソース ファイル</Filter>
+    </None>
+    <None Include="TerrainCommon.hlsli">
+      <Filter>リソース ファイル</Filter>
+    </None>
   </ItemGroup>
 </Project>

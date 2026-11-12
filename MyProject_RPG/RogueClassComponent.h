@@ -60,71 +60,128 @@ RogueClassComponent::GetActionDefinition(
 	{
 	case PlayerActionType::NormalAttack:
 	{
-		definition.Cost.AP =
-			2;
+		definition.Enabled = true;
 
-		definition.Cost.MP =
-			0;
-
-		definition.Enabled =
-			true;
+		definition.Cost.AP = 2;
 
 		definition.TargetMode =
 			TargetingMode::Unit;
 
 		definition.TargetPattern =
 			GridPattern::CreateCross(
-				1);
+				1,
+				false);
 
 		definition.Targeting.AllowedTargets =
 			TargetType::Enemy;
 
-		definition.Targeting.LineOfSight =
-			LineOfSightType::None;
-
-		definition.Targeting.WallsBlock =
-			false;
-
-		definition.Targeting.UnitsBlock =
-			false;
-
-		definition.Targeting.PierceUnits =
-			false;
-
-		definition.Targeting.PierceWalls =
-			false;
-
-		definition.HasEffectPattern =
-			false;
+		definition.Animation =
+			AnimationID::Attack;
 
 		break;
 	}
 	case PlayerActionType::Skill1:
 	{
-		// バックスタブ
+		definition.Enabled = true;
+
 		definition.Cost.AP = 2;
 		definition.Cost.MP = 8;
-		definition.Enabled = true;
+
+		definition.TargetMode =
+			TargetingMode::Unit;
+
+		definition.TargetPattern =
+			GridPattern::CreateCross(
+				1,
+				false);
+
+		definition.Targeting.AllowedTargets =
+			TargetType::Enemy;
+
+		EffectDefinition damage;
+
+		damage.Type =
+			EffectType::Damage;
+
+		damage.UseSourceAttackPower =
+			true;
+
+		// 背後判定実装前の仮倍率。
+		damage.PowerMultiplier =
+			1.5f;
+
+		damage.AffectEnemies =
+			true;
+
+		definition.Effects.push_back(
+			damage);
+
+		definition.Animation =
+			AnimationID::AttackFast;
 
 		break;
 	}
-
 	case PlayerActionType::Skill2:
 	{
-		// シャドウステップ
+		definition.Enabled = true;
+
 		definition.Cost.AP = 2;
 		definition.Cost.MP = 10;
-		definition.Enabled = true;
+
+		definition.TargetMode =
+			TargetingMode::Grid;
+
+		definition.TargetPattern =
+			GridPattern::CreateDiamond(
+				4,
+				false);
+
+		definition.Targeting.AllowedTargets =
+			TargetType::EmptyCell;
+
+		// Teleport処理は後で専用実装。
+		definition.Animation =
+			AnimationID::Roll;
 
 		break;
 	}
-
 	case PlayerActionType::Ultimate:
 	{
-		// 暗殺
+		definition.Enabled = true;
+
 		definition.Cost.AP = 4;
 		definition.Cost.MP = 25;
-		definition.Enabled = true;
+
+		definition.TargetMode =
+			TargetingMode::Unit;
+
+		definition.TargetPattern =
+			GridPattern::CreateCross(
+				1,
+				false);
+
+		definition.Targeting.AllowedTargets =
+			TargetType::Enemy;
+
+		EffectDefinition damage;
+
+		damage.Type =
+			EffectType::Damage;
+
+		damage.UseSourceAttackPower =
+			true;
+
+		damage.PowerMultiplier =
+			2.5f;
+
+		damage.AffectEnemies =
+			true;
+
+		definition.Effects.push_back(
+			damage);
+
+		definition.Animation =
+			AnimationID::Attack3;
 
 		break;
 	}

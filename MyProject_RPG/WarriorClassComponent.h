@@ -171,6 +171,12 @@ WarriorClassComponent::GetActionDefinition(
 		definition.Animation =
 			AnimationID::Attack;
 
+		definition.AnimationLoop =
+			false;
+
+		definition.AnimationBlendTime =
+			0.10f;
+
 		//=================================================
 		// Damage
 		//=================================================
@@ -237,6 +243,12 @@ WarriorClassComponent::GetActionDefinition(
 
 		definition.Animation =
 			AnimationID::Punch;
+
+		definition.AnimationLoop =
+			false;
+
+		definition.AnimationBlendTime =
+			0.10f;
 
 		//=================================================
 		// Damage
@@ -316,6 +328,12 @@ WarriorClassComponent::GetActionDefinition(
 
 		definition.Animation =
 			AnimationID::Attack;
+
+		definition.AnimationLoop =
+			false;
+
+		definition.AnimationBlendTime =
+			0.10f;
 
 		//=================================================
 		// Damage

@@ -17,6 +17,7 @@
 #include "RadialMenuUI.h"
 #include "GridPattern.h"
 #include "PlayerActionDefinition.h"
+#include "TerrainRendererComponent.h"
 
 /**
  * @brief Player‘€ìó‘Ô
@@ -313,6 +314,10 @@ private:
 
 	std::vector<GameObject*>
 		m_TerrainObjects;
+
+	TerrainRendererComponent*
+		m_TerrainRenderer =
+		nullptr;
 
 	//=================================================
 	// Player Input

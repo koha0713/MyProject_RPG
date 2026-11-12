@@ -13,6 +13,11 @@
 #include "MeshBuffer.h"
 #include "ModelData.h"
 
+#include "WaterRenderSettings.h"
+#include "Texture.h"
+#include "WaterRenderData.h"
+#include "TerrainVertex.h"
+
  //=====================================================
  // 内部定義
  //=====================================================
@@ -82,6 +87,100 @@ namespace
 	static_assert(
 		sizeof(ModelConstantBuffer) % 16 == 0,
 		"ModelConstantBuffer must be 16-byte aligned.");
+
+	/**
+	 * @brief Water Shader用ConstantBuffer
+	 *
+	 * @note HLSL側のWaterCommon.hlsliと
+	 *       メンバ順を完全に一致させること。
+	 */
+	struct WaterConstantBuffer
+	{
+		Matrix4x4 World;
+
+		Matrix4x4 WorldViewProjection;
+
+		// 水面基本色
+		Vector4 WaterColor;
+
+		// xy = FlowDirection
+		// z  = FlowSpeed
+		// w  = Tiling
+		Vector4 FlowA;
+
+		Vector4 FlowB;
+
+		// x = NormalStrength
+		// y = Time
+		// z = HasNormalMapA
+		// w = HasNormalMapB
+		Vector4 NormalParameters;
+
+		// xyz = Direction
+		// w   = Intensity
+		Vector4 LightDirectionIntensity;
+
+		Vector4 LightColor;
+
+		Vector4 AmbientLightColor;
+
+		// xyz = Camera World Position
+		// w   = unused
+		Vector4 CameraPosition;
+
+		// x = SpecularStrength
+		// y = SpecularPower
+		// z = FresnelStrength
+		// w = FresnelPower
+		Vector4 ReflectionParameters;
+
+		Vector4 FresnelColor;
+
+		// RGB = Shallow Color
+		Vector4 ShallowWaterColor;
+
+		// RGB = Deep Color
+		Vector4 DeepWaterColor;
+
+		// x = ShallowDepth
+		// y = DeepDepth
+		// z = ShallowAlpha
+		// w = DeepAlpha
+		Vector4 DepthParameters;
+	};
+
+	static_assert(
+		sizeof(WaterConstantBuffer) % 16 == 0,
+		"WaterConstantBuffer must be 16-byte aligned.");
+
+	/**
+	 * @brief Terrain Shader用ConstantBuffer
+	 */
+	struct TerrainConstantBuffer
+	{
+		Matrix4x4 World;
+
+		Matrix4x4 WorldViewProjection;
+
+		// x = Tiling
+		// yzw = unused
+		Vector4 TerrainParameters;
+
+		Vector4 TerrainColor;
+
+		Vector4 LightDirectionIntensity;
+
+		Vector4 LightColor;
+
+		Vector4 AmbientLightColor;
+
+		// Toon設定
+		Vector4 ToonParameters;
+	};
+
+	static_assert(
+		sizeof(TerrainConstantBuffer) % 16 == 0,
+		"TerrainConstantBuffer must be 16-byte aligned.");
 
 	/**
 	 * @brief GPU Skinning用ConstantBuffer
@@ -385,6 +484,38 @@ Renderer::m_ModelConstantBuffer;
 ComPtr<ID3D11Buffer>
 Renderer::m_BoneConstantBuffer;
 
+//====================
+// Water
+//====================
+
+ComPtr<ID3D11VertexShader>
+Renderer::m_WaterVertexShader;
+
+ComPtr<ID3D11PixelShader>
+Renderer::m_WaterPixelShader;
+
+ComPtr<ID3D11InputLayout>
+Renderer::m_WaterInputLayout;
+
+ComPtr<ID3D11Buffer>
+Renderer::m_WaterConstantBuffer;
+
+//=====================================================
+// Terrain Pipeline
+//=====================================================
+
+Microsoft::WRL::ComPtr<ID3D11VertexShader>
+Renderer::m_TerrainVertexShader;
+
+Microsoft::WRL::ComPtr<ID3D11PixelShader>
+Renderer::m_TerrainPixelShader;
+
+Microsoft::WRL::ComPtr<ID3D11InputLayout>
+Renderer::m_TerrainInputLayout;
+
+Microsoft::WRL::ComPtr<ID3D11Buffer>
+Renderer::m_TerrainConstantBuffer;
+
 
 //=====================================================
 // Initialize
@@ -493,6 +624,28 @@ bool Renderer::Init()
 	OutputDebugStringA(
 		"[Renderer::Init] OutlinePipeline OK\n");
 
+	//====================
+	// Water Pipeline
+	//====================
+
+	OutputDebugStringA(
+		"[Renderer::Init] WaterPipeline START\n");
+
+	if (!CreateWaterPipeline())
+	{
+		OutputDebugStringA(
+			"[Renderer::Init] WaterPipeline FAILED\n");
+
+		return false;
+	}
+
+	OutputDebugStringA(
+		"[Renderer::Init] WaterPipeline OK\n");
+
+	if (!CreateTerrainPipeline())
+	{
+		return false;
+	}
 
 	//====================
 	// 初期State
@@ -529,6 +682,24 @@ void Renderer::Dispose()
 
 	m_ModelPixelShader.Reset();
 	m_ModelVertexShader.Reset();
+
+	//====================
+	// Water
+	//====================
+
+	m_WaterConstantBuffer.Reset();
+	m_WaterInputLayout.Reset();
+
+	m_WaterPixelShader.Reset();
+	m_WaterVertexShader.Reset();
+
+	m_TerrainConstantBuffer.Reset();
+
+	m_TerrainInputLayout.Reset();
+
+	m_TerrainPixelShader.Reset();
+
+	m_TerrainVertexShader.Reset();
 
 
 	//====================
@@ -1437,6 +1608,384 @@ bool Renderer::CreateOutlinePipeline()
 }
 
 //=====================================================
+// Water Pipeline
+//=====================================================
+
+bool Renderer::CreateWaterPipeline()
+{
+	if (!m_Device)
+	{
+		return false;
+	}
+
+	//=================================================
+	// Shader Compile
+	//=================================================
+
+	ComPtr<ID3DBlob>
+		vertexShaderBlob;
+
+	ComPtr<ID3DBlob>
+		pixelShaderBlob;
+
+	if (!CompileShader(
+		L"VS_Water.hlsl",
+		"main",
+		"vs_5_0",
+		vertexShaderBlob))
+	{
+		OutputDebugStringA(
+			"[Renderer] "
+			"Compile VS_Water failed.\n");
+
+		return false;
+	}
+
+	if (!CompileShader(
+		L"PS_Water.hlsl",
+		"main",
+		"ps_5_0",
+		pixelShaderBlob))
+	{
+		OutputDebugStringA(
+			"[Renderer] "
+			"Compile PS_Water failed.\n");
+
+		return false;
+	}
+
+	//=================================================
+	// Vertex Shader
+	//=================================================
+
+	HRESULT hr =
+		m_Device->CreateVertexShader(
+			vertexShaderBlob->GetBufferPointer(),
+			vertexShaderBlob->GetBufferSize(),
+			nullptr,
+			m_WaterVertexShader.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		OutputDebugStringA(
+			"[Renderer] "
+			"Create WaterVertexShader failed.\n");
+
+		return false;
+	}
+
+	//=================================================
+	// Pixel Shader
+	//=================================================
+
+	hr =
+		m_Device->CreatePixelShader(
+			pixelShaderBlob->GetBufferPointer(),
+			pixelShaderBlob->GetBufferSize(),
+			nullptr,
+			m_WaterPixelShader.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		OutputDebugStringA(
+			"[Renderer] "
+			"Create WaterPixelShader failed.\n");
+
+		return false;
+	}
+
+	//=================================================
+	// Input Layout
+	//=================================================
+	//
+	// Water Meshも現段階ではVertexDataを使用する。
+	// Bone情報はWater Shaderでは使用しない。
+	//=================================================
+
+	const D3D11_INPUT_ELEMENT_DESC
+		inputElements[] =
+	{
+		{
+			"POSITION",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					VertexData,
+					Position)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		{
+			"NORMAL",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					VertexData,
+					Normal)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		{
+			"TEXCOORD",
+			0,
+			DXGI_FORMAT_R32G32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					VertexData,
+					TexCoord)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+		{
+			"WATERDEPTH",
+			0,
+			DXGI_FORMAT_R32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					WaterVertex,
+					WaterDepth)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		}
+	};
+
+	hr =
+		m_Device->CreateInputLayout(
+			inputElements,
+			static_cast<UINT>(
+				std::size(
+					inputElements)),
+			vertexShaderBlob->GetBufferPointer(),
+			vertexShaderBlob->GetBufferSize(),
+			m_WaterInputLayout.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		OutputDebugStringA(
+			"[Renderer] "
+			"Create WaterInputLayout failed.\n");
+
+		return false;
+	}
+
+	//=================================================
+	// Constant Buffer
+	//=================================================
+
+	D3D11_BUFFER_DESC bufferDesc{};
+
+	bufferDesc.ByteWidth =
+		static_cast<UINT>(
+			sizeof(
+				WaterConstantBuffer));
+
+	bufferDesc.Usage =
+		D3D11_USAGE_DEFAULT;
+
+	bufferDesc.BindFlags =
+		D3D11_BIND_CONSTANT_BUFFER;
+
+	bufferDesc.CPUAccessFlags =
+		0;
+
+	bufferDesc.MiscFlags =
+		0;
+
+	hr =
+		m_Device->CreateBuffer(
+			&bufferDesc,
+			nullptr,
+			m_WaterConstantBuffer.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		OutputDebugStringA(
+			"[Renderer] "
+			"Create WaterConstantBuffer failed.\n");
+
+		return false;
+	}
+
+	return true;
+}
+
+bool Renderer::CreateTerrainPipeline()
+{
+	//=================================================
+	// Compile Shader
+	//=================================================
+
+	Microsoft::WRL::ComPtr<ID3DBlob>
+		vertexShaderBlob;
+
+	Microsoft::WRL::ComPtr<ID3DBlob>
+		pixelShaderBlob;
+
+	if (!CompileShader(
+		L"VS_Terrain.hlsl",
+		"main",
+		"vs_5_0",
+		vertexShaderBlob))
+	{
+		return false;
+	}
+
+	if (!CompileShader(
+		L"PS_Terrain.hlsl",
+		"main",
+		"ps_5_0",
+		pixelShaderBlob))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Vertex Shader
+	//=================================================
+
+	HRESULT hr =
+		m_Device->CreateVertexShader(
+			vertexShaderBlob->GetBufferPointer(),
+			vertexShaderBlob->GetBufferSize(),
+			nullptr,
+			m_TerrainVertexShader.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Pixel Shader
+	//=================================================
+
+	hr =
+		m_Device->CreatePixelShader(
+			pixelShaderBlob->GetBufferPointer(),
+			pixelShaderBlob->GetBufferSize(),
+			nullptr,
+			m_TerrainPixelShader.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Input Layout
+	//=================================================
+	const D3D11_INPUT_ELEMENT_DESC inputLayout[] =
+	{
+		{
+			"POSITION",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					TerrainVertex,
+					Position)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		{
+			"NORMAL",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					TerrainVertex,
+					Normal)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		{
+			"TEXCOORD",
+			0,
+			DXGI_FORMAT_R32G32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					TerrainVertex,
+					TexCoord)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		{
+			"TERRAININDEX",
+			0,
+
+			// ps_4_0_level_9_3対応のためfloatとして渡す
+			DXGI_FORMAT_R32_FLOAT,
+
+			0,
+			static_cast<UINT>(
+				offsetof(
+					TerrainVertex,
+					TerrainIndex)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		}
+	};
+
+	hr =
+		m_Device->CreateInputLayout(
+			inputLayout,
+			static_cast<UINT>(
+				std::size(
+					inputLayout)),
+			vertexShaderBlob->GetBufferPointer(),
+			vertexShaderBlob->GetBufferSize(),
+			m_TerrainInputLayout.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Constant Buffer
+	//=================================================
+
+	D3D11_BUFFER_DESC bufferDesc{};
+
+	bufferDesc.ByteWidth =
+		sizeof(
+			TerrainConstantBuffer);
+
+	bufferDesc.Usage =
+		D3D11_USAGE_DEFAULT;
+
+	bufferDesc.BindFlags =
+		D3D11_BIND_CONSTANT_BUFFER;
+
+	hr =
+		m_Device->CreateBuffer(
+			&bufferDesc,
+			nullptr,
+			m_TerrainConstantBuffer.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+//=====================================================
 // Model描画
 //=====================================================
 
@@ -1707,6 +2256,482 @@ void Renderer::DrawMesh(
 
 	mesh.Draw(
 		m_DeviceContext.Get());
+}
+
+//=====================================================
+// Water Draw
+//=====================================================
+void Renderer::DrawWater(
+	const MeshBuffer& mesh,
+	const Matrix4x4& worldMatrix,
+	const WaterRenderSettings& settings,
+	const Texture* normalMapA,
+	const Texture* normalMapB,
+	float time,
+	const Vector3& cameraPosition)
+{
+	//=================================================
+	// Validation
+	//=================================================
+
+	if (!mesh.IsValid())
+	{
+		return;
+	}
+
+	if (!m_WaterVertexShader ||
+		!m_WaterPixelShader ||
+		!m_WaterInputLayout ||
+		!m_WaterConstantBuffer)
+	{
+		return;
+	}
+
+	ID3D11DeviceContext* context =
+		GetDeviceContext();
+
+	if (!context)
+	{
+		return;
+	}
+
+	//=================================================
+	// Normal Map Validation
+	//=================================================
+
+	const bool hasNormalMapA =
+		normalMapA &&
+		normalMapA->IsValid();
+
+	const bool hasNormalMapB =
+		normalMapB &&
+		normalMapB->IsValid();
+
+	//=================================================
+	// Flow Direction
+	//=================================================
+
+	Vector2 flowDirectionA =
+		settings.FlowDirectionA;
+
+	Vector2 flowDirectionB =
+		settings.FlowDirectionB;
+
+	// 方向ベクトルが0でない場合だけ正規化
+	if (flowDirectionA.LengthSquared() >
+		0.000001f)
+	{
+		flowDirectionA.Normalize();
+	}
+
+	if (flowDirectionB.LengthSquared() >
+		0.000001f)
+	{
+		flowDirectionB.Normalize();
+	}
+
+	//=================================================
+	// Constant Buffer
+	//=================================================
+
+	WaterConstantBuffer constantBuffer{};
+
+	const Matrix4x4 wvp =
+		worldMatrix *
+		m_ViewMatrix *
+		m_ProjectionMatrix;
+
+	constantBuffer.World =
+		worldMatrix.Transpose();
+
+	constantBuffer.WorldViewProjection =
+		wvp.Transpose();
+
+	constantBuffer.WaterColor =
+		settings.Color;
+
+	constantBuffer.FlowA =
+		Vector4(
+			flowDirectionA.x,
+			flowDirectionA.y,
+			settings.FlowSpeedA,
+			settings.TilingA);
+
+	constantBuffer.FlowB =
+		Vector4(
+			flowDirectionB.x,
+			flowDirectionB.y,
+			settings.FlowSpeedB,
+			settings.TilingB);
+
+	constantBuffer.NormalParameters =
+		Vector4(
+			settings.NormalStrength,
+			time,
+			hasNormalMapA ? 1.0f : 0.0f,
+			hasNormalMapB ? 1.0f : 0.0f);
+
+	//=================================================
+	// Directional Light
+	//=================================================
+
+	constantBuffer.LightDirectionIntensity =
+		Vector4(
+			m_DirectionalLight.Direction.x,
+			m_DirectionalLight.Direction.y,
+			m_DirectionalLight.Direction.z,
+			m_DirectionalLight.Intensity);
+
+	constantBuffer.LightColor =
+		m_DirectionalLight.LightColor;
+
+	constantBuffer.AmbientLightColor =
+		m_AmbientLight;
+
+	//=================================================
+	// Camera
+	//=================================================
+
+	constantBuffer.CameraPosition =
+		Vector4(
+			cameraPosition.x,
+			cameraPosition.y,
+			cameraPosition.z,
+			1.0f);
+
+	//=====================================================
+	// Water Depth
+	//=====================================================
+
+	constantBuffer.ShallowWaterColor =
+		settings.ShallowColor;
+
+	constantBuffer.DeepWaterColor =
+		settings.DeepColor;
+
+	constantBuffer.DepthParameters =
+		Vector4(
+			settings.ShallowDepth,
+			settings.DeepDepth,
+			settings.ShallowAlpha,
+			settings.DeepAlpha);
+
+	//=================================================
+	// Reflection
+	//=================================================
+
+	constantBuffer.ReflectionParameters =
+		Vector4(
+			settings.SpecularStrength,
+			settings.SpecularPower,
+			settings.FresnelStrength,
+			settings.FresnelPower);
+
+	constantBuffer.FresnelColor =
+		settings.FresnelColor;
+
+	//=================================================
+	// Upload
+	//=================================================
+
+	context->UpdateSubresource(
+		m_WaterConstantBuffer.Get(),
+		0,
+		nullptr,
+		&constantBuffer,
+		0,
+		0);
+
+	//=================================================
+	// Pipeline
+	//=================================================
+
+	context->IASetInputLayout(
+		m_WaterInputLayout.Get());
+
+	context->VSSetShader(
+		m_WaterVertexShader.Get(),
+		nullptr,
+		0);
+
+	context->PSSetShader(
+		m_WaterPixelShader.Get(),
+		nullptr,
+		0);
+
+	ID3D11Buffer* constantBuffers[] =
+	{
+		m_WaterConstantBuffer.Get()
+	};
+
+	context->VSSetConstantBuffers(
+		0,
+		1,
+		constantBuffers);
+
+	context->PSSetConstantBuffers(
+		0,
+		1,
+		constantBuffers);
+
+	//=================================================
+	// Normal Maps
+	//=================================================
+
+	ID3D11ShaderResourceView* normalSRVs[2] =
+	{
+		hasNormalMapA
+			? normalMapA->GetShaderResourceView()
+			: nullptr,
+
+		hasNormalMapB
+			? normalMapB->GetShaderResourceView()
+			: nullptr
+	};
+
+	context->PSSetShaderResources(
+		0,
+		2,
+		normalSRVs);
+
+	// 既存Model用Samplerを使用
+	ID3D11SamplerState* samplers[] =
+	{
+		m_ModelSamplerState.Get()
+	};
+
+	context->PSSetSamplers(
+		0,
+		1,
+		samplers);
+
+	//=================================================
+	// Draw
+	//=================================================
+
+	mesh.Bind(
+		context);
+
+	mesh.Draw(
+		context);
+
+	//=================================================
+	// Unbind SRV
+	//=================================================
+	//
+	// 後でRenderTarget等として使用したときの
+	// D3D11 Resource競合を避ける。
+	//=================================================
+
+	ID3D11ShaderResourceView* nullSRVs[2] =
+	{
+		nullptr,
+		nullptr
+	};
+
+	context->PSSetShaderResources(
+		0,
+		2,
+		nullSRVs);
+}
+
+void Renderer::DrawTerrain(
+	const MeshBuffer& mesh,
+	const Matrix4x4& worldMatrix,
+	const TerrainRenderSettings& settings,
+	const Texture* grassTexture,
+	const Texture* dirtTexture,
+	const Texture* rockTexture,
+	const Texture* sandTexture)
+{
+	if (!mesh.IsValid())
+	{
+		return;
+	}
+
+	if (!grassTexture ||
+		!dirtTexture ||
+		!rockTexture ||
+		!sandTexture)
+	{
+		return;
+	}
+
+	if (!grassTexture->IsValid() ||
+		!dirtTexture->IsValid() ||
+		!rockTexture->IsValid() ||
+		!sandTexture->IsValid())
+	{
+		return;
+	}
+
+	if (!m_TerrainVertexShader ||
+		!m_TerrainPixelShader ||
+		!m_TerrainInputLayout ||
+		!m_TerrainConstantBuffer)
+	{
+		return;
+	}
+
+	ID3D11DeviceContext* context =
+		GetDeviceContext();
+
+	if (!context)
+	{
+		return;
+	}
+
+	//=================================================
+	// Constant Buffer
+	//=================================================
+
+	TerrainConstantBuffer constantBuffer{};
+
+	const Matrix4x4 wvp =
+		worldMatrix *
+		m_ViewMatrix *
+		m_ProjectionMatrix;
+
+	constantBuffer.World =
+		worldMatrix.Transpose();
+
+	constantBuffer.WorldViewProjection =
+		wvp.Transpose();
+
+	constantBuffer.TerrainParameters =
+		Vector4(
+			settings.Tiling,
+			0.0f,
+			0.0f,
+			0.0f);
+
+	constantBuffer.TerrainColor =
+		settings.Color;
+
+	//=================================================
+	// Lighting
+	//=================================================
+	constantBuffer.LightDirectionIntensity =
+		Vector4(
+			m_DirectionalLight.Direction.x,
+			m_DirectionalLight.Direction.y,
+			m_DirectionalLight.Direction.z,
+			m_DirectionalLight.Intensity);
+
+	constantBuffer.LightColor =
+		m_DirectionalLight.LightColor;
+
+	constantBuffer.AmbientLightColor =
+		m_AmbientLight;
+
+	constantBuffer.ToonParameters =
+		Vector4(
+			m_ToonShading.HighlightThreshold,
+			m_ToonShading.ShadowThreshold,
+			m_ToonShading.MidToneIntensity,
+			m_ToonShading.ShadowIntensity);
+
+	context->UpdateSubresource(
+		m_TerrainConstantBuffer.Get(),
+		0,
+		nullptr,
+		&constantBuffer,
+		0,
+		0);
+
+	//=================================================
+	// Pipeline
+	//=================================================
+
+	context->IASetInputLayout(
+		m_TerrainInputLayout.Get());
+
+	context->VSSetShader(
+		m_TerrainVertexShader.Get(),
+		nullptr,
+		0);
+
+	context->PSSetShader(
+		m_TerrainPixelShader.Get(),
+		nullptr,
+		0);
+
+	ID3D11Buffer* constantBuffers[] =
+	{
+		m_TerrainConstantBuffer.Get()
+	};
+
+	context->VSSetConstantBuffers(
+		0,
+		1,
+		constantBuffers);
+
+	context->PSSetConstantBuffers(
+		0,
+		1,
+		constantBuffers);
+
+	//=================================================
+	// Terrain Textures
+	//=================================================
+
+	ID3D11ShaderResourceView* terrainSRVs[4] =
+	{
+		grassTexture->
+			GetShaderResourceView(),
+
+		dirtTexture->
+			GetShaderResourceView(),
+
+		rockTexture->
+			GetShaderResourceView(),
+
+		sandTexture->
+			GetShaderResourceView()
+	};
+
+	context->PSSetShaderResources(
+		0,
+		4,
+		terrainSRVs);
+
+	ID3D11SamplerState* sampler =
+		m_ModelSamplerState.Get();
+
+	context->PSSetSamplers(
+		0,
+		1,
+		&sampler);
+
+	//=================================================
+	// Draw
+	//=================================================
+
+	mesh.Bind(
+		context);
+
+	mesh.Draw(
+		context);
+
+	//=================================================
+	// Unbind
+	//=================================================
+
+	ID3D11ShaderResourceView* nullSRV =
+		nullptr;
+
+	ID3D11ShaderResourceView* nullSRVs[4] =
+	{
+		nullptr,
+		nullptr,
+		nullptr,
+		nullptr
+	};
+
+	context->PSSetShaderResources(
+		0,
+		4,
+		nullSRVs);
 }
 
 

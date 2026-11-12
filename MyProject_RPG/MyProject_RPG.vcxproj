@@ -214,9 +214,15 @@
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="TargetingRules.h" />
     <ClInclude Include="TargetingSystem.h" />
+    <ClInclude Include="TerrainChunk.h" />
+    <ClInclude Include="TerrainChunkLOD.h" />
+    <ClInclude Include="TerrainChunkMesh.h" />
     <ClInclude Include="TerrainMapData.h" />
     <ClInclude Include="TerrainMapLoader.h" />
+    <ClInclude Include="TerrainRendererComponent.h" />
+    <ClInclude Include="TerrainRenderSettings.h" />
     <ClInclude Include="TerrainTileComponent.h" />
+    <ClInclude Include="TerrainVertex.h" />
     <ClInclude Include="TitleScene.h" />
     <ClInclude Include="TownScene.h" />
     <ClInclude Include="Texture.h" />
@@ -230,6 +236,8 @@
     <ClInclude Include="UIImageComponent.h" />
     <ClInclude Include="UIRectComponent.h" />
     <ClInclude Include="WarriorClassComponent.h" />
+    <ClInclude Include="WaterRenderData.h" />
+    <ClInclude Include="WaterRenderSettings.h" />
     <ClInclude Include="WavLoader.h" />
     <ClInclude Include="Window.h" />
     <ClInclude Include="DebugUI.h" />
@@ -286,7 +294,9 @@
     <ClCompile Include="SoundManager.cpp" />
     <ClCompile Include="SpriteRenderer.cpp" />
     <ClCompile Include="TargetingSystem.cpp" />
+    <ClCompile Include="TerrainChunk.cpp" />
     <ClCompile Include="TerrainMapLoader.cpp" />
+    <ClCompile Include="TerrainRendererComponent.cpp" />
     <ClCompile Include="TerrainTileComponent.cpp" />
     <ClCompile Include="TitleScene.cpp" />
     <ClCompile Include="TownScene.cpp" />
@@ -328,6 +338,18 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
+    <FxCompile Include="PS_Terrain.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="PS_Water.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
     <FxCompile Include="VS_Model.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
@@ -354,6 +376,22 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
+    <FxCompile Include="VS_Terrain.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="VS_Water.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TerrainCommon.hlsli" />
+    <None Include="WaterCommon.hlsli" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

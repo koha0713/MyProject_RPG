@@ -333,6 +333,21 @@ private:
 		const GridPosition& origin,
 		GridDirection direction);
 
+	/**
+	 * @brief Skill Animation開始
+	 *
+	 * @param definition Action定義
+	 * @param type 実行Action
+	 */
+	void BeginSkillAnimation(
+		const PlayerActionDefinition& definition,
+		PlayerActionType type);
+
+	/**
+	 * @brief Skill Animation更新
+	 */
+	void UpdateSkillAnimation();
+
 private:
 
 	//=================================================
@@ -410,4 +425,21 @@ private:
 	bool
 		m_ClassAttackActive =
 		false;
+
+	//=================================================
+	// Skill Animation
+	//=================================================
+
+	/**
+	 * @brief Skill Animation実行中か
+	 */
+	bool m_IsSkillExecuting =
+		false;
+
+	/**
+	 * @brief 現在実行しているSkill
+	 */
+	PlayerActionType m_ExecutingSkillType =
+		PlayerActionType::Move;
+
 };

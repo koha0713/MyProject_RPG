@@ -48,6 +48,7 @@
 #include "SoundManager.h"
 #include "QuestManager.h"
 #include "SceneManager.h"
+#include "ResourceManager.h"
 #include "GridRenderer.h"
 #include "GridRangeRenderer.h"
 #include "GridRangeCalculator.h"
@@ -93,9 +94,94 @@ void FieldScene::Initialize()
 		for (const TerrainCellData& cell :
 			m_TerrainMapData.Cells)
 		{
-			CreateTerrainTile(
-				cell);
+			/*CreateTerrainTile(
+				cell);*/
 		}
+	}
+
+	{
+		//=====================================================
+		// Terrain Renderer
+		//=====================================================
+
+		GameObject* terrainObject =
+			m_gameObjectManager.
+			Create<GameObject>();
+
+		terrainObject->
+			SetName(
+				"TerrainRenderer");
+
+		m_TerrainRenderer =
+			terrainObject->
+			AddComponent<
+			TerrainRendererComponent>();
+
+		m_TerrainRenderer->
+			SetTerrainData(
+				&m_TerrainMapData);
+
+		//=====================================================
+		// Cell Size
+		//=====================================================
+		//
+		// 必ず既存GridMapと同じ値にする。
+		// 1.0fは例。
+		//=====================================================
+
+		m_TerrainRenderer->
+			SetCellSize(
+				2.0f);
+
+		if (!m_TerrainRenderer->
+			BuildTerrain())
+		{
+			OutputDebugStringA(
+				"[FieldScene] "
+				"TerrainRenderer Build Failed.\n");
+		}
+
+		//=====================================================
+		// Water Normal Map
+		//=====================================================
+		//
+		// ResourceManager側で同一パスのTextureはキャッシュされるため、
+		// 毎回新規ロードされるわけではない。
+		//=====================================================
+
+		std::shared_ptr<Texture> waterNormal =
+			RESOURCE_MANAGER.LoadTexture(
+				"Assets/Textures/Terrain/WaterNormal_1.png");
+
+		// 読み込み失敗時もnullptrを渡せる。
+		// Renderer側でIsValid()を確認する設計。
+		m_TerrainRenderer->
+			SetWaterNormalMaps(
+				waterNormal,
+				waterNormal);
+
+		auto grassTexture =
+			RESOURCE_MANAGER.LoadTexture(
+				"Assets/Textures/Terrain/Grass01.png");
+
+		auto dirtTexture =
+			RESOURCE_MANAGER.LoadTexture(
+				"Assets/Textures/Terrain/Dirt01.png");
+
+		auto rockTexture =
+			RESOURCE_MANAGER.LoadTexture(
+				"Assets/Textures/Terrain/Rock01.png");
+
+		auto sandTexture =
+			RESOURCE_MANAGER.LoadTexture(
+				"Assets/Textures/Terrain/Sand01.png");
+
+		m_TerrainRenderer->
+			SetTerrainTextures(
+				grassTexture,
+				dirtTexture,
+				rockTexture,
+				sandTexture);
 	}
 	
 
@@ -237,9 +323,9 @@ void FieldScene::Initialize()
 
 			directionalLight.Direction =
 				Vector3(
-					0.5f,
+					0.35f,
 					-1.0f,
-					0.4f);
+					0.3f);
 
 			directionalLight.LightColor =
 				Color(
@@ -249,7 +335,7 @@ void FieldScene::Initialize()
 					1.0f);
 
 			directionalLight.Intensity =
-				0.90f;
+				0.85f;
 
 			Renderer::SetDirectionalLight(
 				directionalLight);
@@ -272,18 +358,18 @@ void FieldScene::Initialize()
 			ToonShading toon;
 
 			toon.HighlightThreshold =
-				0.68f;
+				0.65f;
 
 			toon.ShadowThreshold =
-				0.35f;
+				0.30f;
 
 			// 日中なので中間色はかなり明るめ
 			toon.MidToneIntensity =
-				0.80f;
+				0.92f;
 
 			// 影でも色が潰れない程度
 			toon.ShadowIntensity =
-				0.50f;
+				0.65f;
 
 			Renderer::SetToonShading(
 				toon);
@@ -424,6 +510,17 @@ void FieldScene::Update(
 		INPUT_MANAGER.
 		IsKeyPressed(
 			KeyCode::Escape);
+
+	// 地形LOD表示用
+	if (m_TerrainRenderer)
+	{
+		m_TerrainRenderer->SetCameraPosition(
+			m_MainCamera->
+			GetOwner()->
+			GetComponent<
+			TransformComponent>()->
+			GetPosition());
+	}
 
 	//=================================================
 	// 通常Player入力を止めるか

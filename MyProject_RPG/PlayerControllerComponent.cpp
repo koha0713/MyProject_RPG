@@ -110,6 +110,16 @@ void PlayerControllerComponent::Update(
 	}
 
 	//=================================================
+	// Skill Animation
+	//=================================================
+	if (m_IsSkillExecuting)
+	{
+		UpdateSkillAnimation();
+
+		return;
+	}
+
+	//=================================================
 	// Moving
 	//=================================================
 
@@ -478,6 +488,14 @@ ExecuteUnitSkill(
 		return false;
 	}
 
+	//=================================================
+	// Animation
+	//=================================================
+
+	BeginSkillAnimation(
+		definition,
+		type);
+
 	OutputDebugStringA(
 		"[PlayerController] "
 		"Unit Skill executed.\n");
@@ -617,6 +635,10 @@ ExecuteDirectionSkill(
 		return false;
 	}
 
+	BeginSkillAnimation(
+		definition,
+		type);
+
 	OutputDebugStringA(
 		"[PlayerController] "
 		"Direction Skill executed.\n");
@@ -701,6 +723,14 @@ ExecuteSelfSkill(
 	{
 		return false;
 	}
+
+	//=================================================
+	// Animation
+	//=================================================
+
+	BeginSkillAnimation(
+		definition,
+		type);
 
 	OutputDebugStringA(
 		"[PlayerController] "
@@ -970,6 +1000,133 @@ ApplyActionEffectsToPattern(
 	}
 
 	return appliedAny;
+}
+
+//=====================================================
+// Begin Skill Animation
+//=====================================================
+
+void PlayerControllerComponent::
+BeginSkillAnimation(
+	const PlayerActionDefinition& definition,
+	PlayerActionType type)
+{
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		return;
+	}
+
+	//=================================================
+	// Animation未設定
+	//=================================================
+	//
+	// AnimationID::Noneなら
+	// Skill Animation待ちは行わない。
+	//=================================================
+
+	if (definition.Animation ==
+		AnimationID::None)
+	{
+		m_IsSkillExecuting =
+			false;
+
+		return;
+	}
+
+	auto* characterAnimation =
+		owner->GetComponent<
+		CharacterAnimationComponent>();
+
+	if (!characterAnimation)
+	{
+		m_IsSkillExecuting =
+			false;
+
+		return;
+	}
+
+	//=================================================
+	// Custom Animation再生
+	//=================================================
+
+	characterAnimation->
+		PlayCustomAnimation(
+			definition.Animation,
+			definition.AnimationLoop,
+			definition.AnimationBlendTime);
+
+	m_IsSkillExecuting =
+		true;
+
+	m_ExecutingSkillType =
+		type;
+
+	OutputDebugStringA(
+		"[PlayerController] "
+		"Skill Animation Started.\n");
+}
+
+//=====================================================
+// Update Skill Animation
+//=====================================================
+
+void PlayerControllerComponent::
+UpdateSkillAnimation()
+{
+	if (!m_IsSkillExecuting)
+	{
+		return;
+	}
+
+	GameObject* owner =
+		GetOwner();
+
+	if (!owner)
+	{
+		m_IsSkillExecuting =
+			false;
+
+		return;
+	}
+
+	auto* characterAnimation =
+		owner->GetComponent<
+		CharacterAnimationComponent>();
+
+	if (!characterAnimation)
+	{
+		m_IsSkillExecuting =
+			false;
+
+		return;
+	}
+
+	//=================================================
+	// Animation終了待ち
+	//=================================================
+
+	if (!characterAnimation->
+		IsCurrentAnimationFinished())
+	{
+		return;
+	}
+
+	//=================================================
+	// Idle復帰
+	//=================================================
+
+	characterAnimation->
+		ReturnToIdle();
+
+	m_IsSkillExecuting =
+		false;
+
+	OutputDebugStringA(
+		"[PlayerController] "
+		"Skill Animation Finished.\n");
 }
 
 //=====================================================

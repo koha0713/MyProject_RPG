@@ -63,21 +63,17 @@ ClericClassComponent::GetActionDefinition(
 	{
 	case PlayerActionType::NormalAttack:
 	{
-		definition.Cost.AP =
-			2;
+		definition.Enabled = true;
 
-		definition.Cost.MP =
-			0;
-
-		definition.Enabled =
-			true;
+		definition.Cost.AP = 2;
 
 		definition.TargetMode =
 			TargetingMode::Unit;
 
 		definition.TargetPattern =
 			GridPattern::CreateDiamond(
-				3);
+				3,
+				false);
 
 		definition.Targeting.AllowedTargets =
 			TargetType::Enemy;
@@ -85,49 +81,137 @@ ClericClassComponent::GetActionDefinition(
 		definition.Targeting.LineOfSight =
 			LineOfSightType::Direct;
 
-		definition.Targeting.WallsBlock =
-			true;
-
-		definition.Targeting.UnitsBlock =
-			false;
-
-		definition.Targeting.PierceUnits =
-			false;
-
-		definition.Targeting.PierceWalls =
-			false;
-
-		definition.HasEffectPattern =
-			false;
+		definition.Animation =
+			AnimationID::Attack;
 
 		break;
 	}
 	case PlayerActionType::Skill1:
 	{
-		// 治癒の呪
+		definition.Enabled = true;
+
 		definition.Cost.AP = 2;
 		definition.Cost.MP = 10;
-		definition.Enabled = true;
+
+		definition.TargetMode =
+			TargetingMode::Unit;
+
+		definition.TargetPattern =
+			GridPattern::CreateDiamond(
+				3,
+				false);
+
+		definition.Targeting.AllowedTargets =
+			TargetType::Self |
+			TargetType::Ally;
+
+		EffectDefinition heal;
+
+		heal.Type =
+			EffectType::Heal;
+
+		// 現段階では固定値。
+		heal.Power =
+			30;
+
+		heal.AffectSelf =
+			true;
+
+		heal.AffectAllies =
+			true;
+
+		heal.AffectEnemies =
+			false;
+
+		definition.Effects.push_back(
+			heal);
+
+		definition.Animation =
+			AnimationID::Attack2;
 
 		break;
 	}
-
 	case PlayerActionType::Skill2:
 	{
-		// 束縛の呪
+		definition.Enabled = true;
+
 		definition.Cost.AP = 3;
 		definition.Cost.MP = 12;
-		definition.Enabled = true;
+
+		definition.TargetMode =
+			TargetingMode::Unit;
+
+		definition.TargetPattern =
+			GridPattern::CreateDiamond(
+				4,
+				false);
+
+		definition.Targeting.AllowedTargets =
+			TargetType::Enemy;
+
+		definition.Targeting.LineOfSight =
+			LineOfSightType::Direct;
+
+		// Debuff実処理は後で。
+		EffectDefinition debuff;
+
+		debuff.Type =
+			EffectType::Debuff;
+
+		debuff.Power =
+			1;
+
+		debuff.AffectEnemies =
+			true;
+
+		definition.Effects.push_back(
+			debuff);
+
+		definition.Animation =
+			AnimationID::Attack3;
 
 		break;
 	}
-
 	case PlayerActionType::Ultimate:
 	{
-		// 生命の儀式
+		definition.Enabled = true;
+
 		definition.Cost.AP = 4;
 		definition.Cost.MP = 35;
-		definition.Enabled = true;
+
+		definition.TargetMode =
+			TargetingMode::Self;
+
+		definition.HasEffectPattern =
+			true;
+
+		definition.EffectPattern =
+			GridPattern::CreateSquare(
+				2,
+				true);
+
+		EffectDefinition heal;
+
+		heal.Type =
+			EffectType::Heal;
+
+		heal.Power =
+			50;
+
+		heal.AffectSelf =
+			true;
+
+		heal.AffectAllies =
+			true;
+
+		heal.AffectEnemies =
+			false;
+
+		definition.Effects.push_back(
+			heal);
+
+		definition.Animation =
+			AnimationID::AttackFast;
 
 		break;
 	}

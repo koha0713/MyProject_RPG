@@ -59,71 +59,153 @@ MonkClassComponent::GetActionDefinition(
 	{
 	case PlayerActionType::NormalAttack:
 	{
-		definition.Cost.AP =
-			2;
+		definition.Enabled = true;
 
-		definition.Cost.MP =
-			0;
-
-		definition.Enabled =
-			true;
+		definition.Cost.AP = 2;
 
 		definition.TargetMode =
 			TargetingMode::Unit;
 
 		definition.TargetPattern =
 			GridPattern::CreateCross(
-				1);
+				1,
+				false);
 
 		definition.Targeting.AllowedTargets =
 			TargetType::Enemy;
 
-		definition.Targeting.LineOfSight =
-			LineOfSightType::None;
-
-		definition.Targeting.WallsBlock =
-			false;
-
-		definition.Targeting.UnitsBlock =
-			false;
-
-		definition.Targeting.PierceUnits =
-			false;
-
-		definition.Targeting.PierceWalls =
-			false;
-
-		definition.HasEffectPattern =
-			false;
+		definition.Animation =
+			AnimationID::Punch;
 
 		break;
 	}
 	case PlayerActionType::Skill1:
 	{
-		// ˜AŒ‚
+		definition.Enabled = true;
+
 		definition.Cost.AP = 2;
 		definition.Cost.MP = 5;
-		definition.Enabled = true;
+
+		definition.TargetMode =
+			TargetingMode::Unit;
+
+		definition.TargetPattern =
+			GridPattern::CreateCross(
+				1,
+				false);
+
+		definition.Targeting.AllowedTargets =
+			TargetType::Enemy;
+
+		// 2Hit•ª
+		for (int i = 0; i < 2; ++i)
+		{
+			EffectDefinition damage;
+
+			damage.Type =
+				EffectType::Damage;
+
+			damage.UseSourceAttackPower =
+				true;
+
+			damage.PowerMultiplier =
+				0.65f;
+
+			damage.AffectEnemies =
+				true;
+
+			definition.Effects.push_back(
+				damage);
+		}
+
+		definition.Animation =
+			AnimationID::AttackFast;
 
 		break;
 	}
 
 	case PlayerActionType::Skill2:
 	{
-		// “¥‚Ýž‚Ý
+		definition.Enabled = true;
+
 		definition.Cost.AP = 2;
 		definition.Cost.MP = 5;
-		definition.Enabled = true;
+
+		definition.TargetMode =
+			TargetingMode::Unit;
+
+		definition.TargetPattern =
+			GridPattern::CreateDiamond(
+				3,
+				false);
+
+		definition.Targeting.AllowedTargets =
+			TargetType::Enemy;
+
+		EffectDefinition damage;
+
+		damage.Type =
+			EffectType::Damage;
+
+		damage.UseSourceAttackPower =
+			true;
+
+		damage.PowerMultiplier =
+			1.2f;
+
+		damage.AffectEnemies =
+			true;
+
+		definition.Effects.push_back(
+			damage);
+
+		// Ú‹ßˆÚ“®‚ÍŒã‚Åê—pˆ—‚ð’Ç‰ÁB
+		definition.Animation =
+			AnimationID::Attack2;
 
 		break;
 	}
-
 	case PlayerActionType::Ultimate:
 	{
-		// •S—ôŒ
+		definition.Enabled = true;
+
 		definition.Cost.AP = 4;
 		definition.Cost.MP = 20;
-		definition.Enabled = true;
+
+		definition.TargetMode =
+			TargetingMode::Unit;
+
+		definition.TargetPattern =
+			GridPattern::CreateCross(
+				1,
+				false);
+
+		definition.Targeting.AllowedTargets =
+			TargetType::Enemy;
+
+		// ‰¼‚Å5Hit
+		for (int i = 0; i < 5; ++i)
+		{
+			EffectDefinition damage;
+
+			damage.Type =
+				EffectType::Damage;
+
+			damage.UseSourceAttackPower =
+				true;
+
+			damage.PowerMultiplier =
+				0.55f;
+
+			damage.AffectEnemies =
+				true;
+
+			definition.Effects.push_back(
+				damage);
+		}
+
+		definition.Animation =
+			AnimationID::Attack3;
 
 		break;
 	}

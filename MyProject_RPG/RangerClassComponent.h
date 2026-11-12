@@ -73,21 +73,18 @@ RangerClassComponent::GetActionDefinition(
 	{
 	case PlayerActionType::NormalAttack:
 	{
-		definition.Cost.AP =
-			2;
+		definition.Enabled = true;
 
-		definition.Cost.MP =
-			0;
-
-		definition.Enabled =
-			true;
+		definition.Cost.AP = 2;
+		definition.Cost.MP = 0;
 
 		definition.TargetMode =
 			TargetingMode::Unit;
 
 		definition.TargetPattern =
 			GridPattern::CreateDiamond(
-				5);
+				5,
+				false);
 
 		definition.Targeting.AllowedTargets =
 			TargetType::Enemy;
@@ -101,49 +98,164 @@ RangerClassComponent::GetActionDefinition(
 		definition.Targeting.UnitsBlock =
 			true;
 
-		definition.Targeting.PierceUnits =
+		definition.Animation =
+			AnimationID::Attack;
+
+		definition.AnimationLoop =
 			false;
 
-		definition.Targeting.PierceWalls =
-			false;
-
-		definition.Targeting.StopOnFirstUnit =
-			true;
-
-		definition.Targeting.StopOnFirstWall =
-			true;
-
-		definition.HasEffectPattern =
-			false;
+		definition.AnimationBlendTime =
+			0.10f;
 
 		break;
 	}
 	case PlayerActionType::Skill1:
 	{
-		// ä—í éÀåÇ
+		definition.Enabled = true;
+
 		definition.Cost.AP = 3;
 		definition.Cost.MP = 8;
-		definition.Enabled = true;
+
+		definition.TargetMode =
+			TargetingMode::Direction;
+
+		definition.HasEffectPattern =
+			true;
+
+		definition.EffectPattern =
+			GridPattern::CreateLine(
+				5,
+				false);
+
+		EffectDefinition damage;
+
+		damage.Type =
+			EffectType::Damage;
+
+		damage.UseSourceAttackPower =
+			true;
+
+		damage.PowerMultiplier =
+			1.1f;
+
+		damage.AffectEnemies =
+			true;
+
+		definition.Effects.push_back(
+			damage);
+
+		definition.Animation =
+			AnimationID::Attack2;
+
+		definition.AnimationLoop =
+			false;
+
+		definition.AnimationBlendTime =
+			0.10f;
 
 		break;
 	}
-
 	case PlayerActionType::Skill2:
 	{
-		// ë_åÇ
+		definition.Enabled = true;
+
 		definition.Cost.AP = 3;
 		definition.Cost.MP = 10;
-		definition.Enabled = true;
+
+		definition.TargetMode =
+			TargetingMode::Unit;
+
+		definition.TargetPattern =
+			GridPattern::CreateDiamond(
+				8,
+				false);
+
+		definition.Targeting.AllowedTargets =
+			TargetType::Enemy;
+
+		definition.Targeting.LineOfSight =
+			LineOfSightType::Direct;
+
+		definition.Targeting.WallsBlock =
+			true;
+
+		definition.Targeting.UnitsBlock =
+			true;
+
+		EffectDefinition damage;
+
+		damage.Type =
+			EffectType::Damage;
+
+		damage.UseSourceAttackPower =
+			true;
+
+		damage.PowerMultiplier =
+			1.8f;
+
+		damage.AffectEnemies =
+			true;
+
+		definition.Effects.push_back(
+			damage);
+
+		definition.Animation =
+			AnimationID::AttackFast;
+
+		definition.AnimationLoop =
+			false;
+
+		definition.AnimationBlendTime =
+			0.10f;
 
 		break;
 	}
-
 	case PlayerActionType::Ultimate:
 	{
-		// ÉAÉçÅ[ÉåÉCÉì
+		definition.Enabled = true;
+
 		definition.Cost.AP = 4;
 		definition.Cost.MP = 25;
-		definition.Enabled = true;
+
+		definition.TargetMode =
+			TargetingMode::Grid;
+
+		definition.TargetPattern =
+			GridPattern::CreateDiamond(
+				6,
+				false);
+
+		definition.Targeting.AllowedTargets =
+			TargetType::Enemy |
+			TargetType::EmptyCell;
+
+		definition.HasEffectPattern =
+			true;
+
+		definition.EffectPattern =
+			GridPattern::CreateSquare(
+				2,
+				true);
+
+		EffectDefinition damage;
+
+		damage.Type =
+			EffectType::Damage;
+
+		damage.UseSourceAttackPower =
+			true;
+
+		damage.PowerMultiplier =
+			1.5f;
+
+		damage.AffectEnemies =
+			true;
+
+		definition.Effects.push_back(
+			damage);
+
+		definition.Animation =
+			AnimationID::Attack3;
 
 		break;
 	}

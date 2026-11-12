@@ -14,6 +14,7 @@
 #include "DirectionalLight.h"
 #include "ToonShading.h"
 #include "OutlineSetting.h"
+#include "TerrainRenderSettings.h"
 
 
  // DirectX11
@@ -22,7 +23,11 @@
 #pragma comment(lib, "d3dcompiler.lib")
 
 class MeshBuffer;
+class Texture;
+
 struct MaterialData;
+struct WaterRenderSettings;
+
 
 /**
  * @brief ƒuƒŒƒ“ƒh•û–@
@@ -96,6 +101,41 @@ public:
 		const MaterialData& material,
 		const Matrix4x4& worldMatrix,
 		std::span<const Matrix4x4> boneMatrices = {});
+
+	//====================
+	// Water•`‰æ
+	//====================
+
+	/**
+	 * @brief Waterê—pShader‚ÅMesh‚ğ•`‰æ
+	 *
+	 * @param mesh Water Mesh
+	 * @param worldMatrix Worlds—ñ
+	 * @param settings Water•`‰æİ’è
+	 * @param normalMapA 1–‡–Ú‚ÌNormal Map
+	 * @param normalMapB 2–‡–Ú‚ÌNormal Map
+	 * @param time Œo‰ßŠÔi•bj
+	 */
+	static void DrawWater(
+		const MeshBuffer& mesh,
+		const Matrix4x4& worldMatrix,
+		const WaterRenderSettings& settings,
+		const Texture* normalMapA,
+		const Texture* normalMapB,
+		float time,
+		const Vector3& cameraPosition);
+
+	/**
+	 * @brief Terrainê—p•`‰æ
+	 */
+	static void DrawTerrain(
+		const MeshBuffer& mesh,
+		const Matrix4x4& worldMatrix,
+		const TerrainRenderSettings& settings,
+		const Texture* grassTexture,
+		const Texture* dirtTexture,
+		const Texture* rockTexture,
+		const Texture* sandTexture);
 
 	//====================
 	// RenderState
@@ -244,6 +284,16 @@ private:
 
 	static bool CreateOutlinePipeline();
 
+	/**
+	 * @brief Water•`‰æPipeline¶¬
+	 */
+	static bool CreateWaterPipeline();
+
+	/**
+	 * @brief Terrain•`‰æPipeline¶¬
+	 */
+	static bool CreateTerrainPipeline();
+
 private:
 
 	//====================
@@ -331,6 +381,37 @@ private:
 	 */
 	static ComPtr<ID3D11Buffer>
 		m_BoneConstantBuffer;
+
+	//====================
+	// Water Pipeline
+	//====================
+
+	static ComPtr<ID3D11VertexShader>
+		m_WaterVertexShader;
+
+	static ComPtr<ID3D11PixelShader>
+		m_WaterPixelShader;
+
+	static ComPtr<ID3D11InputLayout>
+		m_WaterInputLayout;
+
+	static ComPtr<ID3D11Buffer>
+		m_WaterConstantBuffer;
+
+	//====================
+	// Terrain Pipeline
+	//====================
+	static Microsoft::WRL::ComPtr<ID3D11VertexShader>
+		m_TerrainVertexShader;
+
+	static Microsoft::WRL::ComPtr<ID3D11PixelShader>
+		m_TerrainPixelShader;
+
+	static Microsoft::WRL::ComPtr<ID3D11InputLayout>
+		m_TerrainInputLayout;
+
+	static Microsoft::WRL::ComPtr<ID3D11Buffer>
+		m_TerrainConstantBuffer;
 
 	//====================
 	// Lighting
