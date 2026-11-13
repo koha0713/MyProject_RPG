@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <random>
 
 //=====================================================
 // Initialize
@@ -24,6 +25,9 @@ Initialize()
 void GrassRendererComponent::
 Finalize()
 {
+
+	m_TerrainChunks =
+		nullptr;
 	m_GrassMesh.reset();
 
 	m_GrassTexture.reset();
@@ -73,26 +77,96 @@ Draw()
 		return;
 	}
 
-	for (GrassChunkRenderData& chunk :
-		m_GrassChunks)
+	if (!m_TerrainChunks)
 	{
-		if (!chunk.HasGpuBuffer())
+		return;
+	}
+
+	//=================================================
+	// Safety
+	//=================================================
+	//
+	// Grass ChunkとTerrain Chunkの数が
+	// 一致している範囲だけ処理する。
+	//=================================================
+
+	const size_t chunkCount =
+		(std::min)(
+			m_GrassChunks.size(),
+			m_TerrainChunks->size());
+
+	for (size_t i = 0;
+		i < chunkCount;
+		++i)
+	{
+		GrassChunkRenderData& grassChunk =
+			m_GrassChunks[i];
+
+		if (!grassChunk.HasGpuBuffer())
 		{
 			continue;
 		}
 
+		const TerrainChunk& terrainChunk =
+			(*m_TerrainChunks)[i];
+
+		//=================================================
+		// Terrain LOD
+		//=================================================
+
+		const TerrainChunkLOD lod =
+			terrainChunk.GetLOD();
+
+		const float lodRatio =
+			GetGrassLodRatio(
+				lod);
+
+		if (lodRatio <=
+			0.0f)
+		{
+			continue;
+		}
+
+		//=================================================
+		// Instance Count
+		//=================================================
+
+		const uint32_t totalCount =
+			static_cast<uint32_t>(
+				grassChunk.Instances.size());
+
+		uint32_t drawCount =
+			static_cast<uint32_t>(
+				static_cast<float>(
+					totalCount) *
+				lodRatio);
+
+		// 草が存在するChunkなら、
+		// 描画対象LODで最低1株は残す。
+		if (drawCount == 0 &&
+			totalCount > 0)
+		{
+			drawCount =
+				1;
+		}
+
+		drawCount =
+			(std::min)(
+				drawCount,
+				totalCount);
+
+		//=================================================
+		// Draw
+		//=================================================
+
 		Renderer::DrawGrassInstanced(
 			*m_GrassMesh,
-			chunk.InstanceBuffer.Get(),
-			static_cast<uint32_t>(
-				chunk.Instances.size()),
+			grassChunk.InstanceBuffer.Get(),
+			drawCount,
 			m_GrassTexture.get(),
 			m_Time,
 			m_WindDirection,
-
-			// 最初は0で確認
 			m_WindStrength,
-
 			m_WindSpeed);
 	}
 }
@@ -101,6 +175,16 @@ bool GrassRendererComponent::
 BuildGrass(
 	const std::vector<TerrainChunk>& chunks)
 {
+	//=================================================
+	// Terrain Chunk Reference
+	//=================================================
+	//
+	// Grass描画時にTerrain側のLODを参照する。
+	//=================================================
+
+	m_TerrainChunks =
+		&chunks;
+
 	for (GrassChunkRenderData& chunk :
 		m_GrassChunks)
 	{
@@ -140,6 +224,35 @@ BuildGrass(
 	}
 
 	return createdAny;
+}
+
+//=====================================================
+// Get Grass LOD Ratio
+//=====================================================
+
+float GrassRendererComponent::
+GetGrassLodRatio(
+	TerrainChunkLOD lod) const
+{
+	switch (lod)
+	{
+	case TerrainChunkLOD::Near:
+		// 近距離は全て描画
+		return 1.0f;
+
+	case TerrainChunkLOD::Middle:
+		// 中距離は半分
+		return 0.6f;
+
+	case TerrainChunkLOD::Far:
+		// 遠距離はかなり減らす
+		return 0.1f;
+
+	case TerrainChunkLOD::Culled:
+	default:
+		// 描画しない
+		return 0.0f;
+	}
 }
 
 //=====================================================
@@ -544,6 +657,38 @@ BuildGrassChunk(
 			outChunk.Instances.push_back(
 				instance);
 		}
+	}
+
+	//=================================================
+	// Shuffle Instances
+	//=================================================
+	//
+	// LODで先頭N個だけ描画しても
+	// Chunk全体へ均等に草が残るよう、
+	// Instance順を固定Seedでシャッフルする。
+	//
+	// 固定Seedなので毎回同じ配置順になる。
+	//=================================================
+
+	if (!outChunk.Instances.empty())
+	{
+		uint32_t shuffleSeed =
+			static_cast<uint32_t>(
+				outChunk.ChunkX) *
+			73856093u;
+
+		shuffleSeed ^=
+			static_cast<uint32_t>(
+				outChunk.ChunkY) *
+			19349663u;
+
+		std::mt19937 randomEngine(
+			shuffleSeed);
+
+		std::shuffle(
+			outChunk.Instances.begin(),
+			outChunk.Instances.end(),
+			randomEngine);
 	}
 }
 

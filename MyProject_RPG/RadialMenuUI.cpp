@@ -68,37 +68,38 @@ void RadialMenuUI::CreateActionTexts()
 	m_MoveText =
 		CreateText(
 			"RadialMove",
-			L"移動");
+			L"　移動　");
 
 	m_NormalAttackText =
 		CreateText(
 			"RadialAttack",
-			L"攻撃");
+			L"　攻撃　");
 
+	/*
 	m_Skill1Text =
 		CreateText(
 			"RadialSkill1",
-			L"Skill 1");
+			L"スキル１");
 
 	m_Skill2Text =
 		CreateText(
 			"RadialSkill2",
-			L"Skill 2");
+			L"スキル２");
 
 	m_UltimateText =
 		CreateText(
 			"RadialUltimate",
-			L"Ultimate");
+			L"必殺技");
 
 	m_ItemText =
 		CreateText(
 			"RadialItem",
-			L"Item");
-
+			L"アイテム");
+	*/
 	m_CenterText =
 		CreateText(
 			"RadialCenter",
-			L"Cancel");
+			L"キャンセル");
 }
 
 //=====================================================
@@ -354,14 +355,14 @@ void RadialMenuUI::UpdateLayout()
 		rect->SetPosition(
 			m_CenterX +
 			entry.OffsetX -
-			55.0f,
+			60.0f,
 
 			m_CenterY +
 			entry.OffsetY -
 			16.0f);
 
 		rect->SetSize(
-			110.0f,
+			120.0f,
 			32.0f);
 	}
 

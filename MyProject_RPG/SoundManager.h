@@ -21,7 +21,7 @@
 #include "SoundData.h"
 #include "SoundHandle.h"
 #include "SoundCategory.h"
-#include <CommonType.h>
+#include "CommonType.h"
 
 using Microsoft::WRL::ComPtr;
 

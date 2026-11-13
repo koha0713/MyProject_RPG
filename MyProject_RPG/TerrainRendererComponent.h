@@ -310,13 +310,13 @@ private:
 	//====================
 
 	float m_NearDistance =
-		20.0f;
+		30.0f;
 
 	float m_MiddleDistance =
-		40.0f;
+		55.0f;
 
 	float m_FarDistance =
-		70.0f;
+		90.0f;
 
 	/**
 	 * @brief Water Animation—pŒo‰ßŽžŠÔ

@@ -41,6 +41,12 @@ void SceneManager::Draw(uint64_t delta)
 
 void SceneManager::SetCurrentScene(std::string currentscenename)
 {
+	// 現在のシーンが存在する場合、終了処理を呼び出す
+	if (!m_currentSceneName.empty())
+	{
+		m_scenes[m_currentSceneName]->Finalize();
+		m_scenes.erase(m_currentSceneName);
+	}
 	m_currentSceneName = currentscenename;
 	auto obj = SceneClassFactory::GetInstance().Create(currentscenename);
 	obj->Initialize();

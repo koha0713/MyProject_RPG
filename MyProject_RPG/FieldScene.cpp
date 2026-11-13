@@ -297,13 +297,13 @@ void FieldScene::Initialize()
 				if (cameraTransform)
 				{
 					cameraTransform->SetPosition(
-						0.0f,
+						28.0f,
 						10.0f,
-						5.0f);
+						23.0f);
 
 					// 原点方向を向く初期値
 					cameraTransform->SetRotation(
-						-1.0f,
+						-0.9f,
 						0.0f,
 						0.0f);
 				}
@@ -469,9 +469,14 @@ void FieldScene::Initialize()
 		exit->SetGridPosition(
 			GridPosition
 			{
-				0,
-				0
+				14,
+				8
 			});
+
+		transform->SetPosition(
+			14.0f * 2.0f,
+			0.0f,
+			8.0f * 2.0f);
 
 		exit->SetTargetScene(
 			"TownScene");
@@ -773,37 +778,49 @@ void FieldScene::Update(
 	if (!players.empty() &&
 		exitObject)
 	{
-		GameObject* player =
-			players[0];
-
-		auto* playerGrid =
-			player->GetComponent<
-			GridPositionComponent>();
-
-		auto* fieldExit =
-			exitObject->GetComponent<
-			FieldExitComponent>();
-
-		if (playerGrid &&
-			fieldExit)
+		for( GameObject* player : players)
 		{
-			const GridPosition playerPosition =
-				playerGrid->
-				GetGridPosition();
-
-			const GridPosition exitPosition =
-				fieldExit->
-				GetGridPosition();
-
-			// ExitのGridへ到達したら自動遷移
-			if (playerPosition ==
-				exitPosition)
+			if (!player ||
+				player->IsDestroy())
 			{
-				SceneManager::SetCurrentScene(
+				continue;
+			}
+			auto* playerGrid =
+				player->GetComponent<
+				GridPositionComponent>();
+			auto* fieldExit =
+				exitObject->GetComponent<
+				FieldExitComponent>();
+			if (playerGrid &&
+				fieldExit)
+			{
+				const GridPosition playerPosition =
+					playerGrid->
+					GetGridPosition();
+				const GridPosition exitPosition =
 					fieldExit->
-					GetTargetScene());
-
-				return;
+					GetGridPosition();
+				// ExitのGridへ到達したら自動遷移
+				if (playerPosition ==
+					exitPosition)
+				{
+					auto* audioSource =
+						player->
+						GetComponent<
+						AudioSourceComponent>();
+					if (audioSource)
+					{
+						audioSource->SetSoundPath(
+							L"Assets/Sounds/SE/決定ボタンを押す2.wav");
+						audioSource->
+							PlayOneShot(
+								1.0f);
+					}
+					SceneManager::SetCurrentScene(
+						fieldExit->
+						GetTargetScene());
+					return;
+				}
 			}
 		}
 	}
@@ -919,7 +936,6 @@ void FieldScene::Draw(uint64_t delta)
 		//=================================================
 		// 必要Component確認
 		//=================================================
-
 		if (gridPosition &&
 			controller &&
 			status &&
@@ -1125,12 +1141,12 @@ void FieldScene::Draw(uint64_t delta)
 	m_gameObjectManager.DrawFont();
 	FontRenderer::End();
 
-	// デバッグUIの描画
-	DebugUI::RegisterDebugFunction([this]()
-		{
-			// GameObjectのDebugUI描画
-			m_gameObjectManager.DrawDebugUI();
-		});
+	//// デバッグUIの描画
+	//DebugUI::RegisterDebugFunction([this]()
+	//	{
+	//		// GameObjectのDebugUI描画
+	//		m_gameObjectManager.DrawDebugUI();
+	//	});
 
 }
 

@@ -4,6 +4,7 @@
 #include "UIRectComponent.h"
 #include "UIImageComponent.h"
 #include "UIButtonComponent.h"
+#include "AudioSourceComponent.h"
 
 #include "SceneManager.h"
 #include "SpriteRenderer.h"
@@ -31,6 +32,67 @@ void TitleScene::Initialize()
 	// EXIT Button
 	//=================================================
 	CreateExitButton();
+
+	//=================================================
+	// Audio
+	//=================================================
+
+	auto* Audio =
+		m_GameObjectManager.Create<
+		GameObject>();
+
+	// IDをGameObject名として使用する。
+	// MapData上で各Characterを一意に識別できる。
+	Audio->SetName(
+		"BGM");
+
+	Audio->SetTag(
+		Tag::Player);
+	auto* audioSource =
+		Audio->AddComponent<
+		AudioSourceComponent>();
+
+	if (audioSource)
+	{
+		audioSource->SetSoundPath(
+			L"Assets/Sound/BGM/Title_BGM.wav");
+		audioSource->Set3D(
+			false);
+		audioSource->SetLoop(
+			true);
+		audioSource->SetVolume(
+			1.0f);
+		audioSource->SetCategory(
+			SoundCategory::BGM);
+		audioSource->Play();
+	}
+
+	auto* SE_Audio =
+		m_GameObjectManager.Create<
+		GameObject>();
+
+	SE_Audio->SetName(
+		"SE");
+
+	SE_Audio->SetTag(
+		Tag::Player);
+	auto* audio =
+		SE_Audio->AddComponent<
+		AudioSourceComponent>();
+
+	if (audio)
+	{
+		audio->SetSoundPath(
+			L"Assets/Sound/決定ボタンを押す2.wav");
+		audio->Set3D(
+			false);
+		audio->SetLoop(
+			false);
+		audio->SetVolume(
+			1.0f);
+		audio->SetCategory(
+			SoundCategory::SE);
+	}
 }
 
 //=====================================================
@@ -42,6 +104,22 @@ void TitleScene::Finalize()
 	m_Background = nullptr;
 	m_StartButton = nullptr;
 	m_ExitButton = nullptr;
+
+	// BGMSTOP
+	auto* audioObject =
+		m_GameObjectManager.FindByName(
+			"BGM");
+
+	if (audioObject)
+	{
+		auto* audioSource =
+			audioObject->GetComponent<AudioSourceComponent>();
+
+		if (audioSource)
+		{
+			audioSource->Stop();
+		}
+	}
 
 	// GameObjectの終了処理
 	m_GameObjectManager.Clear();

@@ -515,9 +515,9 @@ void TownSceneUI::ApplyOverview()
 
 	ConfigureButton(
 		m_GuildButton,
-		"Assets/Textures/Town/UI_ƒMƒ‹ƒh.png",
-		180.0f,
-		350.0f,
+		"Assets/Textures/Town/UI_ƒMƒ‹ƒhA.png",
+		110.0f,
+		205.0f,
 		150.0f,
 		130.0f);
 
@@ -527,9 +527,9 @@ void TownSceneUI::ApplyOverview()
 
 	ConfigureButton(
 		m_InnButton,
-		"Assets/Textures/Town/UI_h‰®.png",
-		410.0f,
-		430.0f,
+		"Assets/Textures/Town/UI_h‰®A.png",
+		600.0f,
+		130.0f,
 		130.0f,
 		115.0f);
 
@@ -539,8 +539,8 @@ void TownSceneUI::ApplyOverview()
 
 	ConfigureButton(
 		m_TavernButton,
-		"Assets/Textures/Town/UI_Žðê.png",
-		585.0f,
+		"Assets/Textures/Town/UI_ŽðêA.png",
+		500.0f,
 		420.0f,
 		140.0f,
 		120.0f);
@@ -551,8 +551,8 @@ void TownSceneUI::ApplyOverview()
 
 	ConfigureButton(
 		m_MarketButton,
-		"Assets/Textures/Town/UI_Žsê.png",
-		880.0f,
+		"Assets/Textures/Town/UI_ŽsêA.png",
+		700.0f,
 		395.0f,
 		170.0f,
 		145.0f);
@@ -563,9 +563,9 @@ void TownSceneUI::ApplyOverview()
 
 	ConfigureButton(
 		m_GateButton,
-		"Assets/Textures/Town/UI_é–å.png",
-		1030.0f,
-		230.0f,
+		"Assets/Textures/Town/UI_é–åA.png",
+		180.0f,
+		0.0f,
 		140.0f,
 		150.0f);
 
@@ -575,9 +575,9 @@ void TownSceneUI::ApplyOverview()
 
 	ConfigureButton(
 		m_CastleButton,
-		"Assets/Textures/Town/UI_‰¤é.png",
-		860.0f,
-		60.0f,
+		"Assets/Textures/Town/UI_‰¤éA.png",
+		890.0f,
+		0.0f,
 		180.0f,
 		160.0f);
 }
@@ -605,11 +605,11 @@ void TownSceneUI::ApplyGuildInterior()
 
 	ConfigureButton(
 		m_ReceptionButton,
-		"Assets/Textures/Town/UI_ƒMƒ‹ƒh.png",
-		45.0f,
-		290.0f,
-		450.0f,
-		280.0f);
+		"Assets/Textures/Town/Skelton.png",
+		0.0f,
+		150.0f,
+		410.0f,
+		445.0f);
 
 	//=================================================
 	// Shop
@@ -617,11 +617,11 @@ void TownSceneUI::ApplyGuildInterior()
 
 	ConfigureButton(
 		m_ShopButton,
-		"Assets/Textures/Town/UI_‰¤é.png",
-		490.0f,
+		"Assets/Textures/Town/Skelton.png",
+		410.0f,
 		300.0f,
-		300.0f,
-		100.0f);
+		200.0f,
+		250.0f);
 
 	//=================================================
 	// Quest Board
@@ -629,11 +629,11 @@ void TownSceneUI::ApplyGuildInterior()
 
 	ConfigureButton(
 		m_QuestBoardButton,
-		"Assets/Textures/Town/UI_Žsê.png",
-		860.0f,
+		"Assets/Textures/Town/Skelton.png",
+		980.0f,
+		140.0f,
 		300.0f,
-		300.0f,
-		100.0f);
+		500.0f);
 
 	//=================================================
 	// Back
@@ -1185,9 +1185,9 @@ void TownSceneUI::UpdateButtonVisual(
 
 		image->SetColor(
 			Color(
-				0.9f,
-				0.9f,
-				0.9f,
+				0.8f,
+				0.8f,
+				0.8f,
 				1.0f));
 
 		break;
@@ -1196,9 +1196,9 @@ void TownSceneUI::UpdateButtonVisual(
 
 		image->SetColor(
 			Color(
-				0.7f,
-				0.7f,
-				0.7f,
+				0.6f,
+				0.6f,
+				0.6f,
 				1.0f));
 
 		break;

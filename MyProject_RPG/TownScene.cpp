@@ -9,6 +9,8 @@
 #include "SpriteRenderer.h"
 #include "FontRenderer.h"
 
+#include "AudioSourceComponent.h"
+
 #include "DebugUI.h"
 
 #include <memory>
@@ -73,6 +75,32 @@ void TownScene::Initialize()
 	m_GuildQuestUI->ApplyState(
 		m_CurrentState,
 		nullptr);
+
+	// BGM
+	GameObject* bgmObject =
+		m_GameObjectManager.Create<GameObject>();
+
+	bgmObject->SetName(
+		"TownBGM");
+	bgmObject->SetTag(
+		Tag::None);
+	auto* audio =
+		bgmObject->AddComponent<AudioSourceComponent>();
+
+	if (audio)
+	{
+		audio->SetSoundPath(
+			L"Assets/Sound/BGM/Town_BGM.wav");
+		audio->Set3D(
+			false);
+		audio->SetLoop(
+			true);
+		audio->SetVolume(
+			1.0f);
+		audio->SetCategory(
+			SoundCategory::BGM);
+		audio->Play();
+	}
 }
 
 //=====================================================
@@ -237,12 +265,12 @@ void TownScene::Draw(
 	// Debug
 	//=================================================
 
-	DebugUI::RegisterDebugFunction(
-		[this]()
-		{
-			m_GameObjectManager.
-				DrawDebugUI();
-		});
+	//DebugUI::RegisterDebugFunction(
+	//	[this]()
+	//	{
+	//		m_GameObjectManager.
+	//			DrawDebugUI();
+	//	});
 }
 
 //=====================================================
@@ -259,6 +287,97 @@ void TownScene::ChangeState(
 
 	m_CurrentState =
 		state;
+
+	// êŠ‚²‚Æ‚ÌBGM
+	switch (state)
+	{
+	case TownSceneState::Castle:
+	{
+		auto* audio =
+			m_GameObjectManager.
+			FindByName(
+				"TownBGM")->
+			GetComponent<
+			AudioSourceComponent>();
+		audio->SetSoundPath(
+			L"Assets/Sound/BGM/‰¤é_BGM.wav");
+		audio->Play();
+		break;
+	}
+	case TownSceneState::Market:
+	{
+		auto* audio =
+			m_GameObjectManager.
+			FindByName(
+				"TownBGM")->
+			GetComponent<
+			AudioSourceComponent>();
+		audio->SetSoundPath(
+			L"Assets/Sound/BGM/Žsê_BGM.wav");
+		audio->Play();
+		break;
+	}
+	case TownSceneState::Tavern:
+	{
+		auto* audio =
+			m_GameObjectManager.
+			FindByName(
+				"TownBGM")->
+			GetComponent<
+			AudioSourceComponent>();
+		audio->SetSoundPath(
+			L"Assets/Sound/BGM/Žðê_BGM.wav");
+		audio->Play();
+		break;
+	}
+	case TownSceneState::GuildInterior:
+	case TownSceneState::Reception:
+	case TownSceneState::Shop:
+	case TownSceneState::QuestBoard:
+	case TownSceneState::QuestDetail:
+	{
+		auto* audio =
+			m_GameObjectManager.
+			FindByName(
+				"TownBGM")->
+			GetComponent<
+			AudioSourceComponent>();
+		const std::wstring currentPath =
+			audio->GetSoundPath();
+		if(currentPath !=
+			L"Assets/Sound/BGM/ƒMƒ‹ƒh_BGM.wav")
+		{
+			audio->SetSoundPath(
+				L"Assets/Sound/BGM/ƒMƒ‹ƒh_BGM.wav");
+			audio->Play();
+		}
+		break;
+	}
+	{
+		auto* audio =
+			m_GameObjectManager.
+			FindByName(
+				"TownBGM")->
+			GetComponent<
+			AudioSourceComponent>();
+		audio->SetSoundPath(
+			L"Assets/Sound/BGM/h‰®_BGM.wav");
+		audio->Play();
+		break;
+	}
+	default:
+		auto* audio =
+			m_GameObjectManager.
+			FindByName(
+				"TownBGM")->
+			GetComponent<
+			AudioSourceComponent>();
+		audio->SetSoundPath(
+			L"Assets/Sound/BGM/Town_BGM.wav");
+		audio->SetVolume(0.8f);
+		audio->Play();
+		break;
+	}
 
 	//=================================================
 	// Quest Selection

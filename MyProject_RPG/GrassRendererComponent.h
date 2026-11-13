@@ -79,6 +79,14 @@ public:
 			terrainData;
 	}
 
+	/**
+	 * @brief Terrain LODから草の描画率を取得する
+	 *
+	 * @return 0.0～1.0
+	 */
+	float GetGrassLodRatio(
+		TerrainChunkLOD lod) const;
+
 private:
 
 	/**
@@ -170,5 +178,15 @@ private:
 
 	const TerrainMapData*
 		m_TerrainData =
+		nullptr;
+
+	/**
+	 * @brief Terrain Chunkへの非所有参照
+	 *
+	 * GrassのLOD判定に使用する。
+	 * TerrainRenderer側がGrassRendererより長く生存する前提。
+	 */
+	const std::vector<TerrainChunk>*
+		m_TerrainChunks =
 		nullptr;
 };
