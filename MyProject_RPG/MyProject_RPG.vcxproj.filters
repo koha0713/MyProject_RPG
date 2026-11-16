@@ -100,6 +100,9 @@
     <Filter Include="ソース ファイル\System\Map\Grass">
       <UniqueIdentifier>{030815b1-74b3-425f-940d-ea5caf56fe76}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\System\Map\Visibility">
+      <UniqueIdentifier>{27b3f6c8-2a6c-4812-846a-fde023f4a1d7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -425,6 +428,9 @@
     </ClInclude>
     <ClInclude Include="GrassRendererComponent.h">
       <Filter>ソース ファイル\Component\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="VisibilityState.h">
+      <Filter>ソース ファイル\System\Map\Visibility</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

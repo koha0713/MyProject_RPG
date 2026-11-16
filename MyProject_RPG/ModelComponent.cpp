@@ -443,7 +443,8 @@ bool ModelComponent::PlayAnimation(
 	return animator->
 		PlayAnimation(
 			id,
-			loop);
+			loop,
+			blendDuration);
 }
 
 void ModelComponent::DrawDebugUI()

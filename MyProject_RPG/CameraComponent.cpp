@@ -317,10 +317,134 @@ void CameraComponent::SetFarClip(
 		farClip;
 }
 
+bool CameraComponent::SetTarget(
+	const Vector3& pos,
+	float distance,
+	const Vector3* rotation)
+{
+	const Vector3 pos_n(
+		pos.x,pos.y,-pos.z
+	);
+	if (!std::isfinite(pos_n.x) ||
+		!std::isfinite(pos_n.y) ||
+		!std::isfinite(pos_n.z) ||
+		!std::isfinite(distance) ||
+		distance <= 0.0f)
+	{
+		return false;
+	}
+
+	GameObject* owner = GetOwner();
+
+	if (!owner)
+	{
+		return false;
+	}
+
+	auto* transform =
+		owner->GetComponent<TransformComponent>();
+
+	if (!transform)
+	{
+		return false;
+	}
+
+	// 省略時は現在の回転を使用する
+	const Vector3 cameraRotation =
+		rotation ? *rotation : transform->GetRotation();
+
+	if (!std::isfinite(cameraRotation.x) ||
+		!std::isfinite(cameraRotation.y) ||
+		!std::isfinite(cameraRotation.z))
+	{
+		return false;
+	}
+
+	const Matrix4x4 rotationMatrix =
+		Matrix4x4::CreateFromYawPitchRoll(
+			cameraRotation.y,
+			cameraRotation.x,
+			cameraRotation.z);
+
+	Vector3 forward =
+		Vector3::TransformNormal(
+			Vector3(0.0f, 0.0f, 1.0f),
+			rotationMatrix);
+
+	forward.Normalize();
+
+	// 現在の回転を維持して、対象からdistance離す
+	const Vector3 cameraPosition =
+		pos_n - forward * distance;
+
+	if (!std::isfinite(cameraPosition.x) ||
+		!std::isfinite(cameraPosition.y) ||
+		!std::isfinite(cameraPosition.z))
+	{
+		return false;
+	}
+
+	// 入力座標のY・Zを反転して注視対象にする
+	const Vector3 targetPosition(
+		cameraPosition.x,
+		-cameraPosition.y,
+		-cameraPosition.z);
+
+	transform->SetPosition(targetPosition);
+
+	return true;
+}
+
 
 void CameraComponent::DrawDebugUI()
 {
 	ImGui::DragFloat("FieldOfView", &m_FieldOfView, 0.1f, 1.0f, 179.0f);
 	ImGui::DragFloat("NearClip", &m_NearClip, 0.01f, 0.01f, m_FarClip - 0.01f);
 	ImGui::DragFloat("FarClip", &m_FarClip, 0.1f, m_NearClip + 0.01f);
+
+	ImGui::Separator();
+	ImGui::Text("SetTarget Test");
+
+	// テスト入力値をフレーム間で保持する
+	static float targetPosition[3] =
+	{
+		0.0f,
+		1.0f,
+		0.0f
+	};
+
+	static float targetDistance = 5.0f;
+	static bool attempted = false;
+	static bool succeeded = false;
+
+	ImGui::DragFloat3(
+		"Target Position",
+		targetPosition,
+		0.1f);
+
+	ImGui::DragFloat(
+		"Target Distance",
+		&targetDistance,
+		0.1f,
+		0.01f,
+		1000.0f);
+
+	if (ImGui::Button("Apply SetTarget"))
+	{
+		succeeded = SetTarget(
+			Vector3(
+				targetPosition[0],
+				targetPosition[1],
+				targetPosition[2]),
+			targetDistance);
+
+		attempted = true;
+	}
+
+	if (attempted)
+	{
+		ImGui::Text(
+			"Result: %s",
+			succeeded ? "Success" : "Failed");
+	}
 }

@@ -240,6 +240,7 @@
     <ClInclude Include="UIFontComponent.h" />
     <ClInclude Include="UIImageComponent.h" />
     <ClInclude Include="UIRectComponent.h" />
+    <ClInclude Include="VisibilityState.h" />
     <ClInclude Include="WarriorClassComponent.h" />
     <ClInclude Include="WaterRenderData.h" />
     <ClInclude Include="WaterRenderSettings.h" />

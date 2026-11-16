@@ -80,6 +80,14 @@ public:
 		return m_FarClip;
 	}
 
+	/**
+	 * @brief 対象を画面中央に捉える位置へカメラを配置する
+	 */
+	bool SetTarget(
+		const Vector3& pos,
+		float distance,
+		const Vector3* rotation = nullptr);
+
 	void DrawDebugUI() override;
 
 	const char* GetComponentName() const override
