@@ -60,6 +60,8 @@
 
 #include "TerrainMapLoader.h"
 
+#include "VisibilityTexture.h"
+
 FieldScene::FieldScene()
 {
 
@@ -132,6 +134,32 @@ void FieldScene::Initialize()
 		m_TerrainRenderer->
 			SetCellSize(
 				2.0f);
+		m_TerrainRenderer->
+			SetVisibilityTexture(
+				&m_VisibilityTexture);
+
+		//=====================================================
+		// Parchment Texture
+		//=====================================================
+
+		const std::shared_ptr<Texture>
+			parchmentTexture =
+			RESOURCE_MANAGER.LoadTexture(
+				"Assets/Textures/Terrain/Parchment.png");
+
+		if (!parchmentTexture)
+		{
+			OutputDebugStringA(
+				"[FieldScene] "
+				"Parchment Texture Load failed.\n");
+		}
+		else
+		{
+			m_TerrainRenderer->
+				SetParchmentTexture(
+					parchmentTexture);
+		}
+
 
 		if (!m_TerrainRenderer->
 			BuildTerrain())
@@ -204,6 +232,14 @@ void FieldScene::Initialize()
 				2.0f);
 
 		m_GrassRenderer->
+			SetVisibilityMap(
+				&m_VisibilityMap);
+
+		m_GrassRenderer->
+			SetVisibilityTexture(
+				&m_VisibilityTexture);
+
+		m_GrassRenderer->
 			SetTerrainData(
 				&m_TerrainMapData);
 
@@ -217,6 +253,24 @@ void FieldScene::Initialize()
 				GetChunks());
 	}
 	
+
+	if (!m_VisibilityMap.Initialize(
+		m_TerrainMapData))
+	{
+		OutputDebugStringA(
+			"[FieldScene] "
+			"VisibilityMap Initialize failed.\n");
+	}
+
+	if (!m_VisibilityTexture.Initialize(
+		Renderer::GetDevice(),
+		m_VisibilityMap.GetWidth(),
+		m_VisibilityMap.GetHeight()))
+	{
+		OutputDebugStringA(
+			"[FieldScene] "
+			"VisibilityTexture Initialize failed.\n");
+	}
 
 	// GameObjectの初期化
 	{
@@ -344,6 +398,27 @@ void FieldScene::Initialize()
 
 		m_FieldUI->Initialize(
 			m_gameObjectManager);
+
+		std::vector<GameObject*> players =
+			m_gameObjectManager.
+			FindByTag(
+				Tag::Player);
+
+		m_FieldUI->SetPlayers(
+			players);
+
+		if (!players.empty())
+		{
+			// 最初のPlayerをHUD表示対象にする。
+			// Cameraはここでは移動させない。
+			m_FocusedPlayer =
+				players.front();
+		}
+		else
+		{
+			m_FocusedPlayer =
+				nullptr;
+		}
 
 		m_RadialMenuUI.Initialize(
 			m_gameObjectManager);
@@ -498,6 +573,12 @@ void FieldScene::Finalize()
 	m_MainCamera =
 		nullptr;
 
+	m_VisibilityTexture.
+		Finalize();
+
+	m_VisibilityMap.
+		Clear();
+
 	//=================================================
 	// UI
 	//=================================================
@@ -521,6 +602,8 @@ void FieldScene::Finalize()
 void FieldScene::Update(
 	uint64_t delta)
 {
+
+	UpdatePlayerVisibility();
 	//=================================================
 	// Input取得
 	//=================================================
@@ -696,8 +779,93 @@ void FieldScene::Update(
 
 	if (m_FieldUI)
 	{
+		//=================================================
+		// Field UI Update
+		//=================================================
+		//
+		// m_FocusedPlayer:
+		// 現在HUDへ詳細表示するPlayer。
+		//
+		// m_SelectedPlayerとは分離する。
+		//=================================================
+
 		m_FieldUI->Update(
 			m_FocusedPlayer);
+
+		//=================================================
+		// Player Icon Click
+		//=================================================
+		//
+		// 左下Player一覧から選択した場合のみ、
+		//
+		// ・HUD表示対象を変更
+		// ・Cameraを対象Playerへ移動
+		//
+		// する。
+		//
+		// 3Dキャラを直接選択した場合とは
+		// Camera挙動を分離する。
+		//=================================================
+
+		GameObject* clickedPlayer =
+			m_FieldUI->
+			GetClickedPlayer();
+
+		if (clickedPlayer &&
+			!clickedPlayer->IsDestroy())
+		{
+			//=============================================
+			// HUD表示対象変更
+			//=============================================
+
+			m_FocusedPlayer =
+				clickedPlayer;
+
+			//=============================================
+			// Camera Target
+			//=============================================
+
+			auto* transform =
+				clickedPlayer->
+				GetComponent<
+				TransformComponent>();
+
+			if (transform &&
+				m_MainCamera)
+			{
+				const Vector3 targetPosition =
+					transform->
+					GetPosition();
+
+				//=========================================
+				// Camera Distance
+				//=========================================
+				//
+				// 現在のFieldCameraに合わせて
+				// 後で調整可能。
+				//=========================================
+
+				constexpr float CAMERA_DISTANCE =
+					13.0f;
+
+				m_MainCamera->
+					SetTarget(
+						targetPosition,
+						CAMERA_DISTANCE);
+			}
+
+			//=============================================
+			// World Input Block
+			//=============================================
+			//
+			// UIをクリックしたMouse入力が、
+			// 同じFrameで3D Player選択や
+			// マス操作へ流れるのを防止する。
+			//=============================================
+
+			blockNormalPlayerInput =
+				true;
+		}
 	}
 
 	//=====================================
@@ -709,8 +877,6 @@ void FieldScene::Update(
 		// Action中の手動Turn終了は禁止。
 		if (AreAllPlayerActionsFinished())
 		{
-			m_SelectedPlayer =
-				nullptr;
 
 			// Player操作状態もResetする。
 			CancelPlayerActionSelection();
@@ -3766,4 +3932,71 @@ bool FieldScene::HasSelectableTarget(
 	}
 
 	return true;
+}
+
+void FieldScene::
+UpdatePlayerVisibility()
+{
+	//=================================================
+	// 前回Visible
+	// ↓
+	// Explored
+	//=================================================
+
+	m_VisibilityMap.
+		ClearCurrentVisibility();
+
+	//=================================================
+	// Player Vision
+	//=================================================
+
+	constexpr int PLAYER_VISION_RANGE =
+		6;
+
+	const std::vector<GameObject*> players =
+		m_gameObjectManager.
+		FindByTag(
+			Tag::Player);
+
+
+	//=================================================
+	// Party全員の視界を合成
+	//=================================================
+
+	for (GameObject* player :
+		players)
+	{
+		if (!player ||
+			!player->IsActive())
+		{
+			continue;
+		}
+
+		auto* gridPosition =
+			player->
+			GetComponent<
+			GridPositionComponent>();
+
+		if (!gridPosition)
+		{
+			continue;
+		}
+
+		m_VisibilityMap.
+			RevealCircle(
+				gridPosition->
+				GetGridPosition(),
+
+				PLAYER_VISION_RANGE);
+	}
+
+	//=================================================
+	// GPU Visibility Texture更新
+	//=================================================
+
+	m_VisibilityTexture.
+		Update(
+			Renderer::
+			GetDeviceContext(),
+			m_VisibilityMap);
 }

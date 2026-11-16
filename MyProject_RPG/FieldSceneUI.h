@@ -5,19 +5,43 @@
  * @brief FieldScene用UI管理
  */
 
+#include <vector>
+
 class GameObject;
 class GameObjectManager;
+
+/**
+ * @brief Player一覧の1要素
+ */
+struct FieldPlayerIconUI
+{
+	/**
+	 * @brief 対応するPlayer
+	 *
+	 * GameObjectManager所有。
+	 * FieldSceneUIは非所有参照。
+	 */
+	GameObject*
+		Player =
+		nullptr;
+
+	/**
+	 * @brief Click可能なIcon
+	 */
+	GameObject*
+		Button =
+		nullptr;
+};
 
 /**
  * @brief FieldScene UI
  *
  * @details
  * ・次のターンButton
+ * ・Player一覧
  * ・選択Player HUD
  *
- * を管理する。
- *
- * Turn判定・Player操作などのGameplay処理は
+ * Gameplay処理・Camera制御は
  * FieldScene側が担当する。
  */
 class FieldSceneUI
@@ -40,25 +64,45 @@ public:
 	 * @brief UI状態更新
 	 *
 	 * @param focusedPlayer
-	 * HUDへ表示するPlayer。
+	 * 詳細HUDへ表示するPlayer。
 	 * nullptrならHUD非表示。
 	 */
 	void Update(
 		GameObject* focusedPlayer);
 
 	//=================================================
-	// Next Turn
+	// Player List
 	//=================================================
 
 	/**
-	 * @brief NextTurn Button表示状態
+	 * @brief Fieldに存在する自Player一覧を設定
+	 *
+	 * @details
+	 * Player生成完了後に1度呼ぶ。
 	 */
+	void SetPlayers(
+		const std::vector<GameObject*>& players);
+
+	/**
+	 * @brief このFrameでIcon ClickされたPlayerを取得
+	 *
+	 * @return
+	 * ClickされたPlayer。
+	 * Clickされていなければnullptr。
+	 */
+	GameObject*
+		GetClickedPlayer() const
+	{
+		return m_ClickedPlayer;
+	}
+
+	//=================================================
+	// Next Turn
+	//=================================================
+
 	void SetNextTurnVisible(
 		bool visible);
 
-	/**
-	 * @brief NextTurn Button Click判定
-	 */
 	bool IsNextTurnClicked() const;
 
 private:
@@ -70,6 +114,11 @@ private:
 	void CreateNextTurnUI();
 
 	void CreatePlayerHUD();
+
+	/**
+	 * @brief Player一覧UIを生成
+	 */
+	void CreatePlayerIcons();
 
 	GameObject* CreateImage(
 		const char* name);
@@ -84,6 +133,21 @@ private:
 	void UpdateNextTurnVisual();
 
 	//=================================================
+	// Player List
+	//=================================================
+
+	/**
+	 * @brief Player Icon Button状態更新
+	 */
+	void UpdatePlayerIcons(
+		GameObject* focusedPlayer);
+
+	/**
+	 * @brief 生成済みPlayer Iconを破棄扱いにする
+	 */
+	void ClearPlayerIcons();
+
+	//=================================================
 	// Player HUD
 	//=================================================
 
@@ -92,9 +156,6 @@ private:
 
 	void HidePlayerHUD();
 
-	/**
-	 * @brief HUD全体を明るく/暗くする
-	 */
 	void SetPlayerHUDDarkened(
 		bool darkened);
 
@@ -126,6 +187,20 @@ private:
 	bool
 		m_NextTurnVisible =
 		false;
+
+	//=================================================
+	// Player List
+	//=================================================
+
+	std::vector<FieldPlayerIconUI>
+		m_PlayerIcons;
+
+	/**
+	 * @brief このFrameでClickされたPlayer
+	 */
+	GameObject*
+		m_ClickedPlayer =
+		nullptr;
 
 	//=================================================
 	// Selected Player HUD

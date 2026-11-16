@@ -8,6 +8,9 @@
 #include "MeshBuffer.h"
 #include "DebugUI.h"
 
+#include "VisibilityTexture.h"
+#include "Texture.h"
+
 //=====================================================
 // Lifecycle
 //=====================================================
@@ -88,6 +91,11 @@ void TerrainRendererComponent::Finalize()
 		mesh.Clear();
 	}
 
+	m_ParchmentTexture.reset();
+
+	m_VisibilityTexture =
+		nullptr;
+
 	m_GroundMeshes.clear();
 	m_RiverBedMeshes.clear();
 	m_WaterMeshes.clear();
@@ -101,6 +109,22 @@ void TerrainRendererComponent::Finalize()
 void TerrainRendererComponent::Update(
 	uint64_t delta)
 {
+
+	const float deltaSeconds =
+		static_cast<float>(
+			delta) /
+		1000000.0f;
+
+	m_Time +=
+		deltaSeconds;
+
+	// 精度低下を避けるため適当に戻す
+	if (m_Time >
+		1000.0f)
+	{
+		m_Time =
+			0.0f;
+	}
 	//=================================================
 	// Terrain LOD
 	//=================================================
@@ -110,11 +134,6 @@ void TerrainRendererComponent::Update(
 	//=================================================
 	// Water Time
 	//=================================================
-
-	const float deltaSeconds =
-		static_cast<float>(
-			delta) /
-		1000000.0f;
 
 	m_WaterTime +=
 		deltaSeconds;
@@ -180,6 +199,18 @@ void TerrainRendererComponent::Draw()
 			continue;
 		}
 
+		ID3D11ShaderResourceView*
+			visibilitySRV =
+			nullptr;
+
+		if (m_VisibilityTexture &&
+			m_VisibilityTexture->IsValid())
+		{
+			visibilitySRV =
+				m_VisibilityTexture->
+				GetShaderResourceView();
+		}
+
 		Renderer::DrawTerrain(
 			*terrainMesh.Mesh,
 			worldMatrix,
@@ -187,7 +218,8 @@ void TerrainRendererComponent::Draw()
 			m_GrassTexture.get(),
 			m_DirtTexture.get(),
 			m_RockTexture.get(),
-			m_SandTexture.get());
+			m_SandTexture.get(),
+			visibilitySRV);
 	}
 
 	//=================================================
@@ -267,6 +299,112 @@ void TerrainRendererComponent::Draw()
 			m_WaterNormalMapB.get(),
 			m_WaterTime,
 			m_CameraPosition);
+	}
+
+	//=================================================
+	// Visibility Parchment Overlay
+	//=================================================
+	//
+	// 未探索Cellだけ羊皮紙を描画する。
+	//
+	// GroundとWaterの既存Meshを再利用することで
+	// Overlay専用Meshは生成しない。
+	//=================================================
+
+	if (m_VisibilityTexture &&
+		m_VisibilityTexture->IsValid() &&
+		m_ParchmentTexture &&
+		m_ParchmentTexture->IsValid())
+	{
+		ID3D11ShaderResourceView*
+			visibilitySRV =
+			m_VisibilityTexture->
+			GetShaderResourceView();
+
+		constexpr float OVERLAY_HEIGHT =
+			0.04f;
+
+		//=============================================
+		// Ground
+		//=============================================
+
+		for (size_t i = 0;
+			i < m_GroundMeshes.size() &&
+			i < m_Chunks.size();
+			++i)
+		{
+			const TerrainChunk& chunk =
+				m_Chunks[i];
+
+			if (!chunk.IsVisible())
+			{
+				continue;
+			}
+
+			const TerrainGroundChunkMesh&
+				terrainMesh =
+				m_GroundMeshes[i];
+
+			if (!terrainMesh.HasGpuMesh())
+			{
+				continue;
+			}
+
+			Renderer::
+				DrawVisibilityOverlay(
+					*terrainMesh.Mesh,
+					worldMatrix,
+					m_ParchmentTexture.get(),
+					visibilitySRV,
+					m_CellSize,
+					m_Time,
+					m_TerrainSettings.
+					ParchmentTiling,
+					OVERLAY_HEIGHT);
+		}
+
+		//=============================================
+		// Water
+		//=============================================
+		//
+		// Ground MeshにはWater Cellが含まれていないため
+		// Water Meshにも同じOverlay Shaderを適用する。
+		//=============================================
+
+		for (size_t i = 0;
+			i < m_WaterMeshes.size() &&
+			i < m_Chunks.size();
+			++i)
+		{
+			const TerrainChunk& chunk =
+				m_Chunks[i];
+
+			if (!chunk.IsVisible())
+			{
+				continue;
+			}
+
+			const TerrainWaterChunkMesh&
+				waterMesh =
+				m_WaterMeshes[i];
+
+			if (!waterMesh.HasGpuMesh())
+			{
+				continue;
+			}
+
+			Renderer::
+				DrawVisibilityOverlay(
+					*waterMesh.Mesh,
+					worldMatrix,
+					m_ParchmentTexture.get(),
+					visibilitySRV,
+					m_CellSize,
+					m_Time,
+					m_TerrainSettings.
+					ParchmentTiling,
+					OVERLAY_HEIGHT);
+		}
 	}
 
 	//=================================================

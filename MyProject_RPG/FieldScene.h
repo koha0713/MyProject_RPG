@@ -20,6 +20,9 @@
 #include "TerrainRendererComponent.h"
 #include "GrassRendererComponent.h"
 
+#include "VisibilityMap.h"
+#include "VisibilityTexture.h"
+
 /**
  * @brief Player‘€ìó‘Ô
  */
@@ -229,6 +232,11 @@ private:
 		PlayerActionType action,
 		const PlayerActionDefinition& definition) const;
 
+	/**
+	 * @brief Party‘S‘Ì‚ÌŒ»İ‹ŠE‚ğXV‚·‚é
+	 */
+	void UpdatePlayerVisibility();
+
 private:
 
 	//=================================================
@@ -392,6 +400,17 @@ private:
 	PlayerActionType
 		m_RadialAction =
 		PlayerActionType::Move;
+
+	/**
+	 * @brief Player‚©‚çŒ©‚½Field‚Ì’Tõó‘Ô
+	 */
+	VisibilityMap
+		m_VisibilityMap;
+	/**
+	 * @brief VisibilityMap‚ğTerrain Shader‚Ö“n‚·GPU Texture
+	 */
+	VisibilityTexture
+		m_VisibilityTexture;
 };
 
 // Scene“o˜^

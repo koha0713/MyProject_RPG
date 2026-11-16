@@ -14,6 +14,7 @@
 #include "TerrainRenderSettings.h"
 
 class Texture;
+class VisibilityTexture;
 
 /**
  * @brief Field Terrain描画Component
@@ -67,6 +68,11 @@ public:
 		float cellSize)
 	{
 		m_CellSize =
+			cellSize;
+
+		// VisibilityTextureからGrid座標を求める際にも
+		// 同じCellSizeを使用する。
+		m_TerrainSettings.CellSize =
 			cellSize;
 	}
 
@@ -142,6 +148,28 @@ public:
 		GetChunks() const
 	{
 		return m_Chunks;
+	}
+
+	/**
+	 * @brief VisibilityTexture設定
+	 *
+	 * FieldScene所有。
+	 */
+	void SetVisibilityTexture(
+		const VisibilityTexture* visibilityTexture)
+	{
+		m_VisibilityTexture =
+			visibilityTexture;
+	}
+
+	/**
+	 * @brief 未探索領域表示用羊皮紙Texture
+	 */
+	void SetParchmentTexture(
+		const std::shared_ptr<Texture>& texture)
+	{
+		m_ParchmentTexture =
+			texture;
 	}
 
 private:
@@ -271,6 +299,12 @@ private:
 		1.0f;
 
 	/**
+ * @brief Shaderへ送る時間
+ */
+	float m_Time =
+		0.0f;
+
+	/**
 	 * @brief Terrain Chunk
 	 */
 	std::vector<TerrainChunk>
@@ -376,5 +410,20 @@ private:
 
 	TerrainRenderSettings
 		m_TerrainSettings;
+
+	/**
+	 * @brief Player探索状態GPU Texture
+	 *
+	 * FieldScene所有のため非所有参照。
+	 */
+	const VisibilityTexture*
+		m_VisibilityTexture =
+		nullptr;
+
+	/**
+	 * @brief 未探索領域用羊皮紙Texture
+	 */
+	std::shared_ptr<Texture>
+		m_ParchmentTexture;
 
 };

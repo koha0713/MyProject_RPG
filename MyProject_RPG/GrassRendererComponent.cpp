@@ -3,6 +3,7 @@
 #include "Renderer.h"
 #include "MeshBuffer.h"
 #include "Texture.h"
+#include "VisibilityTexture.h"
 
 #include <algorithm>
 #include <cmath>
@@ -106,6 +107,13 @@ Draw()
 			grassChunk.InstanceBuffer.Get(),
 			drawCount,
 			m_GrassTexture.get(),
+
+			// Visibility Texture
+			m_VisibilityTexture->GetShaderResourceView(),
+
+			// World Å® Gridïœä∑óp
+			m_CellSize,
+
 			m_Time,
 			m_WindDirection,
 			m_WindStrength,

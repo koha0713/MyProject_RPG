@@ -135,7 +135,8 @@ public:
 		const Texture* grassTexture,
 		const Texture* dirtTexture,
 		const Texture* rockTexture,
-		const Texture* sandTexture);
+		const Texture* sandTexture,
+		ID3D11ShaderResourceView* visibilitySRV);
 
 	/**
 	 * @brief Grass専用描画
@@ -145,10 +146,31 @@ public:
 		ID3D11Buffer* instanceBuffer,
 		uint32_t instanceCount,
 		const Texture* grassTexture,
+		ID3D11ShaderResourceView* visibilitySRV,
+		float cellSize,
 		float time,
 		const Vector2& windDirection,
 		float windStrength,
 		float windSpeed);
+
+	/**
+	 * @brief 未探索Terrain用羊皮紙Overlay描画
+	 *
+	 * @details
+	 * Ground / Waterなどの既存Meshを再利用する。
+	 *
+	 * VisibilityState::UnexploredのPixelのみ描画し、
+	 * Explored / VisibleはPixel Shaderで破棄する。
+	 */
+	static void DrawVisibilityOverlay(
+		const MeshBuffer& mesh,
+		const Matrix4x4& worldMatrix,
+		const Texture* parchmentTexture,
+		ID3D11ShaderResourceView* visibilitySRV,
+		float cellSize,
+		float time,
+		float parchmentTiling,
+		float heightOffset);
 
 	//====================
 	// RenderState
@@ -371,6 +393,11 @@ private:
 	 */
 	static bool CreateShadowPipeline();
 
+	/**
+	 * @brief Visibility Overlay Pipeline生成
+	 */
+	static bool CreateVisibilityOverlayPipeline();
+
 private:
 
 	//====================
@@ -505,6 +532,31 @@ private:
 
 	static Microsoft::WRL::ComPtr<ID3D11Buffer>
 		m_GrassConstantBuffer;
+
+	//=====================================================
+	// Visibility Overlay
+	//=====================================================
+
+	static ComPtr<ID3D11VertexShader>
+		m_VisibilityOverlayVertexShader;
+
+	static ComPtr<ID3D11PixelShader>
+		m_VisibilityOverlayPixelShader;
+
+	static ComPtr<ID3D11InputLayout>
+		m_VisibilityOverlayInputLayout;
+
+	static ComPtr<ID3D11Buffer>
+		m_VisibilityOverlayConstantBuffer;
+
+	/**
+	 * @brief Fog of War表示用Sampler
+	 *
+	 * VisibilityTextureを線形補間し、
+	 * Grid境界を視覚的に滑らかにする。
+	 */
+	static ComPtr<ID3D11SamplerState>
+		m_VisibilitySampler;
 
 	//====================
 	// Lighting

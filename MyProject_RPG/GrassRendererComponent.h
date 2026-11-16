@@ -10,6 +10,8 @@
 
 class Texture;
 class MeshBuffer;
+class VisibilityMap;
+class VisibilityTexture;
 
 /**
  * @brief 草の生成・描画Component
@@ -88,6 +90,25 @@ public:
 	 */
 	float GetGrassLodRatio(
 		TerrainChunkLOD lod) const;
+
+	/**
+	 * @brief Player Visibility設定
+	 *
+	 * FieldScene所有のため非所有参照。
+	 */
+	void SetVisibilityMap(
+		const VisibilityMap* visibilityMap)
+	{
+		m_VisibilityMap =
+			visibilityMap;
+	}
+
+	void SetVisibilityTexture(
+		const VisibilityTexture* texture)
+	{
+		m_VisibilityTexture =
+			texture;
+	}
 
 private:
 
@@ -196,5 +217,18 @@ private:
 	 */
 	const std::vector<TerrainChunk>*
 		m_TerrainChunks =
+		nullptr;
+
+	/**
+	 * @brief Playerから見た探索状態
+	 *
+	 * GrassはVisible Cellのみ描画する。
+	 */
+	const VisibilityMap*
+		m_VisibilityMap =
+		nullptr;
+
+	const VisibilityTexture*
+		m_VisibilityTexture =
 		nullptr;
 };

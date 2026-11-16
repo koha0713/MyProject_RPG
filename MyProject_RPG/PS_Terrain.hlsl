@@ -13,6 +13,9 @@ Texture2D RockTexture :
 Texture2D SandTexture :
 	register(t3);
 
+Texture2D VisibilityTexture :
+	register(t4);
+
 SamplerState TerrainSampler :
 	register(s0);
 
@@ -95,6 +98,218 @@ float HashNoise(
     return frac(value);
 }
 
+/**
+ * @brief World座標からGridのVisibility値を取得
+ */
+float GetVisibility(
+	float3 worldPosition)
+{
+	//=============================================
+	// Cell Size
+	//=============================================
+
+    const float cellSize =
+		max(
+			TerrainParameters.y,
+			0.0001f);
+
+	//=============================================
+	// World → Grid
+	//=============================================
+	//
+	// Grid中心:
+	//
+	// grid 0 → world 0
+	// grid 1 → world cellSize
+	//
+	// Cell境界が±0.5なので、
+	// +0.5してfloorする。
+	//=============================================
+
+    const int gridX =
+		(int) floor(
+			worldPosition.x /
+				cellSize +
+			0.5f);
+
+    const int gridY =
+		(int) floor(
+			worldPosition.z /
+				cellSize +
+			0.5f);
+
+	//=============================================
+	// Texture Size
+	//=============================================
+
+    uint width;
+    uint height;
+
+    VisibilityTexture.
+		GetDimensions(
+			width,
+			height);
+
+	// Map外は未探索
+    if (gridX < 0 ||
+		gridY < 0 ||
+		gridX >= (int) width ||
+		gridY >= (int) height)
+    {
+        return 0.0f;
+    }
+
+    return VisibilityTexture.
+		Load(
+			int3(
+				gridX,
+				gridY,
+				0)).
+		r;
+}
+
+//=====================================================
+// Smooth Visibility
+//=====================================================
+//
+// VisibilityTextureの4つのTexelを手動で線形補間する。
+// SamplerStateを追加しないため、C++側の変更は不要。
+//
+// Grid中心:
+//   Grid(0, 0) = World(0, 0)
+//   Grid(1, 0) = World(CellSize, 0)
+//
+// VisibilityTexture:
+//   Unexplored = 0.0
+//   Explored   ≒ 0.5
+//   Visible    = 1.0
+//=====================================================
+
+float GetSmoothVisibility(
+	float3 worldPosition)
+{
+    const float cellSize =
+		max(
+			TerrainParameters.y,
+			0.0001f);
+
+	//=============================================
+	// Texture Size
+	//=============================================
+
+    uint width;
+    uint height;
+
+    VisibilityTexture.GetDimensions(
+		width,
+		height);
+
+	//=============================================
+	// World → Grid Space
+	//=============================================
+
+    const float2 gridPosition =
+		float2(
+			worldPosition.x,
+			worldPosition.z) /
+		cellSize;
+
+	// 現在位置を囲んでいる左上側のGrid
+    const int2 baseGrid =
+		int2(
+			floor(
+				gridPosition));
+
+	// Grid内での補間率
+    const float2 fraction =
+		frac(
+			gridPosition);
+
+	//=============================================
+	// Grid Clamp
+	//=============================================
+
+    const int2 maxGrid =
+		int2(
+			(int) width - 1,
+			(int) height - 1);
+
+    const int2 p00 =
+		clamp(
+			baseGrid,
+			int2(0, 0),
+			maxGrid);
+
+    const int2 p10 =
+		clamp(
+			baseGrid +
+			int2(1, 0),
+			int2(0, 0),
+			maxGrid);
+
+    const int2 p01 =
+		clamp(
+			baseGrid +
+			int2(0, 1),
+			int2(0, 0),
+			maxGrid);
+
+    const int2 p11 =
+		clamp(
+			baseGrid +
+			int2(1, 1),
+			int2(0, 0),
+			maxGrid);
+
+	//=============================================
+	// 4 Texel Load
+	//=============================================
+
+    const float v00 =
+		VisibilityTexture.Load(
+			int3(
+				p00,
+				0)).r;
+
+    const float v10 =
+		VisibilityTexture.Load(
+			int3(
+				p10,
+				0)).r;
+
+    const float v01 =
+		VisibilityTexture.Load(
+			int3(
+				p01,
+				0)).r;
+
+    const float v11 =
+		VisibilityTexture.Load(
+			int3(
+				p11,
+				0)).r;
+
+	//=============================================
+	// Bilinear Interpolation
+	//=============================================
+
+    const float top =
+		lerp(
+			v00,
+			v10,
+			fraction.x);
+
+    const float bottom =
+		lerp(
+			v01,
+			v11,
+			fraction.x);
+
+    return lerp(
+		top,
+		bottom,
+		fraction.y);
+}
 
 //=====================================================
 // Main
@@ -378,17 +593,75 @@ float4 main(
 		AmbientLightColor.rgb +
 		directional * shadow;
 
-	//=================================================
-	// Final
-	//=================================================
+//=====================================================
+// Final Terrain Color
+//=====================================================
 
-    const float3 finalColor =
-		terrainColor.rgb *
-		TerrainColor.rgb *
-		lighting;
+    float3 finalColor =
+	terrainColor.rgb *
+	TerrainColor.rgb *
+	lighting;
+
+//=====================================================
+// Smooth Visibility
+//=====================================================
+
+    const float visibility =
+	GetSmoothVisibility(
+		input.WorldPosition);
+
+//=====================================================
+// Visible Blend
+//=====================================================
+//
+// Explored ≒ 0.5
+// Visible  = 1.0
+//
+// 0.5 → 1.0の範囲を滑らかに
+// 「暗い探索済みTerrain」→「現在見えているTerrain」
+// へBlendする。
+//=====================================================
+
+    const float visibleBlend =
+	smoothstep(
+		0.50f,
+		0.90f,
+		visibility);
+
+//=====================================================
+// Brightness
+//=====================================================
+//
+// visibleBlend = 0
+// → ExploredBrightness
+//
+// visibleBlend = 1
+// → 通常の明るさ
+//=====================================================
+
+    const float visibilityBrightness =
+	lerp(
+		TerrainParameters.z,
+		1.0f,
+		visibleBlend);
+
+    finalColor *=
+	visibilityBrightness;
 
     return float4(
-		saturate(
-			finalColor),
-		1.0f);
+	saturate(
+		finalColor),
+	1.0f);
+
+//=====================================================
+// Visible
+//=====================================================
+//
+// Visibleの場合は通常の明るさ。
+//=====================================================
+
+    return float4(
+	saturate(
+		finalColor),
+	1.0f);
 }

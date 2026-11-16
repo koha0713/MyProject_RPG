@@ -432,6 +432,12 @@
     <ClInclude Include="VisibilityState.h">
       <Filter>ソース ファイル\System\Map\Visibility</Filter>
     </ClInclude>
+    <ClInclude Include="VisibilityMap.h">
+      <Filter>ソース ファイル\System\Map\Visibility</Filter>
+    </ClInclude>
+    <ClInclude Include="VisibilityTexture.h">
+      <Filter>ソース ファイル\System\Map\Visibility</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -635,6 +641,12 @@
     <ClCompile Include="GrassRendererComponent.cpp">
       <Filter>ソース ファイル\Component\Map</Filter>
     </ClCompile>
+    <ClCompile Include="VisibilityMap.cpp">
+      <Filter>ソース ファイル\System\Map\Visibility</Filter>
+    </ClCompile>
+    <ClCompile Include="VisibilityTexture.cpp">
+      <Filter>ソース ファイル\System\Map\Visibility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="VS_Model.hlsl">
@@ -689,6 +701,12 @@
       <Filter>リソース ファイル\VS</Filter>
     </FxCompile>
     <FxCompile Include="PS_ShadowGrass.hlsl">
+      <Filter>リソース ファイル\PS</Filter>
+    </FxCompile>
+    <FxCompile Include="VS_VisibilityOverlay.hlsl">
+      <Filter>リソース ファイル\VS</Filter>
+    </FxCompile>
+    <FxCompile Include="PS_VisibilityOverlay.hlsl">
       <Filter>リソース ファイル\PS</Filter>
     </FxCompile>
   </ItemGroup>

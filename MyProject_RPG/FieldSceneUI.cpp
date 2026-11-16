@@ -61,7 +61,6 @@ namespace
 //=====================================================
 // Initialize
 //=====================================================
-
 void FieldSceneUI::Initialize(
 	GameObjectManager& manager)
 {
@@ -76,6 +75,9 @@ void FieldSceneUI::Initialize(
 		false);
 
 	HidePlayerHUD();
+
+	m_ClickedPlayer =
+		nullptr;
 }
 
 //=====================================================
@@ -84,6 +86,10 @@ void FieldSceneUI::Initialize(
 
 void FieldSceneUI::Finalize()
 {
+	m_PlayerIcons.clear();
+
+	m_ClickedPlayer =
+		nullptr;
 	m_NextTurnButton =
 		nullptr;
 
@@ -490,6 +496,121 @@ void FieldSceneUI::CreatePlayerHUD()
 			"PlayerHUDMPText");
 }
 
+void FieldSceneUI::CreatePlayerIcons()
+{
+	if (!m_Manager)
+	{
+		return;
+	}
+
+	//=================================================
+	// Layout
+	//=================================================
+	//
+	// 現在1280x720前提のUI配置。
+	//
+	// 左下から上方向へ並べる。
+	//=================================================
+
+	constexpr float ICON_X =
+		20.0f;
+
+	constexpr float ICON_START_Y =
+		630.0f;
+
+	constexpr float ICON_SIZE =
+		64.0f;
+
+	constexpr float ICON_INTERVAL =
+		72.0f;
+
+	for (size_t i = 0;
+		i < m_PlayerIcons.size();
+		++i)
+	{
+		FieldPlayerIconUI& iconUI =
+			m_PlayerIcons[i];
+
+		if (!iconUI.Player)
+		{
+			continue;
+		}
+
+		//=============================================
+		// Object
+		//=============================================
+
+		GameObject* button =
+			CreateImage(
+				"FieldPlayerIcon");
+
+		if (!button)
+		{
+			continue;
+		}
+
+		iconUI.Button =
+			button;
+
+		//=============================================
+		// Rect
+		//=============================================
+
+		auto* rect =
+			button->
+			GetComponent<
+			UIRectComponent>();
+
+		if (rect)
+		{
+			const float y =
+				ICON_START_Y -
+				static_cast<float>(i) *
+				ICON_INTERVAL;
+
+			rect->SetPosition(
+				ICON_X,
+				y);
+
+			rect->SetSize(
+				ICON_SIZE,
+				ICON_SIZE);
+		}
+
+		//=============================================
+		// Image
+		//=============================================
+
+		auto* image =
+			button->
+			GetComponent<
+			UIImageComponent>();
+
+		if (image)
+		{
+			// 現在はWarriorのみ。
+			// 将来CharacterData等からIconPathを取得する。
+			image->SetTexture(
+				"Assets/Textures/Field/WarriorIcon.png");
+
+			image->SetColor(
+				Color(
+					1.0f,
+					1.0f,
+					1.0f,
+					1.0f));
+		}
+
+		//=============================================
+		// Button
+		//=============================================
+
+		button->
+			AddComponent<
+			UIButtonComponent>();
+	}
+}
+
 //=====================================================
 // Create Image
 //=====================================================
@@ -577,11 +698,32 @@ GameObject* FieldSceneUI::CreateText(
 //=====================================================
 // Update
 //=====================================================
-
 void FieldSceneUI::Update(
 	GameObject* focusedPlayer)
 {
+	//=================================================
+	// Reset Frame Event
+	//=================================================
+
+	m_ClickedPlayer =
+		nullptr;
+
+	//=================================================
+	// Next Turn
+	//=================================================
+
 	UpdateNextTurnVisual();
+
+	//=================================================
+	// Player List
+	//=================================================
+
+	UpdatePlayerIcons(
+		focusedPlayer);
+
+	//=================================================
+	// Detail HUD
+	//=================================================
 
 	if (!focusedPlayer)
 	{
@@ -592,6 +734,55 @@ void FieldSceneUI::Update(
 
 	UpdatePlayerHUD(
 		focusedPlayer);
+}
+
+void FieldSceneUI::SetPlayers(
+	const std::vector<GameObject*>& players)
+{
+	if (!m_Manager)
+	{
+		return;
+	}
+
+	//=================================================
+	// Old Icons
+	//=================================================
+	//
+	// 現段階ではField中にParty構成が変わらない前提。
+	// SetPlayers()は基本的に初期化時1回だけ呼ぶ。
+	//=================================================
+
+	ClearPlayerIcons();
+
+	//=================================================
+	// Player References
+	//=================================================
+
+	m_PlayerIcons.reserve(
+		players.size());
+
+	for (GameObject* player :
+		players)
+	{
+		if (!player)
+		{
+			continue;
+		}
+
+		FieldPlayerIconUI iconUI{};
+
+		iconUI.Player =
+			player;
+
+		m_PlayerIcons.push_back(
+			iconUI);
+	}
+
+	//=================================================
+	// UI Create
+	//=================================================
+
+	CreatePlayerIcons();
 }
 
 //=====================================================
@@ -746,6 +937,95 @@ void FieldSceneUI::UpdateNextTurnVisual()
 	default:
 		break;
 	}
+}
+
+void FieldSceneUI::UpdatePlayerIcons(
+	GameObject* focusedPlayer)
+{
+	for (FieldPlayerIconUI& iconUI :
+		m_PlayerIcons)
+	{
+		if (!iconUI.Player ||
+			!iconUI.Button)
+		{
+			continue;
+		}
+
+		auto* button =
+			iconUI.Button->
+			GetComponent<
+			UIButtonComponent>();
+
+		auto* image =
+			iconUI.Button->
+			GetComponent<
+			UIImageComponent>();
+
+		if (!button ||
+			!image)
+		{
+			continue;
+		}
+
+		//=============================================
+		// Click
+		//=============================================
+
+		if (button->IsClicked())
+		{
+			m_ClickedPlayer =
+				iconUI.Player;
+		}
+
+		//=============================================
+		// Selected Visual
+		//=============================================
+		//
+		// HUD表示対象Playerだけ少し明るくする。
+		//=================================================
+
+		if (iconUI.Player ==
+			focusedPlayer)
+		{
+			image->SetColor(
+				Color(
+					1.0f,
+					1.0f,
+					1.0f,
+					1.0f));
+		}
+		else
+		{
+			image->SetColor(
+				Color(
+					0.65f,
+					0.65f,
+					0.65f,
+					1.0f));
+		}
+	}
+}
+
+void FieldSceneUI::ClearPlayerIcons()
+{
+	//=================================================
+	// NOTE
+	//=================================================
+	//
+	// GameObject本体はGameObjectManager所有。
+	//
+	// 現段階ではSetPlayers()をField初期化時に
+	// 1度だけ呼ぶ前提なので、参照だけ破棄する。
+	//
+	// Party再編成をField中に行う場合は、
+	// GameObjectManager側のDestroy APIを使って
+	// UI Object自体も破棄する必要がある。
+	//=================================================
+
+	m_PlayerIcons.clear();
+
+	m_ClickedPlayer =
+		nullptr;
 }
 
 //=====================================================

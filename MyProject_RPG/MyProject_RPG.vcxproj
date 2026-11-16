@@ -240,7 +240,9 @@
     <ClInclude Include="UIFontComponent.h" />
     <ClInclude Include="UIImageComponent.h" />
     <ClInclude Include="UIRectComponent.h" />
+    <ClInclude Include="VisibilityMap.h" />
     <ClInclude Include="VisibilityState.h" />
+    <ClInclude Include="VisibilityTexture.h" />
     <ClInclude Include="WarriorClassComponent.h" />
     <ClInclude Include="WaterRenderData.h" />
     <ClInclude Include="WaterRenderSettings.h" />
@@ -314,6 +316,8 @@
     <ClCompile Include="UIButtonComponent.cpp" />
     <ClCompile Include="UIFontComponent.cpp" />
     <ClCompile Include="UIImageComponent.cpp" />
+    <ClCompile Include="VisibilityMap.cpp" />
+    <ClCompile Include="VisibilityTexture.cpp" />
     <ClCompile Include="WavLoader.cpp" />
     <ClCompile Include="Window.cpp" />
     <ClCompile Include="DebugUI.cpp" />
@@ -371,6 +375,13 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="PS_VisibilityOverlay.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="PS_Water.hlsl">
@@ -446,6 +457,13 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="VS_VisibilityOverlay.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="VS_Water.hlsl">

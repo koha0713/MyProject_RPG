@@ -18,6 +18,7 @@
 #include "WaterRenderData.h"
 #include "GrassRenderData.h"
 #include "TerrainVertex.h"
+#include "VisibilityTexture.h"
 
  //=====================================================
  // 内部定義
@@ -202,6 +203,8 @@ namespace
 
 		// xy = WindDirection
 		Vector4 WindParameters;
+
+		Vector4 VisibilityParameters;
 	};
 
 	static_assert(
@@ -295,6 +298,36 @@ namespace
 	static_assert(
 		sizeof(ShadowReceiveConstantBuffer) % 16 == 0,
 		"ShadowReceiveConstantBuffer must be 16-byte aligned.");
+
+	/**
+	 * @brief 未探索領域Overlay用ConstantBuffer
+	 */
+	struct VisibilityOverlayConstantBuffer
+	{
+		/**
+		 * @brief Local → World
+		 */
+		Matrix4x4 World;
+
+		/**
+		 * @brief World → View → Projection
+		 */
+		Matrix4x4 ViewProjection;
+
+		/**
+		 * x = CellSize
+		 * y = ParchmentTiling
+		 * z = HeightOffset
+		 * w = unused
+		 */
+		Vector4 Parameters;
+	};
+
+	static_assert(
+		sizeof(
+			VisibilityOverlayConstantBuffer) %
+		16 == 0,
+		"VisibilityOverlayConstantBuffer must be 16-byte aligned.");
 
 	/**
 	 * @brief HLSLファイルをコンパイル
@@ -673,6 +706,25 @@ Matrix4x4(
 	0.0f, 0.0f, 0.0f, 1.0f);
 
 //=====================================================
+// Visibility Overlay
+//=====================================================
+
+ComPtr<ID3D11VertexShader>
+Renderer::m_VisibilityOverlayVertexShader;
+
+ComPtr<ID3D11PixelShader>
+Renderer::m_VisibilityOverlayPixelShader;
+
+ComPtr<ID3D11InputLayout>
+Renderer::m_VisibilityOverlayInputLayout;
+
+ComPtr<ID3D11Buffer>
+Renderer::m_VisibilityOverlayConstantBuffer;
+
+ComPtr<ID3D11SamplerState>
+Renderer::m_VisibilitySampler;
+
+//=====================================================
 // Initialize
 //=====================================================
 
@@ -820,6 +872,19 @@ bool Renderer::Init()
 		return false;
 	}
 
+	//=====================================================
+	// Visibility Overlay Pipeline
+	//=====================================================
+
+	if (!CreateVisibilityOverlayPipeline())
+	{
+		OutputDebugStringA(
+			"[Renderer::Init] "
+			"CreateVisibilityOverlayPipeline FAILED.\n");
+
+		return false;
+	}
+
 	//====================
 	// 初期State
 	//====================
@@ -895,6 +960,19 @@ void Renderer::Dispose()
 	m_ShadowMapDSV.Reset();
 	m_ShadowMapTexture.Reset();
 
+	//=====================================================
+	// Visibility Overlay
+	//=====================================================
+
+	m_VisibilityOverlayConstantBuffer.Reset();
+
+	m_VisibilityOverlayInputLayout.Reset();
+
+	m_VisibilityOverlayPixelShader.Reset();
+
+	m_VisibilityOverlayVertexShader.Reset();
+	m_VisibilitySampler.Reset();
+
 	//====================
 	// Rasterizer
 	//====================
@@ -955,9 +1033,9 @@ void Renderer::Begin()
 	// 背景色
 	const float clearColor[4] =
 	{
-		0.10f,
-		0.18f,
-		0.25f,
+		0.00f,
+		0.00f,
+		0.00f,
 		1.0f
 	};
 
@@ -2935,6 +3013,220 @@ bool Renderer::CreateShadowPipeline()
 	return SUCCEEDED(hr);
 }
 
+bool Renderer::
+CreateVisibilityOverlayPipeline()
+{
+	if (!m_Device)
+	{
+		return false;
+	}
+
+	//=================================================
+	// Shader Compile
+	//=================================================
+
+	ComPtr<ID3DBlob>
+		vertexShaderBlob;
+
+	ComPtr<ID3DBlob>
+		pixelShaderBlob;
+
+	if (!CompileShader(
+		L"VS_VisibilityOverlay.hlsl",
+		"main",
+		"vs_5_0",
+		vertexShaderBlob))
+	{
+		return false;
+	}
+
+	if (!CompileShader(
+		L"PS_VisibilityOverlay.hlsl",
+		"main",
+		"ps_5_0",
+		pixelShaderBlob))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Vertex Shader
+	//=================================================
+
+	HRESULT hr =
+		m_Device->
+		CreateVertexShader(
+			vertexShaderBlob->
+			GetBufferPointer(),
+
+			vertexShaderBlob->
+			GetBufferSize(),
+
+			nullptr,
+
+			m_VisibilityOverlayVertexShader.
+			GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Pixel Shader
+	//=================================================
+
+	hr =
+		m_Device->
+		CreatePixelShader(
+			pixelShaderBlob->
+			GetBufferPointer(),
+
+			pixelShaderBlob->
+			GetBufferSize(),
+
+			nullptr,
+
+			m_VisibilityOverlayPixelShader.
+			GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Input Layout
+	//=================================================
+	//
+	// Ground:
+	// TerrainVertexの先頭 = Position
+	//
+	// Water:
+	// WaterVertexの先頭 = Position
+	//
+	// そのためPOSITIONだけ読めば
+	// 同一Pipelineで両方描画できる。
+	//=================================================
+
+	const D3D11_INPUT_ELEMENT_DESC
+		inputLayout[] =
+	{
+		{
+			"POSITION",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			0,
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		}
+	};
+
+	hr =
+		m_Device->
+		CreateInputLayout(
+			inputLayout,
+
+			static_cast<UINT>(
+				std::size(
+					inputLayout)),
+
+			vertexShaderBlob->
+			GetBufferPointer(),
+
+			vertexShaderBlob->
+			GetBufferSize(),
+
+			m_VisibilityOverlayInputLayout.
+			GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Constant Buffer
+	//=================================================
+
+	D3D11_BUFFER_DESC
+		bufferDesc{};
+
+	bufferDesc.ByteWidth =
+		static_cast<UINT>(
+			sizeof(
+				VisibilityOverlayConstantBuffer));
+
+	bufferDesc.Usage =
+		D3D11_USAGE_DEFAULT;
+
+	bufferDesc.BindFlags =
+		D3D11_BIND_CONSTANT_BUFFER;
+
+	bufferDesc.CPUAccessFlags =
+		0;
+
+	hr =
+		m_Device->
+		CreateBuffer(
+			&bufferDesc,
+			nullptr,
+			m_VisibilityOverlayConstantBuffer.
+			GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Visibility Linear Sampler
+	//=================================================
+	//
+	// Gameplay上のVisibilityはGrid単位だが、
+	// 描画上は境界を滑らかに補間する。
+	//
+	// CLAMPにすることでMap端で反対側へ
+	// Visibilityが回り込まないようにする。
+	//=================================================
+
+	D3D11_SAMPLER_DESC
+		visibilitySamplerDesc{};
+
+	visibilitySamplerDesc.Filter =
+		D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+
+	visibilitySamplerDesc.AddressU =
+		D3D11_TEXTURE_ADDRESS_CLAMP;
+
+	visibilitySamplerDesc.AddressV =
+		D3D11_TEXTURE_ADDRESS_CLAMP;
+
+	visibilitySamplerDesc.AddressW =
+		D3D11_TEXTURE_ADDRESS_CLAMP;
+
+	visibilitySamplerDesc.MinLOD =
+		0.0f;
+
+	visibilitySamplerDesc.MaxLOD =
+		D3D11_FLOAT32_MAX;
+
+	hr =
+		m_Device->
+		CreateSamplerState(
+			&visibilitySamplerDesc,
+			m_VisibilitySampler.
+			GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	return true;
+}
+
 //=====================================================
 // Model描画
 //=====================================================
@@ -3494,7 +3786,8 @@ void Renderer::DrawTerrain(
 	const Texture* grassTexture,
 	const Texture* dirtTexture,
 	const Texture* rockTexture,
-	const Texture* sandTexture)
+	const Texture* sandTexture,
+	ID3D11ShaderResourceView* visibilitySRV)
 {
 	if (!mesh.IsValid())
 	{
@@ -3553,9 +3846,9 @@ void Renderer::DrawTerrain(
 	constantBuffer.TerrainParameters =
 		Vector4(
 			settings.Tiling,
-			0.0f,
-			0.0f,
-			0.0f);
+			settings.CellSize,
+			settings.ExploredBrightness,
+			settings.ParchmentTiling);
 
 	constantBuffer.TerrainColor =
 		settings.Color;
@@ -3627,24 +3920,32 @@ void Renderer::DrawTerrain(
 	// Terrain Textures
 	//=================================================
 
-	ID3D11ShaderResourceView* terrainSRVs[4] =
+	ID3D11ShaderResourceView* terrainSRVs[5] =
 	{
+		// t0
 		grassTexture->
 			GetShaderResourceView(),
 
+		// t1
 		dirtTexture->
 			GetShaderResourceView(),
 
+		// t2
 		rockTexture->
 			GetShaderResourceView(),
 
+		// t3
 		sandTexture->
-			GetShaderResourceView()
+			GetShaderResourceView(),
+
+		// t4
+		// VisibilityMapをGPUへ渡したTexture
+		visibilitySRV
 	};
 
 	context->PSSetShaderResources(
 		0,
-		4,
+		5,
 		terrainSRVs);
 
 	ID3D11SamplerState* sampler =
@@ -3669,11 +3970,9 @@ void Renderer::DrawTerrain(
 	// Unbind
 	//=================================================
 
-	ID3D11ShaderResourceView* nullSRV =
-		nullptr;
-
-	ID3D11ShaderResourceView* nullSRVs[4] =
+	ID3D11ShaderResourceView* nullSRVs[5] =
 	{
+		nullptr,
 		nullptr,
 		nullptr,
 		nullptr,
@@ -3682,7 +3981,7 @@ void Renderer::DrawTerrain(
 
 	context->PSSetShaderResources(
 		0,
-		4,
+		5,
 		nullSRVs);
 }
 
@@ -3692,6 +3991,8 @@ DrawGrassInstanced(
 	ID3D11Buffer* instanceBuffer,
 	uint32_t instanceCount,
 	const Texture* grassTexture,
+	ID3D11ShaderResourceView* visibilitySRV,
+	float cellSize,
 	float time,
 	const Vector2& windDirection,
 	float windStrength,
@@ -3701,7 +4002,8 @@ DrawGrassInstanced(
 		!instanceBuffer ||
 		instanceCount == 0 ||
 		!grassTexture ||
-		!grassTexture->IsValid())
+		!grassTexture->IsValid() ||
+		!visibilitySRV)
 	{
 		return;
 	}
@@ -3738,6 +4040,15 @@ DrawGrassInstanced(
 		Vector4(
 			windDirection.x,
 			windDirection.y,
+			0.0f,
+			0.0f);
+
+	// Visibility判定で
+	// World座標 → Grid座標へ変換するために使用
+	constantBuffer.VisibilityParameters =
+		Vector4(
+			cellSize,
+			0.0f,
 			0.0f,
 			0.0f);
 
@@ -3782,17 +4093,38 @@ DrawGrassInstanced(
 		constantBuffers);
 
 	//=================================================
-	// Grass Texture
+	// Grass Texture : t0
 	//=================================================
 
-	ID3D11ShaderResourceView* srv =
+	ID3D11ShaderResourceView* grassSRV =
 		grassTexture->
 		GetShaderResourceView();
 
 	context->PSSetShaderResources(
 		0,
 		1,
-		&srv);
+		&grassSRV);
+
+	//=================================================
+	// Visibility Texture : t4
+	//=================================================
+	//
+	// PS_Grass.hlsl:
+	//
+	// Texture2D VisibilityTexture :
+	//     register(t4);
+	//
+	// と対応する。
+	//=================================================
+
+	context->PSSetShaderResources(
+		4,
+		1,
+		&visibilitySRV);
+
+	//=================================================
+	// Sampler
+	//=================================================
 
 	ID3D11SamplerState* sampler =
 		m_ModelSamplerState.Get();
@@ -3836,14 +4168,22 @@ DrawGrassInstanced(
 		instanceStrides,
 		instanceOffsets);
 
+	//=================================================
+	// Render State
+	//=================================================
+
 	// 草は両面描画
 	SetCulling(
 		false);
 
-	// Alpha Blendは不要。
-	// Alpha Clipなので通常OpaqueとしてDepthへ書く。
+	// Alpha Clipなので
+	// Alpha Blendは使用しない
 	SetBlendState(
 		BlendState::None);
+
+	//=================================================
+	// Draw
+	//=================================================
 
 	context->DrawIndexedInstanced(
 		mesh.GetIndexCount(),
@@ -3852,19 +4192,227 @@ DrawGrassInstanced(
 		0,
 		0);
 
-	// 描画Stateを戻す
+	//=================================================
+	// State Reset
+	//=================================================
+
 	SetCulling(
 		true);
+
+	//=================================================
+	// SRV Unbind
+	//=================================================
 
 	ID3D11ShaderResourceView* nullSRV =
 		nullptr;
 
+	// t0 : Grass Texture
 	context->PSSetShaderResources(
 		0,
 		1,
 		&nullSRV);
+
+	// t4 : Visibility Texture
+	context->PSSetShaderResources(
+		4,
+		1,
+		&nullSRV);
 }
 
+
+void Renderer::
+DrawVisibilityOverlay(
+	const MeshBuffer& mesh,
+	const Matrix4x4& worldMatrix,
+	const Texture* parchmentTexture,
+	ID3D11ShaderResourceView* visibilitySRV,
+	float cellSize,
+	float time,
+	float parchmentTiling,
+	float heightOffset)
+{
+	//=================================================
+	// Validation
+	//=================================================
+
+	if (!mesh.IsValid() ||
+		!parchmentTexture ||
+		!parchmentTexture->IsValid() ||
+		!visibilitySRV)
+	{
+		return;
+	}
+
+	if (!m_VisibilityOverlayVertexShader ||
+		!m_VisibilityOverlayPixelShader ||
+		!m_VisibilityOverlayInputLayout ||
+		!m_VisibilityOverlayConstantBuffer)
+	{
+		return;
+	}
+
+	ID3D11DeviceContext* context =
+		GetDeviceContext();
+
+	if (!context)
+	{
+		return;
+	}
+
+	//=================================================
+	// Constant Buffer
+	//=================================================
+
+	VisibilityOverlayConstantBuffer
+		constantBuffer{};
+
+	const Matrix4x4 viewProjection =
+		m_ViewMatrix *
+		m_ProjectionMatrix;
+
+	constantBuffer.World =
+		worldMatrix.Transpose();
+
+	constantBuffer.ViewProjection =
+		viewProjection.Transpose();
+
+	constantBuffer.Parameters =
+		Vector4(
+			cellSize,
+			parchmentTiling,
+			heightOffset,
+			time);
+
+	context->
+		UpdateSubresource(
+			m_VisibilityOverlayConstantBuffer.Get(),
+			0,
+			nullptr,
+			&constantBuffer,
+			0,
+			0);
+
+	//=================================================
+	// Pipeline
+	//=================================================
+
+	context->
+		IASetInputLayout(
+			m_VisibilityOverlayInputLayout.Get());
+
+	context->
+		VSSetShader(
+			m_VisibilityOverlayVertexShader.Get(),
+			nullptr,
+			0);
+
+	context->
+		PSSetShader(
+			m_VisibilityOverlayPixelShader.Get(),
+			nullptr,
+			0);
+
+	ID3D11Buffer*
+		constantBuffers[] =
+	{
+		m_VisibilityOverlayConstantBuffer.Get()
+	};
+
+	context->
+		VSSetConstantBuffers(
+			0,
+			1,
+			constantBuffers);
+
+	context->
+		PSSetConstantBuffers(
+			0,
+			1,
+			constantBuffers);
+
+	//=================================================
+	// Textures
+	//=================================================
+
+	ID3D11ShaderResourceView*
+		srvs[2] =
+	{
+		// t0
+		parchmentTexture->
+			GetShaderResourceView(),
+
+		// t1
+		visibilitySRV
+	};
+
+	context->
+		PSSetShaderResources(
+			0,
+			2,
+			srvs);
+
+	//=================================================
+	// Samplers
+	//=================================================
+
+	ID3D11SamplerState*
+		samplers[2] =
+	{
+		// s0 : Parchment Texture
+		m_ModelSamplerState.Get(),
+
+		// s1 : Visibility Texture
+		m_VisibilitySampler.Get()
+	};
+
+	context->
+		PSSetSamplers(
+			0,
+			2,
+			samplers);
+
+	//=================================================
+	// Render State
+	//=================================================
+
+	SetDepthEnable(
+		true);
+
+	SetBlendState(
+		BlendState::Alpha);
+
+	SetCulling(
+		true);
+
+	//=================================================
+	// Draw
+	//=================================================
+
+	mesh.Bind(
+		context);
+
+	mesh.Draw(
+		context);
+	SetBlendState(
+		BlendState::None);
+
+	//=================================================
+	// Unbind
+	//=================================================
+
+	ID3D11ShaderResourceView*
+		nullSRVs[2] =
+	{
+		nullptr,
+		nullptr
+	};
+
+	context->
+		PSSetShaderResources(
+			0,
+			2,
+			nullSRVs);
+}
 
 //=====================================================
 // Depth

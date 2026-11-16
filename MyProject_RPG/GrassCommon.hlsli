@@ -14,6 +14,9 @@ cbuffer GrassConstantBuffer :
 
 	// xy = WindDirection
     float4 WindParameters;
+
+	// x = CellSize
+    float4 VisibilityParameters;
 };
 
 #endif

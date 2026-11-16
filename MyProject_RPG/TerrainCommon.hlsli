@@ -8,7 +8,10 @@ cbuffer TerrainConstantBuffer :
 
     float4x4 WorldViewProjection;
 
-	// x = Tiling
+	// x = Terrain Texture Tiling
+	// y = Cell Size
+	// z = Explored Brightness
+	// w = Parchment Tiling
     float4 TerrainParameters;
 
     float4 TerrainColor;
