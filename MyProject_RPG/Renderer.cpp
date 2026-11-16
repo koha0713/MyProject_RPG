@@ -35,6 +35,10 @@ namespace
 	struct ModelConstantBuffer
 	{
 		/**
+		 * @brief World Matrix
+		 */
+		Matrix4x4 World;
+		/**
 		 * @brief World * View * Projection
 		 */
 		Matrix4x4 WorldViewProjection;
@@ -254,6 +258,43 @@ namespace
 	static_assert(
 		sizeof(OutlineConstantBuffer) % 16 == 0,
 		"OutlineConstantBuffer must be 16-byte aligned.");
+
+	/**
+	 * @brief Shadow Map生成用ConstantBuffer
+	 */
+	struct ShadowCastConstantBuffer
+	{
+		Matrix4x4 LightWorldViewProjection;
+	};
+
+	static_assert(
+		sizeof(ShadowCastConstantBuffer) % 16 == 0,
+		"ShadowCastConstantBuffer must be 16-byte aligned.");
+
+
+	/**
+	 * @brief Shadowを受けるShader共通ConstantBuffer
+	 */
+	struct ShadowReceiveConstantBuffer
+	{
+		/**
+		 * World Position
+		 * → Light Clip Space
+		 */
+		Matrix4x4 LightViewProjection;
+
+		/**
+		 * x = Shadow Bias
+		 * y = Shadow Strength
+		 * z = Shadow Map Size
+		 * w = unused
+		 */
+		Vector4 ShadowParameters;
+	};
+
+	static_assert(
+		sizeof(ShadowReceiveConstantBuffer) % 16 == 0,
+		"ShadowReceiveConstantBuffer must be 16-byte aligned.");
 
 	/**
 	 * @brief HLSLファイルをコンパイル
@@ -555,6 +596,83 @@ Microsoft::WRL::ComPtr<ID3D11Buffer>
 Renderer::m_GrassConstantBuffer;
 
 //=====================================================
+// Shadow Map
+//=====================================================
+
+ComPtr<ID3D11Texture2D>
+Renderer::m_ShadowMapTexture;
+
+ComPtr<ID3D11DepthStencilView>
+Renderer::m_ShadowMapDSV;
+
+ComPtr<ID3D11ShaderResourceView>
+Renderer::m_ShadowMapSRV;
+
+ComPtr<ID3D11SamplerState>
+Renderer::m_ShadowSampler;
+
+
+//=====================================================
+// Shadow Shader
+//=====================================================
+
+ComPtr<ID3D11VertexShader>
+Renderer::m_ShadowStaticVertexShader;
+
+ComPtr<ID3D11InputLayout>
+Renderer::m_ShadowStaticInputLayout;
+
+ComPtr<ID3D11VertexShader>
+Renderer::m_ShadowSkinnedVertexShader;
+
+ComPtr<ID3D11InputLayout>
+Renderer::m_ShadowSkinnedInputLayout;
+
+ComPtr<ID3D11VertexShader>
+Renderer::m_ShadowGrassVertexShader;
+
+ComPtr<ID3D11PixelShader>
+Renderer::m_ShadowGrassPixelShader;
+
+ComPtr<ID3D11InputLayout>
+Renderer::m_ShadowGrassInputLayout;
+
+
+//=====================================================
+// Shadow ConstantBuffer
+//=====================================================
+
+ComPtr<ID3D11Buffer>
+Renderer::m_ShadowCastConstantBuffer;
+
+ComPtr<ID3D11Buffer>
+Renderer::m_ShadowReceiveConstantBuffer;
+
+
+//=====================================================
+// Shadow Rasterizer
+//=====================================================
+
+ComPtr<ID3D11RasterizerState>
+Renderer::m_ShadowRasterizerCull;
+
+ComPtr<ID3D11RasterizerState>
+Renderer::m_ShadowRasterizerNoCull;
+
+
+//=====================================================
+// Light Matrix
+//=====================================================
+
+Matrix4x4
+Renderer::m_LightViewProjectionMatrix =
+Matrix4x4(
+	1.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 1.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 1.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 1.0f);
+
+//=====================================================
 // Initialize
 //=====================================================
 
@@ -689,6 +807,19 @@ bool Renderer::Init()
 		return false;
 	}
 
+	//=====================================================
+	// Shadow Pipeline
+	//=====================================================
+
+	if (!CreateShadowPipeline())
+	{
+		OutputDebugStringA(
+			"[Renderer::Init] "
+			"CreateShadowPipeline FAILED.\n");
+
+		return false;
+	}
+
 	//====================
 	// 初期State
 	//====================
@@ -744,6 +875,25 @@ void Renderer::Dispose()
 	m_GrassInputLayout.Reset();
 	m_GrassPixelShader.Reset();
 	m_GrassVertexShader.Reset();
+
+	//=====================================================
+	// Shadow
+	//=====================================================
+	m_ShadowRasterizerNoCull.Reset();
+	m_ShadowRasterizerCull.Reset();
+	m_ShadowReceiveConstantBuffer.Reset();
+	m_ShadowCastConstantBuffer.Reset();
+	m_ShadowGrassInputLayout.Reset();
+	m_ShadowGrassPixelShader.Reset();
+	m_ShadowGrassVertexShader.Reset();
+	m_ShadowSkinnedInputLayout.Reset();
+	m_ShadowSkinnedVertexShader.Reset();
+	m_ShadowStaticInputLayout.Reset();
+	m_ShadowStaticVertexShader.Reset();
+	m_ShadowSampler.Reset();
+	m_ShadowMapSRV.Reset();
+	m_ShadowMapDSV.Reset();
+	m_ShadowMapTexture.Reset();
 
 	//====================
 	// Rasterizer
@@ -2228,6 +2378,563 @@ CreateGrassPipeline()
 		SUCCEEDED(hr);
 }
 
+bool Renderer::CreateShadowPipeline()
+{
+	if (!m_Device)
+	{
+		return false;
+	}
+
+	//=================================================
+	// Shadow Texture
+	//=================================================
+
+	D3D11_TEXTURE2D_DESC textureDesc{};
+
+	textureDesc.Width =
+		SHADOW_MAP_SIZE;
+
+	textureDesc.Height =
+		SHADOW_MAP_SIZE;
+
+	textureDesc.MipLevels =
+		1;
+
+	textureDesc.ArraySize =
+		1;
+
+	// DSV / SRVで別Formatとして扱う
+	textureDesc.Format =
+		DXGI_FORMAT_R32_TYPELESS;
+
+	textureDesc.SampleDesc.Count =
+		1;
+
+	textureDesc.SampleDesc.Quality =
+		0;
+
+	textureDesc.Usage =
+		D3D11_USAGE_DEFAULT;
+
+	textureDesc.BindFlags =
+		D3D11_BIND_DEPTH_STENCIL |
+		D3D11_BIND_SHADER_RESOURCE;
+
+	HRESULT hr =
+		m_Device->CreateTexture2D(
+			&textureDesc,
+			nullptr,
+			m_ShadowMapTexture.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// DSV
+	//=================================================
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+
+	dsvDesc.Format =
+		DXGI_FORMAT_D32_FLOAT;
+
+	dsvDesc.ViewDimension =
+		D3D11_DSV_DIMENSION_TEXTURE2D;
+
+	dsvDesc.Texture2D.MipSlice =
+		0;
+
+	hr =
+		m_Device->CreateDepthStencilView(
+			m_ShadowMapTexture.Get(),
+			&dsvDesc,
+			m_ShadowMapDSV.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// SRV
+	//=================================================
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+
+	srvDesc.Format =
+		DXGI_FORMAT_R32_FLOAT;
+
+	srvDesc.ViewDimension =
+		D3D11_SRV_DIMENSION_TEXTURE2D;
+
+	srvDesc.Texture2D.MostDetailedMip =
+		0;
+
+	srvDesc.Texture2D.MipLevels =
+		1;
+
+	hr =
+		m_Device->CreateShaderResourceView(
+			m_ShadowMapTexture.Get(),
+			&srvDesc,
+			m_ShadowMapSRV.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Comparison Sampler
+	//=================================================
+	D3D11_SAMPLER_DESC samplerDesc{};
+
+	samplerDesc.Filter =
+		D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+
+	samplerDesc.AddressU =
+		D3D11_TEXTURE_ADDRESS_BORDER;
+
+	samplerDesc.AddressV =
+		D3D11_TEXTURE_ADDRESS_BORDER;
+
+	samplerDesc.AddressW =
+		D3D11_TEXTURE_ADDRESS_BORDER;
+
+	// SamplerComparisonState用。
+	// Shadow Map上のDepthと比較する。
+	samplerDesc.ComparisonFunc =
+		D3D11_COMPARISON_LESS_EQUAL;
+
+	// Shadow Map外は「光が当たっている」として扱う
+	samplerDesc.BorderColor[0] =
+		1.0f;
+
+	samplerDesc.BorderColor[1] =
+		1.0f;
+
+	samplerDesc.BorderColor[2] =
+		1.0f;
+
+	samplerDesc.BorderColor[3] =
+		1.0f;
+
+	samplerDesc.MinLOD =
+		0.0f;
+
+	samplerDesc.MaxLOD =
+		D3D11_FLOAT32_MAX;
+
+	hr =
+		m_Device->CreateSamplerState(
+			&samplerDesc,
+			m_ShadowSampler.
+			ReleaseAndGetAddressOf());
+
+	if (FAILED(hr))
+	{
+		OutputDebugStringA(
+			"[Renderer] "
+			"Create Shadow Comparison Sampler failed.\n");
+
+		return false;
+	}
+
+	//=================================================
+	// Rasterizer
+	//=================================================
+
+	auto createShadowRasterizer =
+		[](D3D11_CULL_MODE cullMode,
+			ComPtr<ID3D11RasterizerState>& output)
+		-> bool
+		{
+			D3D11_RASTERIZER_DESC desc{};
+
+			desc.FillMode =
+				D3D11_FILL_SOLID;
+
+			desc.CullMode =
+				cullMode;
+
+			desc.FrontCounterClockwise =
+				FALSE;
+
+			desc.DepthClipEnable =
+				TRUE;
+
+			// Shadow Acne軽減
+			desc.DepthBias =
+				1000;
+
+			desc.SlopeScaledDepthBias =
+				1.5f;
+
+			desc.DepthBiasClamp =
+				0.0f;
+
+			return SUCCEEDED(
+				m_Device->CreateRasterizerState(
+					&desc,
+					output.GetAddressOf()));
+		};
+
+	if (!createShadowRasterizer(
+		D3D11_CULL_BACK,
+		m_ShadowRasterizerCull))
+	{
+		return false;
+	}
+
+	// Grassは両面
+	if (!createShadowRasterizer(
+		D3D11_CULL_NONE,
+		m_ShadowRasterizerNoCull))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Static Shadow Shader
+	//=================================================
+
+	ComPtr<ID3DBlob>
+		staticShaderBlob;
+
+	if (!CompileShader(
+		L"VS_ShadowStatic.hlsl",
+		"main",
+		"vs_5_0",
+		staticShaderBlob))
+	{
+		return false;
+	}
+
+	hr =
+		m_Device->CreateVertexShader(
+			staticShaderBlob->GetBufferPointer(),
+			staticShaderBlob->GetBufferSize(),
+			nullptr,
+			m_ShadowStaticVertexShader.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	// POSITIONは全対象Vertexの先頭に存在する
+	const D3D11_INPUT_ELEMENT_DESC
+		staticLayout[] =
+	{
+		{
+			"POSITION",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			0,
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		}
+	};
+
+	hr =
+		m_Device->CreateInputLayout(
+			staticLayout,
+			static_cast<UINT>(
+				std::size(staticLayout)),
+			staticShaderBlob->GetBufferPointer(),
+			staticShaderBlob->GetBufferSize(),
+			m_ShadowStaticInputLayout.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Skinned Shadow Shader
+	//=================================================
+
+	ComPtr<ID3DBlob>
+		skinnedShaderBlob;
+
+	if (!CompileShader(
+		L"VS_ShadowSkinned.hlsl",
+		"main",
+		"vs_5_0",
+		skinnedShaderBlob))
+	{
+		return false;
+	}
+
+	hr =
+		m_Device->CreateVertexShader(
+			skinnedShaderBlob->GetBufferPointer(),
+			skinnedShaderBlob->GetBufferSize(),
+			nullptr,
+			m_ShadowSkinnedVertexShader.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	const D3D11_INPUT_ELEMENT_DESC
+		skinnedLayout[] =
+	{
+		{
+			"POSITION",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					VertexData,
+					Position)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		{
+			"BLENDINDICES",
+			0,
+			DXGI_FORMAT_R32G32B32A32_SINT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					VertexData,
+					BoneIndex)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		{
+			"BLENDWEIGHT",
+			0,
+			DXGI_FORMAT_R32G32B32A32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					VertexData,
+					BoneWeight)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		}
+	};
+
+	hr =
+		m_Device->CreateInputLayout(
+			skinnedLayout,
+			static_cast<UINT>(
+				std::size(
+					skinnedLayout)),
+			skinnedShaderBlob->GetBufferPointer(),
+			skinnedShaderBlob->GetBufferSize(),
+			m_ShadowSkinnedInputLayout.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Grass Shadow Shader
+	//=================================================
+
+	ComPtr<ID3DBlob>
+		grassVSBlob;
+
+	ComPtr<ID3DBlob>
+		grassPSBlob;
+
+	if (!CompileShader(
+		L"VS_ShadowGrass.hlsl",
+		"main",
+		"vs_5_0",
+		grassVSBlob))
+	{
+		return false;
+	}
+
+	if (!CompileShader(
+		L"PS_ShadowGrass.hlsl",
+		"main",
+		"ps_5_0",
+		grassPSBlob))
+	{
+		return false;
+	}
+
+	hr =
+		m_Device->CreateVertexShader(
+			grassVSBlob->GetBufferPointer(),
+			grassVSBlob->GetBufferSize(),
+			nullptr,
+			m_ShadowGrassVertexShader.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	hr =
+		m_Device->CreatePixelShader(
+			grassPSBlob->GetBufferPointer(),
+			grassPSBlob->GetBufferSize(),
+			nullptr,
+			m_ShadowGrassPixelShader.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	// Grass通常描画と同じVertex構造
+	const D3D11_INPUT_ELEMENT_DESC
+		grassLayout[] =
+	{
+		{
+			"POSITION",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					GrassVertex,
+					Position)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		{
+			"TEXCOORD",
+			0,
+			DXGI_FORMAT_R32G32_FLOAT,
+			0,
+			static_cast<UINT>(
+				offsetof(
+					GrassVertex,
+					TexCoord)),
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+
+		{
+			"INSTANCEPOSITION",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			1,
+			static_cast<UINT>(
+				offsetof(
+					GrassInstanceData,
+					Position)),
+			D3D11_INPUT_PER_INSTANCE_DATA,
+			1
+		},
+
+		{
+			"INSTANCEROTATION",
+			0,
+			DXGI_FORMAT_R32_FLOAT,
+			1,
+			static_cast<UINT>(
+				offsetof(
+					GrassInstanceData,
+					Rotation)),
+			D3D11_INPUT_PER_INSTANCE_DATA,
+			1
+		},
+
+		{
+			"INSTANCESCALE",
+			0,
+			DXGI_FORMAT_R32_FLOAT,
+			1,
+			static_cast<UINT>(
+				offsetof(
+					GrassInstanceData,
+					Scale)),
+			D3D11_INPUT_PER_INSTANCE_DATA,
+			1
+		},
+
+		{
+			"INSTANCERANDOM",
+			0,
+			DXGI_FORMAT_R32_FLOAT,
+			1,
+			static_cast<UINT>(
+				offsetof(
+					GrassInstanceData,
+					Random)),
+			D3D11_INPUT_PER_INSTANCE_DATA,
+			1
+		}
+	};
+
+	hr =
+		m_Device->CreateInputLayout(
+			grassLayout,
+			static_cast<UINT>(
+				std::size(
+					grassLayout)),
+			grassVSBlob->GetBufferPointer(),
+			grassVSBlob->GetBufferSize(),
+			m_ShadowGrassInputLayout.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Shadow Cast ConstantBuffer
+	//=================================================
+
+	D3D11_BUFFER_DESC bufferDesc{};
+
+	bufferDesc.ByteWidth =
+		static_cast<UINT>(
+			sizeof(
+				ShadowCastConstantBuffer));
+
+	bufferDesc.Usage =
+		D3D11_USAGE_DEFAULT;
+
+	bufferDesc.BindFlags =
+		D3D11_BIND_CONSTANT_BUFFER;
+
+	hr =
+		m_Device->CreateBuffer(
+			&bufferDesc,
+			nullptr,
+			m_ShadowCastConstantBuffer.GetAddressOf());
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	//=================================================
+	// Shadow Receive ConstantBuffer
+	//=================================================
+
+	bufferDesc.ByteWidth =
+		static_cast<UINT>(
+			sizeof(
+				ShadowReceiveConstantBuffer));
+
+	hr =
+		m_Device->CreateBuffer(
+			&bufferDesc,
+			nullptr,
+			m_ShadowReceiveConstantBuffer.GetAddressOf());
+
+	return SUCCEEDED(hr);
+}
+
 //=====================================================
 // Model描画
 //=====================================================
@@ -2260,6 +2967,8 @@ void Renderer::DrawMesh(
 	ModelConstantBuffer
 		constantBuffer{};
 
+	constantBuffer.World =
+		worldMatrix.Transpose();
 	//=================================================
 	// World View Projection
 	//=================================================
@@ -3480,4 +4189,671 @@ void Renderer::DrawOutline(
 
 	mesh.Draw(
 		m_DeviceContext.Get());
+}
+
+void Renderer::BeginShadowPass(
+	const Vector3& focusPosition)
+{
+	if (!m_DeviceContext ||
+		!m_ShadowMapDSV)
+	{
+		return;
+	}
+
+	//=================================================
+	// Shadow SRV解除
+	//=================================================
+	//
+	// 前FrameでPS t7にBindされているShadowMapを
+	// DSVとして使用する前に解除する。
+	//=================================================
+
+	ID3D11ShaderResourceView*
+		nullSRV =
+		nullptr;
+
+	m_DeviceContext->
+		PSSetShaderResources(
+			7,
+			1,
+			&nullSRV);
+
+	//=================================================
+	// Directional Light Camera
+	//=================================================
+
+	Vector3 direction =
+		m_DirectionalLight.Direction;
+
+	const float directionLengthSq =
+		direction.x * direction.x +
+		direction.y * direction.y +
+		direction.z * direction.z;
+
+	if (directionLengthSq <=
+		0.000001f)
+	{
+		direction =
+			Vector3(
+				0.35f,
+				-1.0f,
+				0.30f);
+	}
+	else
+	{
+		direction.Normalize();
+	}
+
+	constexpr float LIGHT_DISTANCE =
+		50.0f;
+
+	const Vector3 lightPosition =
+		focusPosition -
+		direction *
+		LIGHT_DISTANCE;
+
+	// 通常はY-Up。
+	// Lightがほぼ垂直の場合のみZ-Upへ逃がす。
+	Vector3 up =
+		Vector3(
+			0.0f,
+			1.0f,
+			0.0f);
+
+	const float verticalDot =
+		std::abs(
+			direction.y);
+
+	if (verticalDot >
+		0.98f)
+	{
+		up =
+			Vector3(
+				0.0f,
+				0.0f,
+				1.0f);
+	}
+
+	const Matrix4x4 lightView =
+		Matrix4x4::CreateLookAt(
+			lightPosition,
+			focusPosition,
+			up);
+
+	//=================================================
+	// Directional LightなのでOrthographic
+	//=================================================
+
+	constexpr float SHADOW_AREA =
+		70.0f;
+
+	constexpr float SHADOW_NEAR =
+		1.0f;
+
+	constexpr float SHADOW_FAR =
+		120.0f;
+
+	const Matrix4x4 lightProjection =
+		Matrix4x4::CreateOrthographic(
+			SHADOW_AREA,
+			SHADOW_AREA,
+			SHADOW_NEAR,
+			SHADOW_FAR);
+
+	m_LightViewProjectionMatrix =
+		lightView *
+		lightProjection;
+
+	//=================================================
+	// Shadow Receive CB
+	//=================================================
+
+	ShadowReceiveConstantBuffer
+		receiveBuffer{};
+
+	receiveBuffer.LightViewProjection =
+		m_LightViewProjectionMatrix.
+		Transpose();
+
+	receiveBuffer.ShadowParameters =
+		Vector4(
+			0.0010f,	// Bias
+			0.60f,		// Shadow Strength
+			static_cast<float>(
+				SHADOW_MAP_SIZE),
+			0.0f);
+
+	m_DeviceContext->
+		UpdateSubresource(
+			m_ShadowReceiveConstantBuffer.Get(),
+			0,
+			nullptr,
+			&receiveBuffer,
+			0,
+			0);
+
+	//=================================================
+	// Shadow Viewport
+	//=================================================
+
+	D3D11_VIEWPORT viewport{};
+
+	viewport.TopLeftX =
+		0.0f;
+
+	viewport.TopLeftY =
+		0.0f;
+
+	viewport.Width =
+		static_cast<float>(
+			SHADOW_MAP_SIZE);
+
+	viewport.Height =
+		static_cast<float>(
+			SHADOW_MAP_SIZE);
+
+	viewport.MinDepth =
+		0.0f;
+
+	viewport.MaxDepth =
+		1.0f;
+
+	m_DeviceContext->
+		RSSetViewports(
+			1,
+			&viewport);
+
+	//=================================================
+	// Depth Only RenderTarget
+	//=================================================
+
+	m_DeviceContext->
+		OMSetRenderTargets(
+			0,
+			nullptr,
+			m_ShadowMapDSV.Get());
+
+	m_DeviceContext->
+		ClearDepthStencilView(
+			m_ShadowMapDSV.Get(),
+			D3D11_CLEAR_DEPTH,
+			1.0f,
+			0);
+
+	SetDepthEnable(
+		true);
+
+	SetBlendState(
+		BlendState::None);
+
+	m_DeviceContext->
+		RSSetState(
+			m_ShadowRasterizerCull.Get());
+}
+
+void Renderer::EndShadowPass()
+{
+	if (!m_DeviceContext)
+	{
+		return;
+	}
+
+	//=================================================
+	// Shadow DSV解除
+	//=================================================
+
+	m_DeviceContext->
+		OMSetRenderTargets(
+			0,
+			nullptr,
+			nullptr);
+
+	//=================================================
+	// Main RenderTarget復元
+	//=================================================
+
+	ID3D11RenderTargetView*
+		renderTargets[] =
+	{
+		m_RenderTargetView.Get()
+	};
+
+	m_DeviceContext->
+		OMSetRenderTargets(
+			1,
+			renderTargets,
+			m_DepthStencilView.Get());
+
+	//=================================================
+	// Main Viewport復元
+	//=================================================
+
+	CreateViewport();
+
+	//=================================================
+	// Render State復元
+	//=================================================
+
+	SetDepthEnable(
+		true);
+
+	SetBlendState(
+		BlendState::None);
+
+	SetCulling(
+		true);
+
+	SetFillMode(
+		D3D11_FILL_SOLID);
+
+	//=================================================
+	// Shadow Receive Resource Bind
+	//=================================================
+
+	ID3D11Buffer*
+		shadowReceiveBuffer =
+		m_ShadowReceiveConstantBuffer.Get();
+
+	// ShadowはPS側で評価する
+	m_DeviceContext->
+		PSSetConstantBuffers(
+			2,
+			1,
+			&shadowReceiveBuffer);
+
+	ID3D11ShaderResourceView*
+		shadowSRV =
+		m_ShadowMapSRV.Get();
+
+	m_DeviceContext->
+		PSSetShaderResources(
+			7,
+			1,
+			&shadowSRV);
+
+	ID3D11SamplerState*
+		shadowSampler =
+		m_ShadowSampler.Get();
+
+	m_DeviceContext->
+		PSSetSamplers(
+			7,
+			1,
+			&shadowSampler);
+}
+
+void Renderer::DrawShadowStatic(
+	const MeshBuffer& mesh,
+	const Matrix4x4& worldMatrix)
+{
+	if (!m_DeviceContext ||
+		!mesh.IsValid() ||
+		!m_ShadowStaticVertexShader ||
+		!m_ShadowStaticInputLayout)
+	{
+		return;
+	}
+
+	//=================================================
+	// Light WVP
+	//=================================================
+
+	ShadowCastConstantBuffer
+		constantBuffer{};
+
+	constantBuffer.
+		LightWorldViewProjection =
+		(
+			worldMatrix *
+			m_LightViewProjectionMatrix
+			).Transpose();
+
+	m_DeviceContext->
+		UpdateSubresource(
+			m_ShadowCastConstantBuffer.Get(),
+			0,
+			nullptr,
+			&constantBuffer,
+			0,
+			0);
+
+	//=================================================
+	// Pipeline
+	//=================================================
+
+	m_DeviceContext->
+		IASetInputLayout(
+			m_ShadowStaticInputLayout.Get());
+
+	m_DeviceContext->
+		VSSetShader(
+			m_ShadowStaticVertexShader.Get(),
+			nullptr,
+			0);
+
+	// Depth Only
+	m_DeviceContext->
+		PSSetShader(
+			nullptr,
+			nullptr,
+			0);
+
+	ID3D11Buffer*
+		constantBuffers[] =
+	{
+		m_ShadowCastConstantBuffer.Get()
+	};
+
+	m_DeviceContext->
+		VSSetConstantBuffers(
+			0,
+			1,
+			constantBuffers);
+
+	m_DeviceContext->
+		RSSetState(
+			m_ShadowRasterizerCull.Get());
+
+	mesh.Bind(
+		m_DeviceContext.Get());
+
+	mesh.Draw(
+		m_DeviceContext.Get());
+}
+
+void Renderer::DrawShadowSkinned(
+	const MeshBuffer& mesh,
+	const Matrix4x4& worldMatrix,
+	std::span<const Matrix4x4> boneMatrices)
+{
+	if (!m_DeviceContext ||
+		!mesh.IsValid())
+	{
+		return;
+	}
+
+	if (boneMatrices.empty() ||
+		boneMatrices.size() >
+		MAX_BONES)
+	{
+		return;
+	}
+
+	//=================================================
+	// Shadow Matrix
+	//=================================================
+
+	ShadowCastConstantBuffer
+		shadowBuffer{};
+
+	shadowBuffer.
+		LightWorldViewProjection =
+		(
+			worldMatrix *
+			m_LightViewProjectionMatrix
+			).Transpose();
+
+	m_DeviceContext->
+		UpdateSubresource(
+			m_ShadowCastConstantBuffer.Get(),
+			0,
+			nullptr,
+			&shadowBuffer,
+			0,
+			0);
+
+	//=================================================
+	// Bone
+	//=================================================
+
+	BoneConstantBuffer
+		boneBuffer{};
+
+	boneBuffer.HasSkinning =
+		1;
+
+	for (size_t i = 0;
+		i < boneMatrices.size();
+		++i)
+	{
+		boneBuffer.BoneMatrices[i] =
+			boneMatrices[i].
+			Transpose();
+	}
+
+	m_DeviceContext->
+		UpdateSubresource(
+			m_BoneConstantBuffer.Get(),
+			0,
+			nullptr,
+			&boneBuffer,
+			0,
+			0);
+
+	//=================================================
+	// Pipeline
+	//=================================================
+
+	m_DeviceContext->
+		IASetInputLayout(
+			m_ShadowSkinnedInputLayout.Get());
+
+	m_DeviceContext->
+		VSSetShader(
+			m_ShadowSkinnedVertexShader.Get(),
+			nullptr,
+			0);
+
+	m_DeviceContext->
+		PSSetShader(
+			nullptr,
+			nullptr,
+			0);
+
+	ID3D11Buffer*
+		shadowCB =
+		m_ShadowCastConstantBuffer.Get();
+
+	m_DeviceContext->
+		VSSetConstantBuffers(
+			0,
+			1,
+			&shadowCB);
+
+	ID3D11Buffer*
+		boneCB =
+		m_BoneConstantBuffer.Get();
+
+	m_DeviceContext->
+		VSSetConstantBuffers(
+			1,
+			1,
+			&boneCB);
+
+	m_DeviceContext->
+		RSSetState(
+			m_ShadowRasterizerCull.Get());
+
+	mesh.Bind(
+		m_DeviceContext.Get());
+
+	mesh.Draw(
+		m_DeviceContext.Get());
+}
+
+void Renderer::DrawShadowGrassInstanced(
+	const MeshBuffer& mesh,
+	ID3D11Buffer* instanceBuffer,
+	uint32_t instanceCount,
+	const Texture* grassTexture,
+	float time,
+	const Vector2& windDirection,
+	float windStrength,
+	float windSpeed)
+{
+	if (!m_DeviceContext ||
+		!mesh.IsValid() ||
+		!instanceBuffer ||
+		instanceCount == 0 ||
+		!grassTexture ||
+		!grassTexture->IsValid())
+	{
+		return;
+	}
+
+	//=================================================
+	// Grass ConstantBuffer
+	//=================================================
+	//
+	// 通常描画ではViewProjection。
+	// Shadow描画ではLightViewProjectionを送る。
+	//=================================================
+
+	GrassConstantBuffer
+		constantBuffer{};
+
+	constantBuffer.ViewProjection =
+		m_LightViewProjectionMatrix.
+		Transpose();
+
+	constantBuffer.GrassParameters =
+		Vector4(
+			time,
+			windStrength,
+			windSpeed,
+			0.40f);
+
+	constantBuffer.WindParameters =
+		Vector4(
+			windDirection.x,
+			windDirection.y,
+			0.0f,
+			0.0f);
+
+	m_DeviceContext->
+		UpdateSubresource(
+			m_GrassConstantBuffer.Get(),
+			0,
+			nullptr,
+			&constantBuffer,
+			0,
+			0);
+
+	//=================================================
+	// Pipeline
+	//=================================================
+
+	m_DeviceContext->
+		IASetInputLayout(
+			m_ShadowGrassInputLayout.Get());
+
+	m_DeviceContext->
+		VSSetShader(
+			m_ShadowGrassVertexShader.Get(),
+			nullptr,
+			0);
+
+	// Alpha Clipが必要なのでPSを使用
+	m_DeviceContext->
+		PSSetShader(
+			m_ShadowGrassPixelShader.Get(),
+			nullptr,
+			0);
+
+	ID3D11Buffer*
+		grassCB =
+		m_GrassConstantBuffer.Get();
+
+	m_DeviceContext->
+		VSSetConstantBuffers(
+			0,
+			1,
+			&grassCB);
+
+	m_DeviceContext->
+		PSSetConstantBuffers(
+			0,
+			1,
+			&grassCB);
+
+	//=================================================
+	// Texture
+	//=================================================
+
+	ID3D11ShaderResourceView*
+		grassSRV =
+		grassTexture->
+		GetShaderResourceView();
+
+	m_DeviceContext->
+		PSSetShaderResources(
+			0,
+			1,
+			&grassSRV);
+
+	ID3D11SamplerState*
+		sampler =
+		m_ModelSamplerState.Get();
+
+	m_DeviceContext->
+		PSSetSamplers(
+			0,
+			1,
+			&sampler);
+
+	//=================================================
+	// Vertex Buffers
+	//=================================================
+
+	mesh.Bind(
+		m_DeviceContext.Get());
+
+	ID3D11Buffer*
+		instanceBuffers[] =
+	{
+		instanceBuffer
+	};
+
+	const UINT strides[] =
+	{
+		sizeof(
+			GrassInstanceData)
+	};
+
+	const UINT offsets[] =
+	{
+		0
+	};
+
+	m_DeviceContext->
+		IASetVertexBuffers(
+			1,
+			1,
+			instanceBuffers,
+			strides,
+			offsets);
+
+	// Grassは両面
+	m_DeviceContext->
+		RSSetState(
+			m_ShadowRasterizerNoCull.Get());
+
+	m_DeviceContext->
+		DrawIndexedInstanced(
+			mesh.GetIndexCount(),
+			instanceCount,
+			0,
+			0,
+			0);
+
+	// SRV解除
+	ID3D11ShaderResourceView*
+		nullSRV =
+		nullptr;
+
+	m_DeviceContext->
+		PSSetShaderResources(
+			0,
+			1,
+			&nullSRV);
 }

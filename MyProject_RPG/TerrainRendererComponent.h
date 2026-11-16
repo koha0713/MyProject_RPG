@@ -47,6 +47,8 @@ public:
 
 	void DrawDebugUI() override;
 
+	void DrawShadow() override;
+
 	//====================
 	// Terrain
 	//====================

@@ -673,6 +673,18 @@
     <FxCompile Include="PS_Grass.hlsl">
       <Filter>リソース ファイル\PS</Filter>
     </FxCompile>
+    <FxCompile Include="VS_ShadowStatic.hlsl">
+      <Filter>リソース ファイル\VS</Filter>
+    </FxCompile>
+    <FxCompile Include="VS_ShadowSkinned.hlsl">
+      <Filter>リソース ファイル\VS</Filter>
+    </FxCompile>
+    <FxCompile Include="VS_ShadowGrass.hlsl">
+      <Filter>リソース ファイル\VS</Filter>
+    </FxCompile>
+    <FxCompile Include="PS_ShadowGrass.hlsl">
+      <Filter>リソース ファイル\PS</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="WaterCommon.hlsli">
@@ -682,6 +694,9 @@
       <Filter>リソース ファイル</Filter>
     </None>
     <None Include="GrassCommon.hlsli">
+      <Filter>リソース ファイル</Filter>
+    </None>
+    <None Include="ShadowCommon.hlsli">
       <Filter>リソース ファイル</Filter>
     </None>
   </ItemGroup>

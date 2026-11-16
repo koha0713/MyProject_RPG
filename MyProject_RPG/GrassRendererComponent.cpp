@@ -66,29 +66,13 @@ void GrassRendererComponent::
 Draw()
 {
 	if (!m_GrassMesh ||
-		!m_GrassMesh->IsValid())
+		!m_GrassMesh->IsValid() ||
+		!m_GrassTexture ||
+		!m_GrassTexture->IsValid() ||
+		!m_TerrainChunks)
 	{
 		return;
 	}
-
-	if (!m_GrassTexture ||
-		!m_GrassTexture->IsValid())
-	{
-		return;
-	}
-
-	if (!m_TerrainChunks)
-	{
-		return;
-	}
-
-	//=================================================
-	// Safety
-	//=================================================
-	//
-	// Grass ChunkとTerrain Chunkの数が
-	// 一致している範囲だけ処理する。
-	//=================================================
 
 	const size_t chunkCount =
 		(std::min)(
@@ -99,7 +83,8 @@ Draw()
 		i < chunkCount;
 		++i)
 	{
-		GrassChunkRenderData& grassChunk =
+		GrassChunkRenderData&
+			grassChunk =
 			m_GrassChunks[i];
 
 		if (!grassChunk.HasGpuBuffer())
@@ -107,57 +92,14 @@ Draw()
 			continue;
 		}
 
-		const TerrainChunk& terrainChunk =
-			(*m_TerrainChunks)[i];
+		const uint32_t drawCount =
+			GetDrawInstanceCount(
+				i);
 
-		//=================================================
-		// Terrain LOD
-		//=================================================
-
-		const TerrainChunkLOD lod =
-			terrainChunk.GetLOD();
-
-		const float lodRatio =
-			GetGrassLodRatio(
-				lod);
-
-		if (lodRatio <=
-			0.0f)
+		if (drawCount == 0)
 		{
 			continue;
 		}
-
-		//=================================================
-		// Instance Count
-		//=================================================
-
-		const uint32_t totalCount =
-			static_cast<uint32_t>(
-				grassChunk.Instances.size());
-
-		uint32_t drawCount =
-			static_cast<uint32_t>(
-				static_cast<float>(
-					totalCount) *
-				lodRatio);
-
-		// 草が存在するChunkなら、
-		// 描画対象LODで最低1株は残す。
-		if (drawCount == 0 &&
-			totalCount > 0)
-		{
-			drawCount =
-				1;
-		}
-
-		drawCount =
-			(std::min)(
-				drawCount,
-				totalCount);
-
-		//=================================================
-		// Draw
-		//=================================================
 
 		Renderer::DrawGrassInstanced(
 			*m_GrassMesh,
@@ -168,6 +110,59 @@ Draw()
 			m_WindDirection,
 			m_WindStrength,
 			m_WindSpeed);
+	}
+}
+
+void GrassRendererComponent::
+DrawShadow()
+{
+	if (!m_GrassMesh ||
+		!m_GrassMesh->IsValid() ||
+		!m_GrassTexture ||
+		!m_GrassTexture->IsValid() ||
+		!m_TerrainChunks)
+	{
+		return;
+	}
+
+	const size_t chunkCount =
+		(std::min)(
+			m_GrassChunks.size(),
+			m_TerrainChunks->size());
+
+	for (size_t i = 0;
+		i < chunkCount;
+		++i)
+	{
+		GrassChunkRenderData&
+			grassChunk =
+			m_GrassChunks[i];
+
+		if (!grassChunk.HasGpuBuffer())
+		{
+			continue;
+		}
+
+		const uint32_t drawCount =
+			GetDrawInstanceCount(
+				i);
+
+		if (drawCount == 0)
+		{
+			continue;
+		}
+
+		Renderer::
+			DrawShadowGrassInstanced(
+				*m_GrassMesh,
+				grassChunk.
+				InstanceBuffer.Get(),
+				drawCount,
+				m_GrassTexture.get(),
+				m_Time,
+				m_WindDirection,
+				m_WindStrength,
+				m_WindSpeed);
 	}
 }
 
@@ -872,4 +867,63 @@ CanSpawnGrassAt(
 	return
 		CanSpawnGrass(
 			cell->Type);
+}
+
+uint32_t
+GrassRendererComponent::
+GetDrawInstanceCount(
+	size_t chunkIndex) const
+{
+	if (!m_TerrainChunks)
+	{
+		return 0;
+	}
+
+	if (chunkIndex >=
+		m_GrassChunks.size() ||
+		chunkIndex >=
+		m_TerrainChunks->size())
+	{
+		return 0;
+	}
+
+	const GrassChunkRenderData& grassChunk =
+		m_GrassChunks[
+			chunkIndex];
+
+	const TerrainChunk& terrainChunk =
+		(*m_TerrainChunks)[
+			chunkIndex];
+
+	const float lodRatio =
+		GetGrassLodRatio(
+			terrainChunk.GetLOD());
+
+	if (lodRatio <= 0.0f)
+	{
+		return 0;
+	}
+
+	const uint32_t totalCount =
+		static_cast<uint32_t>(
+			grassChunk.
+			Instances.size());
+
+	uint32_t drawCount =
+		static_cast<uint32_t>(
+			static_cast<float>(
+				totalCount) *
+			lodRatio);
+
+	if (drawCount == 0 &&
+		totalCount > 0)
+	{
+		drawCount =
+			1;
+	}
+
+	return
+		(std::min)(
+			drawCount,
+			totalCount);
 }

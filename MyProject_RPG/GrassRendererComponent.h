@@ -37,6 +37,8 @@ public:
 
 	void Draw() override;
 
+	void DrawShadow() override;
+
 	/**
 	 * @brief Terrain Chunkから草データを生成
 	 */
@@ -135,6 +137,12 @@ private:
 
 	bool CanSpawnGrassAt(
 		const GridPosition& position) const;
+
+	/**
+	 * @brief 指定Chunkの実際の描画Instance数取得
+	 */
+	uint32_t GetDrawInstanceCount(
+		size_t chunkIndex) const;
 
 private:
 

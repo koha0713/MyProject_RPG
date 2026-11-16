@@ -1,4 +1,5 @@
 #include "TerrainCommon.hlsli"
+#include "ShadowCommon.hlsli"
 
 Texture2D GrassTexture :
 	register(t0);
@@ -368,10 +369,14 @@ float4 main(
 		LightColor.rgb *
 		LightDirectionIntensity.w *
 		toonIntensity;
+	
+    const float shadow =
+	CalculateShadow(
+		input.WorldPosition);
 
     const float3 lighting =
 		AmbientLightColor.rgb +
-		directional;
+		directional * shadow;
 
 	//=================================================
 	// Final

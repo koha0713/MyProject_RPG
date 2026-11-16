@@ -1,9 +1,10 @@
 //=====================================================
 // Model Pixel Shader
 //=====================================================
-
+#include "ShadowCommon.hlsli"
 cbuffer ModelConstantBuffer : register(b0)
 {
+    float4x4 World;
     float4x4 WorldViewProjection;
 
     float4x4 WorldInverseTranspose;
@@ -50,6 +51,8 @@ struct PSInput
     float3 WorldNormal : NORMAL;
 
     float2 TexCoord : TEXCOORD0;
+    
+    float3 WorldPosition : TEXCOORD1;
 };
 
 //=====================================================
@@ -164,6 +167,10 @@ float4 main(
 
     const float3 ambientLight =
         AmbientLightColor.rgb;
+    
+    const float shadow =
+	CalculateShadow(
+		input.WorldPosition);
 
     //=================================================
     // Final Lighting
@@ -171,7 +178,7 @@ float4 main(
 
     const float3 lighting =
         ambientLight +
-        toonLight;
+        toonLight * shadow;
 
     const float3 finalColor =
         baseColor.rgb *

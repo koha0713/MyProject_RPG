@@ -90,6 +90,23 @@ void GameObjectManager::DrawFont()
 	}
 }
 
+void GameObjectManager::DrawShadow()
+{
+	for (auto& object : m_GameObjects)
+	{
+		// UI‚ÍWorld•`‰æ‚©‚çœŠO‚·‚éB
+		if (object->GetTag() ==
+			Tag::UI ||
+			object->GetTag() ==
+			Tag::Font)
+		{
+			continue;
+		}
+
+		object->DrawShadow();
+	}
+}
+
 void GameObjectManager::Clear()
 {
 	for(auto& object : m_GameObjects)

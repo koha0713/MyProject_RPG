@@ -24,6 +24,17 @@ public:
 
 	virtual void Draw() {}
 
+	/**
+	 * @brief Shadow Map•`‰æ
+	 *
+	 * @details
+	 * Shadow‚ğ—‚Æ‚³‚È‚¢Component‚Í
+	 * override‚·‚é•K—v‚Í‚È‚¢B
+	 */
+	virtual void DrawShadow()
+	{
+	}
+
 	//====================
 	// Owner
 	//====================

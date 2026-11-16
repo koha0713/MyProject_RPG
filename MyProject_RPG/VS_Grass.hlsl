@@ -26,6 +26,9 @@ struct VSOutput
     float2 TexCoord : TEXCOORD0;
 
     float Random : TEXCOORD1;
+	
+    float3 WorldPosition :
+	TEXCOORD2;
 };
 
 VSOutput main(
@@ -184,6 +187,9 @@ VSOutput main(
 
     output.Random =
 		input.InstanceRandom;
+	
+    output.WorldPosition =
+	worldPosition;
 
     return output;
 }

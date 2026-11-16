@@ -1,4 +1,5 @@
 #include "WaterCommon.hlsli"
+#include "ShadowCommon.hlsli"
 
 Texture2D NormalMapA :
     register(t0);
@@ -276,11 +277,14 @@ float4 main(
     //=============================================
     // Base Lighting
     //=============================================
-
+    const float shadow =
+	CalculateShadow(
+		input.WorldPosition);
+    
     const float3 diffuse =
         LightColor.rgb *
         LightDirectionIntensity.w *
-        waterLighting;
+        waterLighting * shadow;
 
     const float3 ambient =
         AmbientLightColor.rgb;
@@ -317,7 +321,8 @@ float4 main(
             specularNdotH,
             specularPower) *
         specularStrength *
-        LightDirectionIntensity.w;
+        LightDirectionIntensity.w *
+        shadow;
 
     // ëæózåıÇ…è≠ÇµígêFÇïtÇØÇÈ
     const float3 sunSpecularColor =

@@ -277,6 +277,113 @@ void TerrainRendererComponent::Draw()
 		BlendState::None);
 }
 
+void TerrainRendererComponent::
+DrawShadow()
+{
+	const Matrix4x4 worldMatrix =
+		Matrix4x4(
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f);
+
+	//=================================================
+	// Ground
+	//=================================================
+
+	for (size_t i = 0;
+		i < m_GroundMeshes.size() &&
+		i < m_Chunks.size();
+		++i)
+	{
+		const TerrainChunk& chunk =
+			m_Chunks[i];
+
+		if (!chunk.IsVisible())
+		{
+			continue;
+		}
+
+		const TerrainGroundChunkMesh& mesh =
+			m_GroundMeshes[i];
+
+		if (!mesh.HasGpuMesh())
+		{
+			continue;
+		}
+
+		Renderer::DrawShadowStatic(
+			*mesh.Mesh,
+			worldMatrix);
+	}
+
+	//=================================================
+	// RiverBed
+	//=================================================
+
+	for (size_t i = 0;
+		i < m_RiverBedMeshes.size() &&
+		i < m_Chunks.size();
+		++i)
+	{
+		const TerrainChunk& chunk =
+			m_Chunks[i];
+
+		if (!chunk.IsVisible())
+		{
+			continue;
+		}
+
+		const TerrainChunkMesh& mesh =
+			m_RiverBedMeshes[i];
+
+		if (!mesh.HasGpuMesh())
+		{
+			continue;
+		}
+
+		Renderer::DrawShadowStatic(
+			*mesh.Mesh,
+			worldMatrix);
+	}
+
+	//=================================================
+	// Water
+	//=================================================
+	//
+	// Œ»’iŠK‚Å‚Í…–Ê‚àOpaque Shadow Caster‚Æ‚µ‚Äˆµ‚¤B
+	//
+	// ”¼“§–¾Shadow‚ÍŒã‚©‚çTransmittance“™‚ð
+	// “±“ü‚·‚éê‡‚ÉŠg’£‚·‚éB
+	//=================================================
+
+	for (size_t i = 0;
+		i < m_WaterMeshes.size() &&
+		i < m_Chunks.size();
+		++i)
+	{
+		const TerrainChunk& chunk =
+			m_Chunks[i];
+
+		if (!chunk.IsVisible())
+		{
+			continue;
+		}
+
+		const TerrainWaterChunkMesh& mesh =
+			m_WaterMeshes[i];
+
+		if (!mesh.HasGpuMesh())
+		{
+			continue;
+		}
+
+		Renderer::DrawShadowStatic(
+			*mesh.Mesh,
+			worldMatrix);
+	}
+}
+
 //=====================================================
 // Build Terrain
 //=====================================================

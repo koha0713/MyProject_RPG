@@ -885,21 +885,49 @@ void FieldScene::Draw(uint64_t delta)
 			m_MainCamera->
 			GetProjectionMatrix());
 	}
+
+	//=================================================
+	// Shadow Pass
+	//=================================================
+
+	Vector3 shadowFocus =
+		Vector3(
+			0.0f,
+			0.0f,
+			0.0f);
+
+	if (m_MainCamera &&
+		m_MainCamera->GetOwner())
+	{
+		auto* cameraTransform =
+			m_MainCamera->
+			GetOwner()->
+			GetComponent<
+			TransformComponent>();
+
+		if (cameraTransform)
+		{
+			shadowFocus =
+				cameraTransform->
+				GetPosition();
+
+			// Terrain中心付近へ合わせるため
+			// 高さ方向は0として扱う。
+			shadowFocus.y =
+				0.0f;
+		}
+	}
+
+	Renderer::BeginShadowPass(
+		shadowFocus);
+
+	m_gameObjectManager.
+		DrawShadow();
+
+	Renderer::EndShadowPass();
+
 	// GameObjectの描画
 	m_gameObjectManager.DrawWorld();
-
-	//=================================================
-	// Grid
-	//=================================================
-
-	GridRenderer::Draw(
-		m_GridMap,
-		Color(
-			1.0f,
-			1.0f,
-			1.0f,
-			0.1f),
-		0.02f);
 
 	//=================================================
 	// Selected Action Range
@@ -961,6 +989,18 @@ void FieldScene::Draw(uint64_t delta)
 
 				if (definition.Enabled)
 				{
+					//=================================================
+					// Grid
+					//=================================================
+
+					GridRenderer::Draw(
+						m_GridMap,
+						Color(
+							1.0f,
+							1.0f,
+							1.0f,
+							0.1f),
+						0.02f);
 					switch (m_SelectedAction)
 					{
 						//=========================================
@@ -1141,12 +1181,12 @@ void FieldScene::Draw(uint64_t delta)
 	m_gameObjectManager.DrawFont();
 	FontRenderer::End();
 
-	//// デバッグUIの描画
-	//DebugUI::RegisterDebugFunction([this]()
-	//	{
-	//		// GameObjectのDebugUI描画
-	//		m_gameObjectManager.DrawDebugUI();
-	//	});
+	// デバッグUIの描画
+	DebugUI::RegisterDebugFunction([this]()
+		{
+			// GameObjectのDebugUI描画
+			m_gameObjectManager.DrawDebugUI();
+		});
 
 }
 

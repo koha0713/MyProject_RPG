@@ -259,6 +259,60 @@ public:
 		const Matrix4x4& worldMatrix,
 		std::span<const Matrix4x4> boneMatrices = {});
 
+	//=====================================================
+	// Shadow Map
+	//=====================================================
+
+	/**
+	 * @brief Directional Light用Shadow Pass開始
+	 *
+	 * @param focusPosition
+	 * Shadow Map領域の中心となるWorld座標
+	 */
+	static void BeginShadowPass(
+		const Vector3& focusPosition);
+
+	/**
+	 * @brief Shadow Pass終了
+	 *
+	 * Main RenderTarget / Viewportを復元し、
+	 * Shadow Mapを通常描画用SRVとしてBindする。
+	 */
+	static void EndShadowPass();
+
+	/**
+	 * @brief Static Mesh Shadow描画
+	 *
+	 * Terrain / RiverBed / Water /
+	 * Static Modelで共通利用する。
+	 */
+	static void DrawShadowStatic(
+		const MeshBuffer& mesh,
+		const Matrix4x4& worldMatrix);
+
+	/**
+	 * @brief Skinned Model Shadow描画
+	 */
+	static void DrawShadowSkinned(
+		const MeshBuffer& mesh,
+		const Matrix4x4& worldMatrix,
+		std::span<const Matrix4x4> boneMatrices);
+
+	/**
+	 * @brief Grass Shadow描画
+	 *
+	 * 通常描画と同じInstance / Wind / AlphaClipを使用する。
+	 */
+	static void DrawShadowGrassInstanced(
+		const MeshBuffer& mesh,
+		ID3D11Buffer* instanceBuffer,
+		uint32_t instanceCount,
+		const Texture* grassTexture,
+		float time,
+		const Vector2& windDirection,
+		float windStrength,
+		float windSpeed);
+
 private:
 
 	//====================
@@ -311,6 +365,11 @@ private:
 	 * @brief Grass描画Pepeline生成
 	 */
 	static bool CreateGrassPipeline();
+
+	/**
+	 * @brief Shadow Map関連Resource生成
+	 */
+	static bool CreateShadowPipeline();
 
 private:
 
@@ -488,4 +547,84 @@ private:
 
 	static ComPtr<ID3D11RasterizerState>
 		m_OutlineRasterizerState;
+
+	//=====================================================
+	// Shadow Map
+	//=====================================================
+
+	static constexpr UINT SHADOW_MAP_SIZE =
+		2048;
+
+	// Shadow Map本体
+	static ComPtr<ID3D11Texture2D>
+		m_ShadowMapTexture;
+
+	// Shadow Map書き込み用
+	static ComPtr<ID3D11DepthStencilView>
+		m_ShadowMapDSV;
+
+	// Shadow Map読み取り用
+	static ComPtr<ID3D11ShaderResourceView>
+		m_ShadowMapSRV;
+
+	// Shadow比較Sampler
+	static ComPtr<ID3D11SamplerState>
+		m_ShadowSampler;
+
+	//=====================================================
+	// Shadow Pipeline
+	//=====================================================
+
+	// Static
+	static ComPtr<ID3D11VertexShader>
+		m_ShadowStaticVertexShader;
+
+	static ComPtr<ID3D11InputLayout>
+		m_ShadowStaticInputLayout;
+
+	// Skinned
+	static ComPtr<ID3D11VertexShader>
+		m_ShadowSkinnedVertexShader;
+
+	static ComPtr<ID3D11InputLayout>
+		m_ShadowSkinnedInputLayout;
+
+	// Grass
+	static ComPtr<ID3D11VertexShader>
+		m_ShadowGrassVertexShader;
+
+	static ComPtr<ID3D11PixelShader>
+		m_ShadowGrassPixelShader;
+
+	static ComPtr<ID3D11InputLayout>
+		m_ShadowGrassInputLayout;
+
+	//=====================================================
+	// Shadow ConstantBuffer
+	//=====================================================
+
+	// Shadow Caster用
+	static ComPtr<ID3D11Buffer>
+		m_ShadowCastConstantBuffer;
+
+	// Shadow Receiver用
+	static ComPtr<ID3D11Buffer>
+		m_ShadowReceiveConstantBuffer;
+
+	//=====================================================
+	// Shadow Rasterizer
+	//=====================================================
+
+	static ComPtr<ID3D11RasterizerState>
+		m_ShadowRasterizerCull;
+
+	static ComPtr<ID3D11RasterizerState>
+		m_ShadowRasterizerNoCull;
+
+	//=====================================================
+	// Light Camera
+	//=====================================================
+
+	static Matrix4x4
+		m_LightViewProjectionMatrix;
 };

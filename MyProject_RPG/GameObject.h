@@ -90,6 +90,28 @@ public:
 		}
 	}
 
+	/**
+	 * @brief 所有ComponentのShadow描画
+	 */
+	virtual void DrawShadow()
+	{
+		// 非アクティブならShadowも描画しない
+		if (!m_IsActive)
+		{
+			return;
+		}
+
+		for (auto& component : m_Components)
+		{
+			if (!component)
+			{
+				continue;
+			}
+
+			component->DrawShadow();
+		}
+	}
+
 	//====================
 	// コンポーネント関係
 	//====================

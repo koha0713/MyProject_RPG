@@ -20,6 +20,8 @@ public:
 	void Update(uint64_t delta) override;
 	void Draw() override;
 
+	void DrawShadow() override;
+
 	//====================
 	// ModelDataŠÖŒW
 	//====================

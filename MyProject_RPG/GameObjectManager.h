@@ -55,6 +55,11 @@ public:
 	void DrawFont();
 
 	/**
+	 * @brief World Object‚ÌShadow•`‰æ
+	 */
+	void DrawShadow();
+
+	/**
 	 * @brief ‘SGameObject‚Ì”jŠü
 	 */
 	void Clear();

@@ -41,7 +41,7 @@ protected:
 	{
 		return
 		{
-			AnimationID::Punch
+			AnimationID::Attack
 		};
 	}
 };
@@ -75,7 +75,7 @@ MonkClassComponent::GetActionDefinition(
 			TargetType::Enemy;
 
 		definition.Animation =
-			AnimationID::Punch;
+			AnimationID::Attack;
 
 		break;
 	}

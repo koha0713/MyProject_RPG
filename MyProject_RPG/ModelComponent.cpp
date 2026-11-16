@@ -169,6 +169,129 @@ void ModelComponent::Draw()
 	}
 }
 
+void ModelComponent::DrawShadow()
+{
+	if (!m_Model ||
+		!GetOwner())
+	{
+		return;
+	}
+
+	auto* transform =
+		GetOwner()->
+		GetComponent<TransformComponent>();
+
+	if (!transform)
+	{
+		return;
+	}
+
+	const Matrix4x4& worldMatrix =
+		transform->
+		GetWorldMatrix();
+
+	//=================================================
+	// Animator
+	//=================================================
+
+	const AnimatorComponent* animator =
+		GetOwner()->
+		GetComponent<AnimatorComponent>();
+
+	std::span<const Matrix4x4>
+		boneMatrices;
+
+	const std::vector<Matrix4x4>*
+		globalNodeMatrices =
+		nullptr;
+
+	if (animator)
+	{
+		const auto& finalMatrices =
+			animator->
+			GetFinalBoneMatrices();
+
+		if (!finalMatrices.empty())
+		{
+			boneMatrices =
+				std::span<const Matrix4x4>(
+					finalMatrices.data(),
+					finalMatrices.size());
+		}
+
+		globalNodeMatrices =
+			&animator->
+			GetGlobalBoneMatrices();
+	}
+
+	const auto& meshes =
+		m_Model->
+		GetMeshes();
+
+	const auto& skeleton =
+		m_Model->
+		GetSkeleton();
+
+	for (const auto& meshData :
+		meshes)
+	{
+		if (!meshData.Mesh)
+		{
+			continue;
+		}
+
+		//=============================================
+		// Skinned Mesh
+		//=============================================
+
+		if (meshData.HasSkinning)
+		{
+			Renderer::
+				DrawShadowSkinned(
+					*meshData.Mesh,
+					worldMatrix,
+					boneMatrices);
+
+			continue;
+		}
+
+		//=============================================
+		// Static / Node Animation Mesh
+		//=============================================
+
+		Matrix4x4 meshWorld =
+			worldMatrix;
+
+		if (globalNodeMatrices &&
+			meshData.NodeIndex >= 0)
+		{
+			const size_t nodeIndex =
+				static_cast<size_t>(
+					meshData.NodeIndex);
+
+			if (nodeIndex <
+				globalNodeMatrices->size() &&
+				nodeIndex <
+				skeleton.Bones.size())
+			{
+				const Matrix4x4&
+					currentNodeGlobal =
+					(*globalNodeMatrices)[
+						nodeIndex];
+
+				meshWorld =
+					currentNodeGlobal *
+					worldMatrix;
+			}
+		}
+
+		Renderer::
+			DrawShadowStatic(
+				*meshData.Mesh,
+				meshWorld);
+	}
+}
+
 bool ModelComponent::SetModel(const std::string& filePath)
 {
 	// ResourceManagerからモデルデータを取得

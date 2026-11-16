@@ -264,13 +264,12 @@ void TownScene::Draw(
 	//=================================================
 	// Debug
 	//=================================================
-
-	//DebugUI::RegisterDebugFunction(
-	//	[this]()
-	//	{
-	//		m_GameObjectManager.
-	//			DrawDebugUI();
-	//	});
+	DebugUI::RegisterDebugFunction(
+		[this]()
+		{
+			m_GameObjectManager.
+				DrawDebugUI();
+		});
 }
 
 //=====================================================

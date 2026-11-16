@@ -1,4 +1,5 @@
 #include "GrassCommon.hlsli"
+#include "ShadowCommon.hlsli"
 
 Texture2D GrassTexture :
 	register(t0);
@@ -13,6 +14,8 @@ struct PSInput
     float2 TexCoord : TEXCOORD0;
 
     float Random : TEXCOORD1;
+	
+    float3 WorldPosition : TEXCOORD2;
 };
 
 float4 main(
@@ -46,10 +49,14 @@ float4 main(
 			0.90f,
 			1.08f,
 			input.Random);
+	
+    const float shadow =
+	CalculateShadow(
+		input.WorldPosition);
 
     const float3 finalColor =
 		textureColor.rgb *
-		variation;
+		variation * shadow;
 
     return float4(
 		saturate(

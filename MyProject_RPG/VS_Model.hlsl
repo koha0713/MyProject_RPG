@@ -10,6 +10,7 @@
 
 cbuffer ModelConstantBuffer : register(b0)
 {
+    float4x4 World;
     // World * View * Projection
     float4x4 WorldViewProjection;
 
@@ -82,6 +83,8 @@ struct VSOutput
     float3 WorldNormal : NORMAL;
 
     float2 TexCoord : TEXCOORD0;
+    
+    float3 WorldPosition : TEXCOORD1;
 };
 
 //=====================================================
@@ -191,6 +194,14 @@ VSOutput main(
         mul(
             position,
             WorldViewProjection);
+    
+    //=================================================
+    // World Position
+    //=================================================
+    output.WorldPosition =
+	mul(
+		position,
+		World).xyz;
 
     //=================================================
     // Normal
