@@ -10,11 +10,156 @@
 
 #include "CharacterStatusComponent.h"
 
+#ifdef _DEBUG
+#include "DebugUI.h"
+#endif
+
 #include <string>
 #include <Windows.h>
 
 namespace
 {
+	//=================================================
+	// Player HUD Layout
+	//=================================================
+	//
+	// NOTE:
+	// UI配置調整中のみfloat変数として使用する。
+	//
+	// 配置確定後は、
+	// float → constexpr float
+	// に戻して問題ない。
+	//=================================================
+
+	float PLAYER_ICON_X =
+		10.0f;
+
+	float PLAYER_ICON_START_Y =
+		615.0f;
+
+	float PLAYER_ICON_SELECTED_SIZE =
+		100.0f;
+
+	float PLAYER_ICON_NORMAL_SIZE =
+		80.0f;
+
+	float PLAYER_ICON_INTERVAL =
+		82.0f;
+
+	//=================================================
+	// HUD
+	//=================================================
+
+	float PLAYER_HUD_X =
+		37.0f;
+
+	float PLAYER_HUD_Y_OFFSET =
+		4.0f;
+
+	float PLAYER_HUD_WIDTH =
+		350.0f;
+
+	float PLAYER_HUD_HEIGHT =
+		100.0f;
+
+	//=================================================
+	// Name / Level / AP
+	//=================================================
+	//
+	// HUDの左上を基準としたOffset。
+	//=================================================
+
+	float PLAYER_INFO_OFFSET_X =
+		46.0f;
+
+	float PLAYER_NAME_OFFSET_Y =
+		21.0f;
+
+	float PLAYER_LEVEL_OFFSET_Y =
+		50.0f;
+
+	float PLAYER_AP_OFFSET_Y =
+		-25.0f;
+
+	//=================================================
+	// HP / MP Bar
+	//=================================================
+	//
+	// HUD左上からのOffset。
+	//=================================================
+
+	float PLAYER_BAR_OFFSET_X =
+		75.0f;
+
+	float PLAYER_HP_BAR_OFFSET_Y =
+		10.0f;
+
+	float PLAYER_MP_BAR_OFFSET_Y =
+		47.0f;
+
+	float PLAYER_BAR_WIDTH =
+		237.0f;
+
+	float PLAYER_BAR_HEIGHT =
+		40.0f;
+
+	//=================================================
+	// Fill
+	//=================================================
+	//
+	// Frameの内側にFillを収めるための値。
+	//=================================================
+
+	float PLAYER_BAR_FILL_OFFSET_X =
+		52.0f;
+
+	float PLAYER_BAR_FILL_OFFSET_Y =
+		15.0f;
+
+	float PLAYER_BAR_FILL_RIGHT_MARGIN =
+		16.0f;
+
+	float PLAYER_BAR_FILL_HEIGHT =
+		19.0f;
+
+	//=================================================
+	// AP
+	//=================================================
+
+	constexpr int AP_ICON_COUNT =
+		6;
+
+	float AP_ICON_SIZE =
+		50.0f;
+
+	float AP_ICON_INTERVAL =
+		25.0f;
+
+	float AP_ICON_OFFSET_X =
+		112.0f;
+
+	//=================================================
+	// Helper
+	//=================================================
+
+	float GetPlayerInfoX()
+	{
+		return PLAYER_HUD_X +
+			PLAYER_INFO_OFFSET_X;
+	}
+
+	float GetPlayerBarX()
+	{
+		return PLAYER_HUD_X +
+			PLAYER_BAR_OFFSET_X;
+	}
+
+	float GetAPIconStartX()
+	{
+		return GetPlayerInfoX() +
+			AP_ICON_OFFSET_X;
+	}
+
 	/**
 	 * @brief UTF-8 -> UTF-16
 	 */
@@ -56,7 +201,409 @@ namespace
 
 		return result;
 	}
+
+	std::wstring GetPlayerName(GameObject* player)
+	{
+		const std::string& text =
+					player->GetName();
+		if(text == "Warrior")
+		{
+			return L"戦士";
+		}
+		else if(text == "Ranger")
+		{
+			return L"狩人";
+		}
+		else if(text == "Wizard")
+		{
+			return L"魔法使い";
+		}
+		else if(text == "Monk")
+		{
+			return L"拳闘士";
+		}
+		else if(text == "Rogue")
+		{
+			return L"盗賊";
+		}
+		else if(text == "Cleric")
+		{
+			return L"呪術師";
+		}
+		return UTF8ToWide(text);
+	}
+
+	void SetTextureToClassUI(
+		GameObject* player,
+		UIImageComponent* image)
+	{
+		const std::string& text =
+			player->GetName();
+		if (text == "Warrior")
+		{
+			image->SetTexture(
+				"Assets/Textures/Field/Class_Warrior.png");
+		}
+		else if (text == "Ranger")
+		{
+			image->SetTexture(
+				"Assets/Textures/Field/Class_Warrior.png");
+		}
+		else if (text == "Wizard")
+		{
+			image->SetTexture(
+				"Assets/Textures/Field/Class_Warrior.png");
+		}
+		else if (text == "Monk")
+		{
+			image->SetTexture(
+				"Assets/Textures/Field/Class_Warrior.png");
+		}
+		else if (text == "Rogue")
+		{
+			image->SetTexture(
+				"Assets/Textures/Field/Class_Warrior.png");
+		}
+		else if (text == "Cleric")
+		{
+			image->SetTexture(
+				"Assets/Textures/Field/Class_Warrior.png");
+		}
+	}
 }
+
+#ifdef _DEBUG
+
+//=====================================================
+// Player HUD Layout Debug
+//=====================================================
+
+/**
+ * @brief PlayerHUD配置調整用DebugUI
+ *
+ * @details
+ * UI配置確定後は、
+ * この関数とRegisterDebugFunction()呼び出しを
+ * 丸ごと削除してよい。
+ */
+void DrawPlayerHUDLayoutDebugUI()
+{
+	ImGui::Begin(
+		"Field Player HUD Layout");
+
+	//=================================================
+	// Player Icon
+	//=================================================
+
+	if (ImGui::CollapsingHeader(
+		"Player Icon",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		ImGui::DragFloat(
+			"Icon X",
+			&PLAYER_ICON_X,
+			1.0f);
+
+		ImGui::DragFloat(
+			"Icon Start Y",
+			&PLAYER_ICON_START_Y,
+			1.0f);
+
+		ImGui::DragFloat(
+			"Selected Size",
+			&PLAYER_ICON_SELECTED_SIZE,
+			1.0f,
+			1.0f,
+			200.0f);
+
+		ImGui::DragFloat(
+			"Normal Size",
+			&PLAYER_ICON_NORMAL_SIZE,
+			1.0f,
+			1.0f,
+			200.0f);
+
+		ImGui::DragFloat(
+			"Icon Interval",
+			&PLAYER_ICON_INTERVAL,
+			1.0f,
+			1.0f,
+			200.0f);
+	}
+
+	//=================================================
+	// HUD
+	//=================================================
+
+	if (ImGui::CollapsingHeader(
+		"HUD",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		ImGui::DragFloat(
+			"HUD X",
+			&PLAYER_HUD_X,
+			1.0f);
+
+		ImGui::DragFloat(
+			"HUD Y",
+			&PLAYER_HUD_Y_OFFSET,
+			1.0f);
+
+		ImGui::DragFloat(
+			"HUD Width",
+			&PLAYER_HUD_WIDTH,
+			1.0f,
+			1.0f,
+			1000.0f);
+
+		ImGui::DragFloat(
+			"HUD Height",
+			&PLAYER_HUD_HEIGHT,
+			1.0f,
+			1.0f,
+			300.0f);
+	}
+
+	//=================================================
+	// Name / Level / AP
+	//=================================================
+
+	if (ImGui::CollapsingHeader(
+		"Character Info",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		ImGui::DragFloat(
+			"Info X Offset",
+			&PLAYER_INFO_OFFSET_X,
+			1.0f);
+
+		ImGui::DragFloat(
+			"Name Y Offset",
+			&PLAYER_NAME_OFFSET_Y,
+			1.0f);
+
+		ImGui::DragFloat(
+			"Level Y Offset",
+			&PLAYER_LEVEL_OFFSET_Y,
+			1.0f);
+
+		ImGui::DragFloat(
+			"AP Y Offset",
+			&PLAYER_AP_OFFSET_Y,
+			1.0f);
+	}
+
+	//=================================================
+	// HP / MP Frame
+	//=================================================
+
+	if (ImGui::CollapsingHeader(
+		"HP / MP Frame",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		ImGui::DragFloat(
+			"Bar X Offset",
+			&PLAYER_BAR_OFFSET_X,
+			1.0f);
+
+		ImGui::DragFloat(
+			"HP Y Offset",
+			&PLAYER_HP_BAR_OFFSET_Y,
+			1.0f);
+
+		ImGui::DragFloat(
+			"MP Y Offset",
+			&PLAYER_MP_BAR_OFFSET_Y,
+			1.0f);
+
+		ImGui::DragFloat(
+			"Bar Width",
+			&PLAYER_BAR_WIDTH,
+			1.0f,
+			1.0f,
+			500.0f);
+
+		ImGui::DragFloat(
+			"Bar Height",
+			&PLAYER_BAR_HEIGHT,
+			1.0f,
+			1.0f,
+			100.0f);
+	}
+
+	//=================================================
+	// HP / MP Fill
+	//=================================================
+
+	if (ImGui::CollapsingHeader(
+		"HP / MP Fill",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		ImGui::DragFloat(
+			"Fill X Offset",
+			&PLAYER_BAR_FILL_OFFSET_X,
+			0.5f);
+
+		ImGui::DragFloat(
+			"Fill Y Offset",
+			&PLAYER_BAR_FILL_OFFSET_Y,
+			0.5f);
+
+		ImGui::DragFloat(
+			"Fill Right Margin",
+			&PLAYER_BAR_FILL_RIGHT_MARGIN,
+			0.5f);
+
+		ImGui::DragFloat(
+			"Fill Height",
+			&PLAYER_BAR_FILL_HEIGHT,
+			0.5f,
+			1.0f,
+			100.0f);
+
+		// 実際にFillとして使える幅も確認可能。
+		const float usableWidth =
+			PLAYER_BAR_WIDTH -
+			PLAYER_BAR_FILL_OFFSET_X -
+			PLAYER_BAR_FILL_RIGHT_MARGIN;
+
+		ImGui::Text(
+			"Usable Fill Width : %.1f",
+			usableWidth);
+	}
+
+	//=================================================
+	// AP Icons
+	//=================================================
+
+	if (ImGui::CollapsingHeader(
+		"AP Icons",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		ImGui::DragFloat(
+			"AP Icon X Offset",
+			&AP_ICON_OFFSET_X,
+			1.0f);
+
+		ImGui::DragFloat(
+			"AP Icon Size",
+			&AP_ICON_SIZE,
+			0.5f,
+			1.0f,
+			100.0f);
+
+		ImGui::DragFloat(
+			"AP Icon Interval",
+			&AP_ICON_INTERVAL,
+			0.5f,
+			1.0f,
+			100.0f);
+	}
+
+	//=================================================
+	// Current Values
+	//=================================================
+
+	if (ImGui::CollapsingHeader(
+		"Current Values"))
+	{
+		ImGui::Text(
+			"PLAYER_ICON_X = %.1ff;",
+			PLAYER_ICON_X);
+
+		ImGui::Text(
+			"PLAYER_ICON_START_Y = %.1ff;",
+			PLAYER_ICON_START_Y);
+
+		ImGui::Text(
+			"PLAYER_HUD_X = %.1ff;",
+			PLAYER_HUD_X);
+
+		ImGui::Text(
+			"PLAYER_HUD_WIDTH = %.1ff;",
+			PLAYER_HUD_WIDTH);
+
+		ImGui::Text(
+			"PLAYER_HUD_HEIGHT = %.1ff;",
+			PLAYER_HUD_HEIGHT);
+
+		ImGui::Separator();
+
+		ImGui::Text(
+			"PLAYER_INFO_OFFSET_X = %.1ff;",
+			PLAYER_INFO_OFFSET_X);
+
+		ImGui::Text(
+			"PLAYER_NAME_OFFSET_Y = %.1ff;",
+			PLAYER_NAME_OFFSET_Y);
+
+		ImGui::Text(
+			"PLAYER_LEVEL_OFFSET_Y = %.1ff;",
+			PLAYER_LEVEL_OFFSET_Y);
+
+		ImGui::Text(
+			"PLAYER_AP_OFFSET_Y = %.1ff;",
+			PLAYER_AP_OFFSET_Y);
+
+		ImGui::Separator();
+
+		ImGui::Text(
+			"PLAYER_BAR_OFFSET_X = %.1ff;",
+			PLAYER_BAR_OFFSET_X);
+
+		ImGui::Text(
+			"PLAYER_HP_BAR_OFFSET_Y = %.1ff;",
+			PLAYER_HP_BAR_OFFSET_Y);
+
+		ImGui::Text(
+			"PLAYER_MP_BAR_OFFSET_Y = %.1ff;",
+			PLAYER_MP_BAR_OFFSET_Y);
+
+		ImGui::Text(
+			"PLAYER_BAR_WIDTH = %.1ff;",
+			PLAYER_BAR_WIDTH);
+
+		ImGui::Text(
+			"PLAYER_BAR_HEIGHT = %.1ff;",
+			PLAYER_BAR_HEIGHT);
+
+		ImGui::Separator();
+
+		ImGui::Text(
+			"PLAYER_BAR_FILL_OFFSET_X = %.1ff;",
+			PLAYER_BAR_FILL_OFFSET_X);
+
+		ImGui::Text(
+			"PLAYER_BAR_FILL_OFFSET_Y = %.1ff;",
+			PLAYER_BAR_FILL_OFFSET_Y);
+
+		ImGui::Text(
+			"PLAYER_BAR_FILL_RIGHT_MARGIN = %.1ff;",
+			PLAYER_BAR_FILL_RIGHT_MARGIN);
+
+		ImGui::Text(
+			"PLAYER_BAR_FILL_HEIGHT = %.1ff;",
+			PLAYER_BAR_FILL_HEIGHT);
+
+		ImGui::Separator();
+
+		ImGui::Text(
+			"AP_ICON_OFFSET_X = %.1ff;",
+			AP_ICON_OFFSET_X);
+
+		ImGui::Text(
+			"AP_ICON_SIZE = %.1ff;",
+			AP_ICON_SIZE);
+
+		ImGui::Text(
+			"AP_ICON_INTERVAL = %.1ff;",
+			AP_ICON_INTERVAL);
+	}
+
+	ImGui::End();
+}
+
+#endif
 
 //=====================================================
 // Initialize
@@ -83,13 +630,15 @@ void FieldSceneUI::Initialize(
 //=====================================================
 // Finalize
 //=====================================================
-
 void FieldSceneUI::Finalize()
 {
 	m_PlayerIcons.clear();
 
+	m_APIcons.clear();
+
 	m_ClickedPlayer =
 		nullptr;
+
 	m_NextTurnButton =
 		nullptr;
 
@@ -99,10 +648,10 @@ void FieldSceneUI::Finalize()
 	m_PlayerHUDBackground =
 		nullptr;
 
-	m_PlayerIcon =
+	m_PlayerNameText =
 		nullptr;
 
-	m_PlayerNameText =
+	m_PlayerLevelText =
 		nullptr;
 
 	m_HPBarBackground =
@@ -111,7 +660,7 @@ void FieldSceneUI::Finalize()
 	m_HPBarFill =
 		nullptr;
 
-	m_HPText =
+	m_HPBarFrame =
 		nullptr;
 
 	m_MPBarBackground =
@@ -120,7 +669,10 @@ void FieldSceneUI::Finalize()
 	m_MPBarFill =
 		nullptr;
 
-	m_MPText =
+	m_MPBarFrame =
+		nullptr;
+
+	m_APText =
 		nullptr;
 
 	m_Manager =
@@ -246,9 +798,13 @@ void FieldSceneUI::CreateNextTurnUI()
 //=====================================================
 // Create Player HUD
 //=====================================================
-
 void FieldSceneUI::CreatePlayerHUD()
 {
+	if (!m_Manager)
+	{
+		return;
+	}
+
 	//=================================================
 	// Background
 	//=================================================
@@ -272,62 +828,26 @@ void FieldSceneUI::CreatePlayerHUD()
 		if (rect)
 		{
 			rect->SetPosition(
-				25.0f,
-				530.0f);
+				PLAYER_HUD_X,
+				m_PlayerHUDY);
 
 			rect->SetSize(
-				420.0f,
-				160.0f);
+				PLAYER_HUD_WIDTH,
+				PLAYER_HUD_HEIGHT);
 		}
 
 		if (image)
 		{
 			image->SetTexture(
-				"Assets/Textures/Field/PlayerHUD.png");
-		}
-	}
-
-	//=================================================
-	// Character Icon
-	//=================================================
-
-	m_PlayerIcon =
-		CreateImage(
-			"PlayerHUDIcon");
-
-	if (m_PlayerIcon)
-	{
-		auto* rect =
-			m_PlayerIcon->
-			GetComponent<
-			UIRectComponent>();
-
-		auto* image =
-			m_PlayerIcon->
-			GetComponent<
-			UIImageComponent>();
-
-		if (rect)
-		{
-			rect->SetPosition(
-				45.0f,
-				550.0f);
-
-			rect->SetSize(
-				115.0f,
-				115.0f);
-		}
-
-		if (image)
-		{
-			// 現在PlayerはWarriorのみ対応。
-			image->SetTexture(
-				"Assets/Textures/Field/WarriorIcon.png");
+				"Assets/Textures/Field/PlayerHUD_1.png");
 		}
 	}
 
 	//=================================================
 	// Character Name
+	//=================================================
+	//
+	// HUD左側上段
 	//=================================================
 
 	m_PlayerNameText =
@@ -341,20 +861,80 @@ void FieldSceneUI::CreatePlayerHUD()
 			GetComponent<
 			UIRectComponent>();
 
+		auto* font =
+			m_PlayerNameText->
+			GetComponent<
+			UIFontComponent>();
+
 		if (rect)
 		{
 			rect->SetPosition(
-				185.0f,
-				545.0f);
+				GetPlayerInfoX(),
+				m_PlayerHUDY +
+				PLAYER_NAME_OFFSET_Y);
 
 			rect->SetSize(
-				220.0f,
-				40.0f);
+				165.0f,
+				23.0f);
+		}
+
+		if (font)
+		{
+			font->SetFontSize(
+				20.0f);
+		}
+	}
+
+	//=================================================
+	// Level
+	//=================================================
+	//
+	// 名前の下へ表示。
+	//=================================================
+
+	m_PlayerLevelText =
+		CreateText(
+			"PlayerHUDLevel");
+
+	if (m_PlayerLevelText)
+	{
+		auto* rect =
+			m_PlayerLevelText->
+			GetComponent<
+			UIRectComponent>();
+
+		auto* font =
+			m_PlayerLevelText->
+			GetComponent<
+			UIFontComponent>();
+
+		if (rect)
+		{
+			rect->SetPosition(
+				GetPlayerInfoX(),
+				m_PlayerHUDY +
+				PLAYER_LEVEL_OFFSET_Y);
+
+			rect->SetSize(
+				90.0f,
+				20.0f);
+		}
+
+		if (font)
+		{
+			font->SetText(
+				L"Lv.--");
+
+			font->SetFontSize(
+				16.0f);
 		}
 	}
 
 	//=================================================
 	// HP Background
+	//=================================================
+	//
+	// ① 下地
 	//=================================================
 
 	m_HPBarBackground =
@@ -376,23 +956,27 @@ void FieldSceneUI::CreatePlayerHUD()
 		if (rect)
 		{
 			rect->SetPosition(
-				185.0f,
-				600.0f);
+				GetPlayerBarX(),
+				m_PlayerHUDY +
+				PLAYER_HP_BAR_OFFSET_Y);
 
 			rect->SetSize(
-				210.0f,
-				18.0f);
+				PLAYER_BAR_WIDTH,
+				PLAYER_BAR_HEIGHT);
 		}
 
 		if (image)
 		{
 			image->SetTexture(
-				"Assets/Textures/Field/BarBackground.png");
+				"Assets/Textures/Field/HPBarBackground.png");
 		}
 	}
 
 	//=================================================
 	// HP Fill
+	//=================================================
+	//
+	// ② Fill
 	//=================================================
 
 	m_HPBarFill =
@@ -401,10 +985,35 @@ void FieldSceneUI::CreatePlayerHUD()
 
 	if (m_HPBarFill)
 	{
+		auto* rect =
+			m_HPBarFill->
+			GetComponent<
+			UIRectComponent>();
+
 		auto* image =
 			m_HPBarFill->
 			GetComponent<
 			UIImageComponent>();
+
+		if (rect)
+		{
+			const float fillWidth =
+				PLAYER_BAR_WIDTH -
+				PLAYER_BAR_FILL_OFFSET_X -
+				PLAYER_BAR_FILL_RIGHT_MARGIN;
+
+			rect->SetPosition(
+				GetPlayerBarX() +
+				PLAYER_BAR_FILL_OFFSET_X,
+
+				m_PlayerHUDY +
+				PLAYER_HP_BAR_OFFSET_Y +
+				PLAYER_BAR_FILL_OFFSET_Y);
+
+			rect->SetSize(
+				fillWidth,
+				PLAYER_BAR_FILL_HEIGHT);
+		}
 
 		if (image)
 		{
@@ -420,9 +1029,47 @@ void FieldSceneUI::CreatePlayerHUD()
 		}
 	}
 
-	m_HPText =
-		CreateText(
-			"PlayerHUDHPText");
+	//=================================================
+	// HP Frame
+	//=================================================
+	//
+	// ③ 装飾枠
+	//=================================================
+
+	m_HPBarFrame =
+		CreateImage(
+			"PlayerHUDHPFrame");
+
+	if (m_HPBarFrame)
+	{
+		auto* rect =
+			m_HPBarFrame->
+			GetComponent<
+			UIRectComponent>();
+
+		auto* image =
+			m_HPBarFrame->
+			GetComponent<
+			UIImageComponent>();
+
+		if (rect)
+		{
+			rect->SetPosition(
+				GetPlayerBarX(),
+				m_PlayerHUDY +
+				PLAYER_HP_BAR_OFFSET_Y);
+
+			rect->SetSize(
+				PLAYER_BAR_WIDTH,
+				PLAYER_BAR_HEIGHT);
+		}
+
+		if (image)
+		{
+			image->SetTexture(
+				"Assets/Textures/Field/HPBarFrame.png");
+		}
+	}
 
 	//=================================================
 	// MP Background
@@ -447,18 +1094,19 @@ void FieldSceneUI::CreatePlayerHUD()
 		if (rect)
 		{
 			rect->SetPosition(
-				185.0f,
-				640.0f);
+				GetPlayerBarX(),
+				m_PlayerHUDY +
+				PLAYER_MP_BAR_OFFSET_Y);
 
 			rect->SetSize(
-				210.0f,
-				18.0f);
+				PLAYER_BAR_WIDTH,
+				PLAYER_BAR_HEIGHT);
 		}
 
 		if (image)
 		{
 			image->SetTexture(
-				"Assets/Textures/Field/BarBackground.png");
+				"Assets/Textures/Field/MPBarBackground.png");
 		}
 	}
 
@@ -472,10 +1120,35 @@ void FieldSceneUI::CreatePlayerHUD()
 
 	if (m_MPBarFill)
 	{
+		auto* rect =
+			m_MPBarFill->
+			GetComponent<
+			UIRectComponent>();
+
 		auto* image =
 			m_MPBarFill->
 			GetComponent<
 			UIImageComponent>();
+
+		if (rect)
+		{
+			const float fillWidth =
+				PLAYER_BAR_WIDTH -
+				PLAYER_BAR_FILL_OFFSET_X -
+				PLAYER_BAR_FILL_RIGHT_MARGIN;
+
+			rect->SetPosition(
+				GetPlayerBarX() +
+				PLAYER_BAR_FILL_OFFSET_X,
+
+				m_PlayerHUDY +
+				PLAYER_MP_BAR_OFFSET_Y +
+				PLAYER_BAR_FILL_OFFSET_Y);
+
+			rect->SetSize(
+				fillWidth,
+				PLAYER_BAR_FILL_HEIGHT);
+		}
 
 		if (image)
 		{
@@ -491,12 +1164,98 @@ void FieldSceneUI::CreatePlayerHUD()
 		}
 	}
 
-	m_MPText =
+	//=================================================
+	// MP Frame
+	//=================================================
+
+	m_MPBarFrame =
+		CreateImage(
+			"PlayerHUDMPFrame");
+
+	if (m_MPBarFrame)
+	{
+		auto* rect =
+			m_MPBarFrame->
+			GetComponent<
+			UIRectComponent>();
+
+		auto* image =
+			m_MPBarFrame->
+			GetComponent<
+			UIImageComponent>();
+
+		if (rect)
+		{
+			rect->SetPosition(
+				GetPlayerBarX(),
+				m_PlayerHUDY +
+				PLAYER_MP_BAR_OFFSET_Y);
+
+			rect->SetSize(
+				PLAYER_BAR_WIDTH,
+				PLAYER_BAR_HEIGHT);
+		}
+
+		if (image)
+		{
+			image->SetTexture(
+				"Assets/Textures/Field/MPBarFrame.png");
+		}
+	}
+
+	//=================================================
+	// AP Label
+	//=================================================
+	//
+	// HUD左下。
+	//=================================================
+
+	m_APText =
 		CreateText(
-			"PlayerHUDMPText");
+			"PlayerHUDAPText");
+
+	if (m_APText)
+	{
+		auto* rect =
+			m_APText->
+			GetComponent<
+			UIRectComponent>();
+
+		auto* font =
+			m_APText->
+			GetComponent<
+			UIFontComponent>();
+
+		if (rect)
+		{
+			rect->SetPosition(
+				GetPlayerInfoX(),
+				m_PlayerHUDY +
+				PLAYER_AP_OFFSET_Y);
+
+			rect->SetSize(
+				30.0f,
+				20.0f);
+		}
+
+		if (font)
+		{
+			font->SetText(
+				L"AP");
+
+			font->SetFontSize(
+				15.0f);
+		}
+	}
+
+	//=================================================
+	// AP Icons
+	//=================================================
+
+	CreateAPIcons();
 }
 
-void FieldSceneUI::CreatePlayerIcons()
+void FieldSceneUI::CreatePlayerIcons(const std::vector<GameObject*>& players)
 {
 	if (!m_Manager)
 	{
@@ -590,8 +1349,7 @@ void FieldSceneUI::CreatePlayerIcons()
 		{
 			// 現在はWarriorのみ。
 			// 将来CharacterData等からIconPathを取得する。
-			image->SetTexture(
-				"Assets/Textures/Field/WarriorIcon.png");
+			SetTextureToClassUI(players[i], image);
 
 			image->SetColor(
 				Color(
@@ -608,6 +1366,74 @@ void FieldSceneUI::CreatePlayerIcons()
 		button->
 			AddComponent<
 			UIButtonComponent>();
+	}
+}
+
+void FieldSceneUI::CreateAPIcons()
+{
+	if (!m_Manager)
+	{
+		return;
+	}
+
+	m_APIcons.clear();
+
+	m_APIcons.reserve(
+		AP_ICON_COUNT);
+
+	for (int i = 0;
+		i < AP_ICON_COUNT;
+		++i)
+	{
+		GameObject* icon =
+			CreateImage(
+				"PlayerHUDAPIcon");
+
+		if (!icon)
+		{
+			continue;
+		}
+
+		auto* rect =
+			icon->
+			GetComponent<
+			UIRectComponent>();
+
+		auto* image =
+			icon->
+			GetComponent<
+			UIImageComponent>();
+
+		if (rect)
+		{
+			rect->SetPosition(
+				GetAPIconStartX() +
+				static_cast<float>(i) *
+				AP_ICON_INTERVAL,
+
+				m_PlayerHUDY +
+				65.0f);
+
+			rect->SetSize(
+				AP_ICON_SIZE,
+				AP_ICON_SIZE);
+		}
+
+		if (image)
+		{
+			image->SetTexture(
+				"Assets/Textures/Field/APFeather.png");
+
+			image->SetColor(
+				Color(
+					1.0f,
+					1.0f,
+					1.0f,
+					1.0f));
+		}
+
+		m_APIcons.push_back(
+			icon);
 	}
 }
 
@@ -729,11 +1555,36 @@ void FieldSceneUI::Update(
 	{
 		HidePlayerHUD();
 
+#ifdef _DEBUG
+		DebugUI::RegisterDebugFunction(
+			[]()
+			{
+				DrawPlayerHUDLayoutDebugUI();
+			});
+#endif
+
 		return;
 	}
 
 	UpdatePlayerHUD(
 		focusedPlayer);
+
+	//=================================================
+	// Temporary Layout Debug UI
+	//=================================================
+	//
+	// UI配置確定後はこのブロックを削除する。
+	//=================================================
+
+#ifdef _DEBUG
+
+	DebugUI::RegisterDebugFunction(
+		[]()
+		{
+			DrawPlayerHUDLayoutDebugUI();
+		});
+
+#endif
 }
 
 void FieldSceneUI::SetPlayers(
@@ -782,7 +1633,24 @@ void FieldSceneUI::SetPlayers(
 	// UI Create
 	//=================================================
 
-	CreatePlayerIcons();
+	CreatePlayerIcons(players);
+}
+
+//=====================================================
+// Player Icon Click
+//=====================================================
+
+/**
+ * @brief このFrameでClickされたPlayerを取得
+ *
+ * @return
+ * ClickされたPlayer。
+ * Clickされていなければnullptr。
+ */
+GameObject*
+FieldSceneUI::GetClickedPlayer() const
+{
+	return m_ClickedPlayer;
 }
 
 //=====================================================
@@ -942,9 +1810,13 @@ void FieldSceneUI::UpdateNextTurnVisual()
 void FieldSceneUI::UpdatePlayerIcons(
 	GameObject* focusedPlayer)
 {
-	for (FieldPlayerIconUI& iconUI :
-		m_PlayerIcons)
+	for (size_t i = 0;
+		i < m_PlayerIcons.size();
+		++i)
 	{
+		FieldPlayerIconUI& iconUI =
+			m_PlayerIcons[i];
+
 		if (!iconUI.Player ||
 			!iconUI.Button)
 		{
@@ -961,15 +1833,25 @@ void FieldSceneUI::UpdatePlayerIcons(
 			GetComponent<
 			UIImageComponent>();
 
+		auto* rect =
+			iconUI.Button->
+			GetComponent<
+			UIRectComponent>();
+
 		if (!button ||
-			!image)
+			!image ||
+			!rect)
 		{
 			continue;
 		}
 
-		//=============================================
+		const bool selected =
+			iconUI.Player ==
+			focusedPlayer;
+
+		//=================================================
 		// Click
-		//=============================================
+		//=================================================
 
 		if (button->IsClicked())
 		{
@@ -977,15 +1859,59 @@ void FieldSceneUI::UpdatePlayerIcons(
 				iconUI.Player;
 		}
 
-		//=============================================
-		// Selected Visual
-		//=============================================
-		//
-		// HUD表示対象Playerだけ少し明るくする。
+		//=================================================
+		// Size
 		//=================================================
 
-		if (iconUI.Player ==
-			focusedPlayer)
+		const float size =
+			selected
+			? PLAYER_ICON_SELECTED_SIZE
+			: PLAYER_ICON_NORMAL_SIZE;
+
+		const float baseY =
+			PLAYER_ICON_START_Y -
+			static_cast<float>(i) *
+			PLAYER_ICON_INTERVAL;
+
+		const float offset =
+			(
+				PLAYER_ICON_SELECTED_SIZE -
+				size
+				) *
+			0.5f;
+
+		const float iconY =
+			baseY +
+			offset;
+
+		rect->SetPosition(
+			PLAYER_ICON_X +
+			offset,
+			iconY);
+
+		rect->SetSize(
+			size,
+			size);
+
+		//=================================================
+		// Selected HUD Position
+		//=================================================
+		//
+		// 詳細ステータスを
+		// 「選択中Iconの真横」に追従させる。
+		//=================================================
+
+		if (selected)
+		{
+			m_PlayerHUDY =
+				iconY + PLAYER_HUD_Y_OFFSET;
+		}
+
+		//=================================================
+		// Color
+		//=================================================
+
+		if (selected)
 		{
 			image->SetColor(
 				Color(
@@ -998,9 +1924,9 @@ void FieldSceneUI::UpdatePlayerIcons(
 		{
 			image->SetColor(
 				Color(
-					0.65f,
-					0.65f,
-					0.65f,
+					0.60f,
+					0.60f,
+					0.60f,
 					1.0f));
 		}
 	}
@@ -1057,7 +1983,6 @@ bool FieldSceneUI::IsNextTurnClicked() const
 //=====================================================
 // Player HUD
 //=====================================================
-
 void FieldSceneUI::UpdatePlayerHUD(
 	GameObject* player)
 {
@@ -1069,7 +1994,8 @@ void FieldSceneUI::UpdatePlayerHUD(
 	}
 
 	auto* status =
-		player->GetComponent<
+		player->
+		GetComponent<
 		CharacterStatusComponent>();
 
 	if (!status)
@@ -1080,39 +2006,28 @@ void FieldSceneUI::UpdatePlayerHUD(
 	}
 
 	//=================================================
-	// Background / Icon
+	// Background
 	//=================================================
 
-	auto* backgroundRect =
-		m_PlayerHUDBackground->
-		GetComponent<
-		UIRectComponent>();
-
-	if (backgroundRect)
+	if (m_PlayerHUDBackground)
 	{
-		backgroundRect->SetPosition(
-			25.0f,
-			530.0f);
+		auto* rect =
+			m_PlayerHUDBackground->
+			GetComponent<
+			UIRectComponent>();
 
-		backgroundRect->SetSize(
-			420.0f,
-			160.0f);
-	}
+		if (rect)
+		{
+			rect->SetPosition(
+				PLAYER_HUD_X,
+				m_PlayerHUDY);
 
-	auto* iconRect =
-		m_PlayerIcon->
-		GetComponent<
-		UIRectComponent>();
+			rect->SetSize(
+				PLAYER_HUD_WIDTH,
+				PLAYER_HUD_HEIGHT);
+		}
 
-	if (iconRect)
-	{
-		iconRect->SetPosition(
-			45.0f,
-			550.0f);
-
-		iconRect->SetSize(
-			115.0f,
-			115.0f);
+		HideObject(m_PlayerHUDBackground);
 	}
 
 	//=================================================
@@ -1134,23 +2049,53 @@ void FieldSceneUI::UpdatePlayerHUD(
 		if (rect)
 		{
 			rect->SetPosition(
-				185.0f,
-				545.0f);
+				GetPlayerInfoX(),
+				m_PlayerHUDY +
+				PLAYER_NAME_OFFSET_Y);
 
 			rect->SetSize(
-				220.0f,
-				40.0f);
+				170.0f,
+				24.0f);
 		}
 
 		if (font)
 		{
 			font->SetText(
-				UTF8ToWide(
-					player->GetName()));
+				GetPlayerName(player));
 
 			font->SetFontSize(
-				24.0f);
+				20.0f);
 		}
+
+		HideObject(
+			m_PlayerNameText);
+	}
+
+	//=================================================
+	// Level
+	//=================================================
+
+	if (m_PlayerLevelText)
+	{
+		auto* rect =
+			m_PlayerLevelText->
+			GetComponent<
+			UIRectComponent>();
+
+		if (rect)
+		{
+			rect->SetPosition(
+				GetPlayerInfoX(),
+				m_PlayerHUDY +
+				PLAYER_LEVEL_OFFSET_Y);
+
+			rect->SetSize(
+				90.0f,
+				20.0f);
+		}
+
+		HideObject(
+			m_PlayerLevelText);
 	}
 
 	//=================================================
@@ -1169,6 +2114,26 @@ void FieldSceneUI::UpdatePlayerHUD(
 		static_cast<float>(maxHP)
 		: 0.0f;
 
+	if (m_HPBarBackground)
+	{
+		auto* rect =
+			m_HPBarBackground->
+			GetComponent<
+			UIRectComponent>();
+
+		if (rect)
+		{
+			rect->SetPosition(
+				GetPlayerBarX(),
+				m_PlayerHUDY +
+				PLAYER_HP_BAR_OFFSET_Y);
+
+			rect->SetSize(
+				PLAYER_BAR_WIDTH,
+				PLAYER_BAR_HEIGHT);
+		}
+	}
+
 	if (m_HPBarFill)
 	{
 		auto* rect =
@@ -1178,49 +2143,50 @@ void FieldSceneUI::UpdatePlayerHUD(
 
 		if (rect)
 		{
+			//=========================================
+			// Frame内部でFill可能な領域
+			//=========================================
+
+			const float usableWidth =
+				PLAYER_BAR_WIDTH -
+				PLAYER_BAR_FILL_OFFSET_X -
+				PLAYER_BAR_FILL_RIGHT_MARGIN;
+
+			const float fillWidth =
+				usableWidth *
+				hpRate;
+
 			rect->SetPosition(
-				185.0f,
-				600.0f);
+				GetPlayerBarX() +
+				PLAYER_BAR_FILL_OFFSET_X,
+
+				m_PlayerHUDY +
+				PLAYER_HP_BAR_OFFSET_Y +
+				PLAYER_BAR_FILL_OFFSET_Y);
 
 			rect->SetSize(
-				210.0f * hpRate,
-				18.0f);
+				fillWidth,
+				PLAYER_BAR_FILL_HEIGHT);
 		}
 	}
 
-	if (m_HPText)
+	if (m_HPBarFrame)
 	{
 		auto* rect =
-			m_HPText->
+			m_HPBarFrame->
 			GetComponent<
 			UIRectComponent>();
-
-		auto* font =
-			m_HPText->
-			GetComponent<
-			UIFontComponent>();
 
 		if (rect)
 		{
 			rect->SetPosition(
-				185.0f,
-				580.0f);
+				GetPlayerBarX(),
+				m_PlayerHUDY +
+				PLAYER_HP_BAR_OFFSET_Y);
 
 			rect->SetSize(
-				210.0f,
-				24.0f);
-		}
-
-		if (font)
-		{
-			const std::wstring text =
-				L"HP " +
-				std::to_wstring(hp) +
-				L" / " +
-				std::to_wstring(maxHP);
-
-			font->SetText(
-				text);
+				PLAYER_BAR_WIDTH,
+				PLAYER_BAR_HEIGHT);
 		}
 	}
 
@@ -1240,6 +2206,26 @@ void FieldSceneUI::UpdatePlayerHUD(
 		static_cast<float>(maxMP)
 		: 0.0f;
 
+	if (m_MPBarBackground)
+	{
+		auto* rect =
+			m_MPBarBackground->
+			GetComponent<
+			UIRectComponent>();
+
+		if (rect)
+		{
+			rect->SetPosition(
+				GetPlayerBarX(),
+				m_PlayerHUDY +
+				PLAYER_MP_BAR_OFFSET_Y);
+
+			rect->SetSize(
+				PLAYER_BAR_WIDTH,
+				PLAYER_BAR_HEIGHT);
+		}
+	}
+
 	if (m_MPBarFill)
 	{
 		auto* rect =
@@ -1249,68 +2235,298 @@ void FieldSceneUI::UpdatePlayerHUD(
 
 		if (rect)
 		{
+			const float usableWidth =
+				PLAYER_BAR_WIDTH -
+				PLAYER_BAR_FILL_OFFSET_X -
+				PLAYER_BAR_FILL_RIGHT_MARGIN;
+
+			const float fillWidth =
+				usableWidth *
+				mpRate;
+
 			rect->SetPosition(
-				185.0f,
-				640.0f);
+				GetPlayerBarX() +
+				PLAYER_BAR_FILL_OFFSET_X,
+
+				m_PlayerHUDY +
+				PLAYER_MP_BAR_OFFSET_Y +
+				PLAYER_BAR_FILL_OFFSET_Y);
 
 			rect->SetSize(
-				210.0f * mpRate,
-				18.0f);
+				fillWidth,
+				PLAYER_BAR_FILL_HEIGHT);
 		}
 	}
 
-	if (m_MPText)
+	if (m_MPBarFrame)
 	{
 		auto* rect =
-			m_MPText->
+			m_MPBarFrame->
 			GetComponent<
 			UIRectComponent>();
-
-		auto* font =
-			m_MPText->
-			GetComponent<
-			UIFontComponent>();
 
 		if (rect)
 		{
 			rect->SetPosition(
-				185.0f,
-				620.0f);
+				GetPlayerBarX(),
+				m_PlayerHUDY +
+				PLAYER_MP_BAR_OFFSET_Y);
 
 			rect->SetSize(
-				210.0f,
-				24.0f);
-		}
-
-		if (font)
-		{
-			const std::wstring text =
-				L"MP " +
-				std::to_wstring(mp) +
-				L" / " +
-				std::to_wstring(maxMP);
-
-			font->SetText(
-				text);
+				PLAYER_BAR_WIDTH,
+				PLAYER_BAR_HEIGHT);
 		}
 	}
 
 	//=================================================
-	// AP State
-	//=================================================
-	//
-	// AP制では旧HasActedフラグを使用しない。
-	//
-	// APが0になったCharacterは、
-	// このTurnでこれ以上通常Actionを実行できないため
-	// HUDを暗く表示する。
+	// AP
 	//=================================================
 
-	const bool outOfAP =
-		status->GetAP() <= 0;
+	const int ap =
+		status->GetAP();
+
+	UpdateAPDisplay(
+		ap);
+
+	//=================================================
+	// Out Of AP
+	//=================================================
 
 	SetPlayerHUDDarkened(
-		outOfAP);
+		ap <= 0);
+}
+
+void FieldSceneUI::UpdateAPDisplay(
+	int currentAP)
+{
+	//=================================================
+	// AP Label
+	//=================================================
+
+	if (m_APText)
+	{
+		auto* rect =
+			m_APText->
+			GetComponent<
+			UIRectComponent>();
+
+		if (rect)
+		{
+			rect->SetPosition(
+				GetPlayerInfoX(),
+				m_PlayerHUDY +
+				PLAYER_AP_OFFSET_Y);
+
+			rect->SetSize(
+				30.0f,
+				20.0f);
+		}
+
+		// AP文字を使用しない場合は
+		// このHideObject()をそのまま残す。
+		HideObject(
+			m_APText);
+	}
+
+	//=================================================
+	// AP State Calculation
+	//=================================================
+	//
+	// 例:
+	//
+	// 最大AP = 6
+	// 現在AP = 4
+	//
+	// [0][1][2][3][4][5]
+	//  ×  ×  ◆  ◆  ◆  ◆
+	//
+	// 左2個が既に消費されたAP。
+	//=================================================
+
+	const int maxAP =
+		AP_ICON_COUNT;
+
+	const int safeCurrentAP =
+		(currentAP < 0)
+		? 0
+		: (currentAP > maxAP)
+		? maxAP
+		: currentAP;
+
+	/**
+	 * @brief 左側から何個消費済みか
+	 */
+	const int consumedCount =
+		maxAP -
+		safeCurrentAP;
+
+	/**
+	 * @brief Preview可能なAP数
+	 *
+	 * 現在APより多くPreviewしない。
+	 */
+	const int previewCount =
+		(m_APPreviewCost < safeCurrentAP)
+		? m_APPreviewCost
+		: safeCurrentAP;
+
+	/**
+	 * @brief Preview終了Index
+	 *
+	 * [consumedCount, previewEnd)
+	 * が消費予定AP。
+	 */
+	const int previewEnd =
+		consumedCount +
+		previewCount;
+
+	//=================================================
+	// AP Icons
+	//=================================================
+
+	for (size_t i = 0;
+		i < m_APIcons.size();
+		++i)
+	{
+		GameObject* icon =
+			m_APIcons[i];
+
+		if (!icon)
+		{
+			continue;
+		}
+
+		auto* rect =
+			icon->
+			GetComponent<
+			UIRectComponent>();
+
+		auto* image =
+			icon->
+			GetComponent<
+			UIImageComponent>();
+
+		if (!rect ||
+			!image)
+		{
+			continue;
+		}
+
+		const int index =
+			static_cast<int>(i);
+
+		//=============================================
+		// ① Consumed AP
+		//=============================================
+		//
+		// 既に消費したAP。
+		//
+		// 完全に見えない状態にする。
+		//=============================================
+
+		if (index <
+			consumedCount)
+		{
+			rect->SetSize(
+				0.0f,
+				0.0f);
+
+			continue;
+		}
+
+		//=============================================
+		// ② Preview AP
+		//=============================================
+
+		const bool preview =
+			m_APPreviewCost > 0 &&
+			index >= consumedCount &&
+			index < previewEnd;
+
+		if (preview)
+		{
+			//=========================================
+			// Preview Size
+			//=========================================
+			//
+			// 通常より少し大きくして
+			// 消費予定であることを強調する。
+			//=========================================
+
+			const float previewScale =
+				1.20f;
+
+			const float previewSize =
+				AP_ICON_SIZE *
+				previewScale;
+
+			// 拡大しても中心が大きくズレないよう補正。
+			const float sizeOffset =
+				(
+					previewSize -
+					AP_ICON_SIZE
+					) *
+				0.5f;
+
+			rect->SetPosition(
+				GetAPIconStartX() +
+				static_cast<float>(i) *
+				AP_ICON_INTERVAL -
+				sizeOffset,
+
+				m_PlayerHUDY +
+				PLAYER_AP_OFFSET_Y -
+				sizeOffset);
+
+			rect->SetSize(
+				previewSize,
+				previewSize);
+
+			//=========================================
+			// Preview Color
+			//=========================================
+			//
+			// 半透明にして
+			// 「まだ消費されてはいない」
+			// ことを表現する。
+			//=========================================
+
+			image->SetColor(
+				Color(
+					1.0f,
+					1.0f,
+					1.0f,
+					0.45f));
+
+			continue;
+		}
+
+		//=============================================
+		// ③ Remaining AP
+		//=============================================
+		//
+		// 通常使用可能なAP。
+		//=============================================
+
+		rect->SetPosition(
+			GetAPIconStartX() +
+			static_cast<float>(i) *
+			AP_ICON_INTERVAL,
+
+			m_PlayerHUDY +
+			PLAYER_AP_OFFSET_Y);
+
+		rect->SetSize(
+			AP_ICON_SIZE,
+			AP_ICON_SIZE);
+
+		image->SetColor(
+			Color(
+				1.0f,
+				1.0f,
+				1.0f,
+				1.0f));
+	}
 }
 
 //=====================================================
@@ -1325,15 +2541,18 @@ void FieldSceneUI::SetPlayerHUDDarkened(
 		: 1.00f;
 
 	//=================================================
-	// Background
+	// Neutral Images
 	//=================================================
 
 	GameObject* neutralImages[] =
 	{
 		m_PlayerHUDBackground,
-		m_PlayerIcon,
+
 		m_HPBarBackground,
-		m_MPBarBackground
+		m_HPBarFrame,
+
+		m_MPBarBackground,
+		m_MPBarFrame
 	};
 
 	for (GameObject* object :
@@ -1345,7 +2564,8 @@ void FieldSceneUI::SetPlayerHUDDarkened(
 		}
 
 		auto* image =
-			object->GetComponent<
+			object->
+			GetComponent<
 			UIImageComponent>();
 
 		if (image)
@@ -1360,7 +2580,7 @@ void FieldSceneUI::SetPlayerHUDDarkened(
 	}
 
 	//=================================================
-	// HP
+	// HP Fill
 	//=================================================
 
 	if (m_HPBarFill)
@@ -1374,15 +2594,21 @@ void FieldSceneUI::SetPlayerHUDDarkened(
 		{
 			image->SetColor(
 				Color(
-					0.85f * brightness,
-					0.15f * brightness,
-					0.15f * brightness,
+					0.85f *
+					brightness,
+
+					0.15f *
+					brightness,
+
+					0.15f *
+					brightness,
+
 					1.0f));
 		}
 	}
 
 	//=================================================
-	// MP
+	// MP Fill
 	//=================================================
 
 	if (m_MPBarFill)
@@ -1396,9 +2622,15 @@ void FieldSceneUI::SetPlayerHUDDarkened(
 		{
 			image->SetColor(
 				Color(
-					0.15f * brightness,
-					0.35f * brightness,
-					0.90f * brightness,
+					0.15f *
+					brightness,
+
+					0.35f *
+					brightness,
+
+					0.90f *
+					brightness,
+
 					1.0f));
 		}
 	}
@@ -1410,8 +2642,8 @@ void FieldSceneUI::SetPlayerHUDDarkened(
 	GameObject* texts[] =
 	{
 		m_PlayerNameText,
-		m_HPText,
-		m_MPText
+		m_PlayerLevelText,
+		m_APText
 	};
 
 	for (GameObject* object :
@@ -1423,7 +2655,8 @@ void FieldSceneUI::SetPlayerHUDDarkened(
 		}
 
 		auto* font =
-			object->GetComponent<
+			object->
+			GetComponent<
 			UIFontComponent>();
 
 		if (font)
@@ -1441,20 +2674,24 @@ void FieldSceneUI::SetPlayerHUDDarkened(
 //=====================================================
 // Hide HUD
 //=====================================================
-
 void FieldSceneUI::HidePlayerHUD()
 {
 	GameObject* objects[] =
 	{
 		m_PlayerHUDBackground,
-		m_PlayerIcon,
+
 		m_PlayerNameText,
+		m_PlayerLevelText,
+
 		m_HPBarBackground,
 		m_HPBarFill,
-		m_HPText,
+		m_HPBarFrame,
+
 		m_MPBarBackground,
 		m_MPBarFill,
-		m_MPText
+		m_MPBarFrame,
+
+		m_APText
 	};
 
 	for (GameObject* object :
@@ -1462,6 +2699,14 @@ void FieldSceneUI::HidePlayerHUD()
 	{
 		HideObject(
 			object);
+	}
+
+	// AP Icon
+	for (GameObject* icon :
+		m_APIcons)
+	{
+		HideObject(
+			icon);
 	}
 }
 
